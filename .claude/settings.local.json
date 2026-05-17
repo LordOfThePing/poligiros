@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path . -Force -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(npm install *)",
+      "Bash(npx shadcn@latest add button card input label select textarea badge table tabs dialog sheet progress avatar radio-group switch collapsible separator dropdown-menu --yes)",
+      "Bash(npx shadcn@latest add toast --yes)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

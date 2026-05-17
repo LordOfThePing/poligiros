@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poligiros — Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --border: #E2DDD5;
+    --text: #1A1714;
+    --text2: #6B6560;
+    --text3: #A09890;
+    --accent: #2D6A4F;
+    --accent-light: #D8EDE2;
+    --accent2: #B5835A;
+    --accent2-light: #F4E8DC;
+    --indigo: #3D52A0;
+    --indigo-light: #E0E5F5;
+    --amber: #C47B0E;
+    --amber-light: #FEF3D8;
+    --red: #C0392B;
+    --red-light: #FDECEA;
+    --gold: #B8960C;
+    --gold-light: #FEF8DC;
+    --sidebar-w: 230px;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* ─── LOGIN ─── */
+  #screen-login { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); position:relative; overflow:hidden; }
+  #screen-login::before { content:''; position:absolute; width:600px; height:600px; background:radial-gradient(circle,rgba(45,106,79,.08) 0%,transparent 70%); top:-100px; right:-100px; border-radius:50%; }
+  #screen-login::after { content:''; position:absolute; width:400px; height:400px; background:radial-gradient(circle,rgba(181,131,90,.07) 0%,transparent 70%); bottom:-80px; left:-80px; border-radius:50%; }
+  .login-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:48px 44px; width:420px; position:relative; z-index:1; box-shadow:0 4px 40px rgba(26,23,20,.06); animation:fadeUp .5s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .login-logo { display:flex; align-items:center; gap:10px; margin-bottom:36px; }
+  .logo-mark { width:36px; height:36px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; }
+  .logo-text { font-family:'DM Serif Display',serif; font-size:22px; letter-spacing:-.3px; }
+  .login-card h2 { font-family:'DM Serif Display',serif; font-size:26px; font-weight:400; margin-bottom:6px; letter-spacing:-.3px; }
+  .login-card p { font-size:14px; color:var(--text2); margin-bottom:28px; }
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:13px; font-weight:500; color:var(--text2); margin-bottom:6px; }
+  .field input, .field select { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:14px; color:var(--text); background:var(--surface); outline:none; transition:border-color .15s; }
+  .field input:focus { border-color:var(--accent); }
+  .role-switcher { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:24px; }
+  .role-btn { padding:10px 8px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; text-align:center; transition:all .15s; font-family:inherit; }
+  .role-btn .role-icon { font-size:18px; display:block; margin-bottom:4px; }
+  .role-btn .role-label { font-size:11px; font-weight:500; color:var(--text2); }
+  .role-btn.active { border-color:var(--accent); background:var(--accent-light); }
+  .role-btn.active .role-label { color:var(--accent); }
+  .btn-primary { width:100%; padding:13px; background:var(--accent); color:white; border:none; border-radius:var(--radius-sm); font-family:inherit; font-size:15px; font-weight:500; cursor:pointer; transition:background .15s,transform .1s; }
+  .btn-primary:hover { background:#245A41; }
+  .btn-primary:active { transform:scale(.99); }
+  .demo-hint { margin-top:20px; padding:12px 14px; background:var(--surface2); border-radius:var(--radius-sm); font-size:12px; color:var(--text2); text-align:center; line-height:1.5; }
+
+  /* ─── SHELL ─── */
+  #app-shell { display:none; min-height:100vh; }
+  #app-shell.visible { display:flex; }
+  .sidebar { width:var(--sidebar-w); min-height:100vh; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; left:0; top:0; z-index:10; }
+  .sidebar-header { padding:24px 20px 20px; border-bottom:1px solid var(--border); }
+  .sidebar-logo { display:flex; align-items:center; gap:9px; margin-bottom:16px; }
+  .sidebar-user { display:flex; align-items:center; gap:10px; padding:10px; background:var(--surface2); border-radius:var(--radius-sm); }
+  .user-avatar { width:32px; height:32px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:white; flex-shrink:0; }
+  .user-avatar.amber { background:var(--accent2); }
+  .user-name { font-size:13px; font-weight:500; }
+  .user-role { font-size:11px; color:var(--text3); }
+  .sidebar-nav { padding:16px 12px; flex:1; }
+  .nav-section-label { font-size:10px; font-weight:600; letter-spacing:.08em; color:var(--text3); text-transform:uppercase; padding:0 8px; margin-bottom:6px; margin-top:16px; }
+  .nav-section-label:first-child { margin-top:0; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; color:var(--text2); transition:all .12s; margin-bottom:2px; border:none; background:none; width:100%; text-align:left; font-family:inherit; }
+  .nav-item:hover { background:var(--surface2); color:var(--text); }
+  .nav-item.active { background:var(--accent-light); color:var(--accent); font-weight:500; }
+  .nav-item .nav-icon { font-size:16px; flex-shrink:0; }
+  .nav-badge { margin-left:auto; background:var(--accent); color:white; font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; }
+  .sidebar-footer { padding:16px 12px; border-top:1px solid var(--border); }
+  .logout-btn { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; color:var(--text3); background:none; border:none; font-family:inherit; width:100%; transition:color .12s; }
+  .logout-btn:hover { color:var(--red); }
+  .main-content { margin-left:var(--sidebar-w); flex:1; min-height:100vh; padding:32px 36px; max-width:calc(100% - var(--sidebar-w)); }
+  .page { display:none; animation:fadeIn .25s ease; }
+  .page.active { display:block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .page-header { margin-bottom:28px; }
+  .page-header h1 { font-family:'DM Serif Display',serif; font-size:28px; font-weight:400; letter-spacing:-.3px; margin-bottom:4px; }
+  .page-header p { font-size:14px; color:var(--text2); }
+
+  /* ─── CARDS / TABLE ─── */
+  .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--accent); }
+  .stat-card.amber::before { background:var(--accent2); }
+  .stat-card.indigo::before { background:var(--indigo); }
+  .stat-label { font-size:12px; color:var(--text2); font-weight:500; margin-bottom:10px; text-transform:uppercase; letter-spacing:.05em; }
+  .stat-value { font-family:'DM Serif Display',serif; font-size:36px; color:var(--text); line-height:1; margin-bottom:4px; }
+  .stat-sub { font-size:12px; color:var(--text3); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:20px; }
+  .card-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .card-title { font-size:15px; font-weight:500; }
+  .card-sub { font-size:13px; color:var(--text3); margin-top:2px; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { padding:12px 22px; text-align:left; font-size:11px; font-weight:600; letter-spacing:.07em; color:var(--text3); text-transform:uppercase; background:var(--surface2); border-bottom:1px solid var(--border); }
+  tbody td { padding:14px 22px; font-size:14px; border-bottom:1px solid var(--border); color:var(--text); }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:var(--surface2); cursor:pointer; }
+  .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+  .badge-green { background:var(--accent-light); color:var(--accent); }
+  .badge-green::before { background:var(--accent); }
+  .badge-amber { background:var(--amber-light); color:var(--amber); }
+  .badge-amber::before { background:var(--amber); }
+  .badge-gray { background:var(--surface2); color:var(--text2); }
+  .badge-gray::before { background:var(--text3); }
+  .badge-indigo { background:var(--indigo-light); color:var(--indigo); }
+  .badge-indigo::before { background:var(--indigo); }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:var(--radius-sm); font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; transition:all .12s; border:none; }
+  .btn-sm { padding:6px 12px; font-size:12px; }
+  .btn-accent { background:var(--accent); color:white; }
+  .btn-accent:hover { background:#245A41; }
+  .btn-outline { background:transparent; color:var(--text2); border:1.5px solid var(--border); }
+  .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-ghost { background:transparent; color:var(--text2); }
+  .btn-ghost:hover { background:var(--surface2); color:var(--text); }
+  .btn-amber { background:var(--accent2); color:white; }
+  .btn-amber:hover { background:#9C6B45; }
+  .module-list { display:flex; flex-direction:column; gap:12px; }
+  .module-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; display:flex; align-items:center; gap:16px; transition:border-color .12s; cursor:pointer; }
+  .module-card:hover { border-color:var(--accent); }
+  .module-number { width:36px; height:36px; border-radius:10px; background:var(--accent-light); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; flex-shrink:0; }
+  .module-info { flex:1; }
+  .module-title { font-size:14px; font-weight:500; margin-bottom:3px; }
+  .module-desc { font-size:12px; color:var(--text2); }
+  .module-card.locked { opacity:.6; cursor:not-allowed; }
+  .module-card.done .module-number { background:var(--accent); color:white; }
+  .progress-ring-wrap { display:flex; align-items:center; gap:20px; padding:20px 22px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:20px; }
+  .progress-ring { position:relative; width:70px; height:70px; }
+  .progress-ring svg { transform:rotate(-90deg); }
+  .progress-ring-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; font-weight:600; color:var(--accent); }
+  .client-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .client-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 18px 14px; cursor:pointer; transition:border-color .12s,box-shadow .12s; }
+  .client-card:hover { border-color:var(--accent); box-shadow:0 2px 16px rgba(45,106,79,.08); }
+  .client-avatar { width:40px; height:40px; border-radius:50%; background:var(--accent2-light); color:var(--accent2); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; margin-bottom:10px; }
+  .client-name { font-size:14px; font-weight:500; margin-bottom:2px; }
+  .client-email { font-size:12px; color:var(--text3); margin-bottom:10px; }
+  .client-tests { display:flex; gap:4px; flex-wrap:wrap; }
+  .test-dot { width:20px; height:20px; border-radius:4px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:var(--text3); }
+  .test-dot.done { background:var(--accent-light); color:var(--accent); }
+  .test-dot.pending { background:var(--amber-light); color:var(--amber); }
+  .supervision-list { display:flex; flex-direction:column; gap:12px; }
+  .supervision-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; cursor:pointer; transition:border-color .12s; }
+  .supervision-card:hover { border-color:var(--indigo); }
+  .supervision-card.reviewed { opacity:.6; }
+  .sup-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .sup-title { font-size:14px; font-weight:500; }
+  .sup-meta { font-size:12px; color:var(--text3); line-height:1.6; }
+  .sup-notes { margin-top:10px; padding:10px 12px; background:var(--surface2); border-radius:var(--radius-sm); font-size:13px; color:var(--text2); border-left:3px solid var(--accent); }
+
+  /* ─── CLIENT PORTAL ─── */
+  #screen-client { display:none; }
+  .client-topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 32px; height:60px; display:flex; align-items:center; justify-content:space-between; }
+  .client-body { padding:36px 32px; max-width:760px; }
+  .test-card-client { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px 24px; margin-bottom:14px; display:flex; align-items:center; gap:18px; cursor:pointer; transition:border-color .12s,box-shadow .12s; }
+  .test-card-client:hover:not(.done):not(.locked-test) { border-color:var(--accent); box-shadow:0 2px 20px rgba(45,106,79,.08); }
+  .test-card-client.done { opacity:.7; cursor:default; }
+  .test-card-client.locked-test { opacity:.4; cursor:not-allowed; }
+  .test-icon { width:44px; height:44px; border-radius:12px; background:var(--accent-light); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .test-card-title { font-size:15px; font-weight:500; margin-bottom:3px; }
+  .test-card-sub { font-size:12px; color:var(--text2); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay { position:fixed; inset:0; background:rgba(26,23,20,.5); z-index:100; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; backdrop-filter:blur(2px); }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal { background:var(--surface); border-radius:16px; padding:32px; width:480px; max-width:90vw; transform:translateY(16px) scale(.97); transition:transform .2s; box-shadow:0 20px 60px rgba(26,23,20,.15); }
+  .modal-overlay.open .modal { transform:translateY(0) scale(1); }
+  .modal h3 { font-family:'DM Serif Display',serif; font-size:22px; font-weight:400; margin-bottom:4px; }
+  .modal-sub { font-size:13px; color:var(--text2); margin-bottom:24px; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+  textarea.field-input { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:14px; color:var(--text); background:var(--surface); outline:none; resize:vertical; min-height:100px; transition:border-color .15s; }
+  textarea.field-input:focus { border-color:var(--accent); }
+
+  /* ─── ANCLAS TEST ─── */
+  .test-progress-bar { height:4px; background:var(--border); border-radius:2px; margin-bottom:24px; overflow:hidden; }
+  .test-progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .4s ease; }
+  .test-header-info { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+
+  .question-block {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:12px;
+    transition:border-color .15s;
+  }
+  .question-block.answered { border-color:var(--accent-light); }
+  .question-top { display:flex; align-items:flex-start; gap:14px; margin-bottom:14px; }
+  .q-num { font-size:12px; font-weight:700; color:var(--text3); min-width:24px; padding-top:2px; }
+  .q-text { font-size:14px; line-height:1.6; flex:1; }
+  .scale-row { display:flex; gap:8px; align-items:center; }
+  .scale-label { font-size:11px; color:var(--text3); flex:1; }
+  .scale-label.right { text-align:right; }
+  .scale-btns { display:flex; gap:6px; }
+  .scale-btn { width:36px; height:36px; border-radius:8px; border:1.5px solid var(--border); background:var(--surface); cursor:pointer; font-size:13px; font-weight:600; color:var(--text2); display:flex; align-items:center; justify-content:center; transition:all .12s; font-family:inherit; }
+  .scale-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+  .scale-btn.selected { background:var(--accent); border-color:var(--accent); color:white; transform:scale(1.08); }
+
+  /* ─── STEP 2: BONUS SELECTION ─── */
+  .bonus-instruction { background:var(--gold-light); border:1px solid rgba(184,150,12,.25); border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; }
+  .bonus-instruction h3 { font-size:15px; font-weight:600; color:var(--gold); margin-bottom:6px; }
+  .bonus-instruction p { font-size:13px; color:var(--text2); line-height:1.6; }
+  .bonus-counter { font-size:13px; font-weight:600; color:var(--gold); }
+
+  .bonus-card {
+    background:var(--surface);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    cursor:pointer;
+    transition:all .15s;
+    position:relative;
+    overflow:hidden;
+  }
+  .bonus-card:hover:not(.bonus-disabled) { border-color:var(--gold); box-shadow:0 2px 12px rgba(184,150,12,.12); }
+  .bonus-card.bonus-selected {
+    border-color:var(--gold);
+    background:var(--gold-light);
+  }
+  .bonus-card.bonus-disabled { opacity:.45; cursor:not-allowed; }
+  .bonus-score-pill { width:36px; height:36px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--text2); flex-shrink:0; transition:all .15s; }
+  .bonus-card.bonus-selected .bonus-score-pill { background:var(--gold); color:white; }
+  .bonus-q-num { font-size:11px; font-weight:700; color:var(--text3); flex-shrink:0; }
+  .bonus-q-text { font-size:13px; line-height:1.5; flex:1; }
+  .bonus-check { width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+  .bonus-card.bonus-selected .bonus-check { background:var(--gold); border-color:var(--gold); }
+  .bonus-sparkle { position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; }
+
+  /* ─── RESULTS ─── */
+  .results-header { text-align:center; padding:32px 24px 24px; }
+  .results-header h2 { font-family:'DM Serif Display',serif; font-size:28px; font-weight:400; margin-bottom:6px; }
+  .results-header p { font-size:14px; color:var(--text2); }
+
+  .ancla-result-card {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    transition:all .3s;
+    opacity:0;
+    transform:translateY(12px);
+  }
+  .ancla-result-card.visible { opacity:1; transform:translateY(0); }
+  .ancla-result-card.rank-1 { border-color:rgba(184,150,12,.4); background:linear-gradient(to right,var(--gold-light),var(--surface)); }
+  .ancla-result-card.rank-2 { border-color:rgba(45,106,79,.3); background:linear-gradient(to right,var(--accent-light),var(--surface)); }
+  .ancla-result-card.rank-3 { border-color:rgba(61,82,160,.25); background:linear-gradient(to right,var(--indigo-light),var(--surface)); }
+
+  .ancla-rank { font-size:18px; font-weight:700; color:var(--text3); width:32px; text-align:center; flex-shrink:0; }
+  .ancla-rank.gold { color:var(--gold); }
+  .ancla-rank.silver { color:var(--accent); }
+  .ancla-rank.bronze { color:var(--indigo); }
+
+  .ancla-icon { width:44px; height:44px; border-radius:12px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .ancla-result-card.rank-1 .ancla-icon { background:var(--gold-light); }
+  .ancla-result-card.rank-2 .ancla-icon { background:var(--accent-light); }
+  .ancla-result-card.rank-3 .ancla-icon { background:var(--indigo-light); }
+
+  .ancla-info { flex:1; min-width:0; }
+  .ancla-name { font-size:14px; font-weight:600; margin-bottom:2px; }
+  .ancla-code { font-size:11px; color:var(--text3); font-weight:600; letter-spacing:.04em; }
+  .ancla-desc { font-size:12px; color:var(--text2); line-height:1.5; margin-top:4px; }
+
+  .ancla-bar-wrap { width:140px; flex-shrink:0; }
+  .ancla-score-label { font-size:20px; font-weight:700; color:var(--text); text-align:right; margin-bottom:4px; }
+  .ancla-bar-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .ancla-bar-fill { height:100%; background:var(--accent); border-radius:3px; width:0%; transition:width .8s cubic-bezier(.4,0,.2,1); }
+  .ancla-result-card.rank-1 .ancla-bar-fill { background:var(--gold); }
+  .ancla-result-card.rank-2 .ancla-bar-fill { background:var(--accent); }
+  .ancla-result-card.rank-3 .ancla-bar-fill { background:var(--indigo); }
+
+  /* AI insight card */
+  .ai-insight {
+    background:linear-gradient(135deg,#1A1714 0%,#2D3A2E 100%);
+    border-radius:var(--radius);
+    padding:24px;
+    margin-top:20px;
+    margin-bottom:20px;
+    color:white;
+    position:relative;
+    overflow:hidden;
+  }
+  .ai-insight::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(45,106,79,.3); }
+  .ai-insight-label { font-size:11px; font-weight:600; letter-spacing:.08em; color:rgba(255,255,255,.5); margin-bottom:10px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
+  .ai-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+  .ai-insight p { font-size:14px; line-height:1.7; color:rgba(255,255,255,.9); position:relative; z-index:1; }
+
+  /* ─── SPARKLE ANIMATION ─── */
+  @keyframes sparkle { 0%{transform:scale(0) rotate(0deg);opacity:1} 100%{transform:scale(1.5) rotate(180deg);opacity:0} }
+  .spark { position:absolute; width:8px; height:8px; border-radius:50%; animation:sparkle .5s ease forwards; pointer-events:none; }
+
+  /* ─── MISC ─── */
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .flex-between { display:flex; align-items:center; justify-content:space-between; }
+  .fw-500 { font-weight:500; }
+  .text-sm { font-size:13px; }
+  .text-xs { font-size:12px; }
+  .text-muted { color:var(--text2); }
+  .text-accent { color:var(--accent); }
+  .mt-4 { margin-top:4px; }
+  .mt-8 { margin-top:8px; }
+  .mt-20 { margin-top:20px; }
+  .mb-16 { margin-bottom:16px; }
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--text); color:white; padding:12px 20px; border-radius:var(--radius-sm); font-size:13px; font-weight:500; transition:transform .3s ease; z-index:999; white-space:nowrap; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ LOGIN ══════════════════ -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <span class="logo-text">Poligiros</span>
+    </div>
+    <h2>Bienvenido/a</h2>
+    <p>Seleccioná tu rol para explorar la demo</p>
+    <div class="role-switcher">
+      <button class="role-btn active" onclick="selectRole('supervisor',this)"><span class="role-icon">🎯</span><span class="role-label">Supervisora</span></button>
+      <button class="role-btn" onclick="selectRole('student',this)"><span class="role-icon">📚</span><span class="role-label">Alumno-Coach</span></button>
+      <button class="role-btn" onclick="selectRole('client',this)"><span class="role-icon">👤</span><span class="role-label">Cliente</span></button>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="login-email" value="gaby@poligiros.com" readonly></div>
+    <div class="field"><label>Contraseña</label><input type="password" value="••••••••" readonly></div>
+    <button class="btn-primary" onclick="doLogin()">Ingresar →</button>
+    <div class="demo-hint">Demo interactiva · Explorá los 3 roles · El test de Anclas está completamente funcional</div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP SHELL ══════════════════ -->
+<div id="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-mark" style="width:28px;height:28px;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <span class="logo-text" style="font-size:18px;">Poligiros</span>
+      </div>
+      <div class="sidebar-user">
+        <div class="user-avatar" id="sidebar-avatar">G</div>
+        <div><div class="user-name" id="sidebar-name">Gabriela K.</div><div class="user-role" id="sidebar-role">Supervisora</div></div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer"><button class="logout-btn" onclick="logout()">← Cerrar sesión</button></div>
+  </aside>
+
+  <main class="main-content">
+    <!-- SUPERVISOR -->
+    <div class="page" id="page-s-overview">
+      <div class="page-header"><h1>Panel de supervisión</h1><p>Resumen de la cohorte — Mayo 2025</p></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Alumnos activos</div><div class="stat-value">18</div><div class="stat-sub">Cohorte 4 · 2025</div></div>
+        <div class="stat-card amber"><div class="stat-label">Tests pendientes</div><div class="stat-value">34</div><div class="stat-sub">Esperando respuesta</div></div>
+        <div class="stat-card indigo"><div class="stat-label">Para revisar</div><div class="stat-value">7</div><div class="stat-sub">Enviados por alumnos</div></div>
+        <div class="stat-card"><div class="stat-label">Revisiones hechas</div><div class="stat-value">52</div><div class="stat-sub">Este mes</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Actividad reciente</div><div class="card-sub">Últimas 48 horas</div></div></div>
+          <div style="padding:12px 0;">
+            <div style="padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;"><div class="flex-between" style="margin-bottom:3px;"><span class="fw-500">Mariana López</span><span class="text-xs text-muted">Hace 2h</span></div><span class="text-muted">Completó Test 1 – Anclas de Carrera</span></div>
+            <div style="padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;"><div class="flex-between" style="margin-bottom:3px;"><span class="fw-500">Diego Fernández</span><span class="text-xs text-muted">Hace 5h</span></div><span class="text-muted">Envió supervisión – Test 2 Tablero de Ideas</span></div>
+            <div style="padding:12px 20px;font-size:13px;"><div class="flex-between" style="margin-bottom:3px;"><span class="fw-500">Carla Méndez</span><span class="text-xs text-muted">Ayer 16:30</span></div><span class="text-muted">Completó módulo 3 – Herramientas de diagnóstico</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Progreso cohorte</div></div>
+          <div style="padding:16px 20px;">
+            <div style="margin-bottom:14px;"><div class="flex-between" style="margin-bottom:6px;"><span class="text-sm fw-500">Módulo 1 – Intro al método</span><span class="text-sm text-accent fw-500">100%</span></div><div style="height:6px;background:var(--border);border-radius:3px;"><div style="width:100%;height:100%;background:var(--accent);border-radius:3px;"></div></div></div>
+            <div style="margin-bottom:14px;"><div class="flex-between" style="margin-bottom:6px;"><span class="text-sm fw-500">Módulo 2 – Tests y diagnóstico</span><span class="text-sm text-accent fw-500">94%</span></div><div style="height:6px;background:var(--border);border-radius:3px;"><div style="width:94%;height:100%;background:var(--accent);border-radius:3px;"></div></div></div>
+            <div style="margin-bottom:14px;"><div class="flex-between" style="margin-bottom:6px;"><span class="text-sm fw-500">Módulo 3 – Herramientas</span><span class="text-sm fw-500" style="color:var(--amber)">72%</span></div><div style="height:6px;background:var(--border);border-radius:3px;"><div style="width:72%;height:100%;background:var(--amber);border-radius:3px;"></div></div></div>
+            <div><div class="flex-between" style="margin-bottom:6px;"><span class="text-sm fw-500">Módulo 4 – Práctica supervisada</span><span class="text-sm text-muted fw-500">38%</span></div><div style="height:6px;background:var(--border);border-radius:3px;"><div style="width:38%;height:100%;background:var(--text3);border-radius:3px;"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-s-students">
+      <div class="page-header"><h1>Alumnos</h1><p>18 inscriptos · Cohorte 4</p></div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Todos los alumnos</div></div>
+        <table><thead><tr><th>Nombre</th><th>Clientes</th><th>Tests enviados</th><th>Progreso</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr onclick="showToast('Detalle disponible en la versión real')"><td><div class="fw-500">Diego Fernández</div><div class="text-xs text-muted">diego@email.com</div></td><td>3 clientes</td><td>8 tests</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;height:5px;background:var(--border);border-radius:3px;"><div style="width:75%;height:100%;background:var(--accent);border-radius:3px;"></div></div><span class="text-xs">75%</span></div></td><td><span class="badge badge-green">Al día</span></td></tr>
+          <tr onclick="showToast('Detalle disponible en la versión real')"><td><div class="fw-500">Luciana Torres</div><div class="text-xs text-muted">lu.torres@gmail.com</div></td><td>2 clientes</td><td>5 tests</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;height:5px;background:var(--border);border-radius:3px;"><div style="width:60%;height:100%;background:var(--accent);border-radius:3px;"></div></div><span class="text-xs">60%</span></div></td><td><span class="badge badge-amber">Pendiente</span></td></tr>
+          <tr onclick="showToast('Detalle disponible en la versión real')"><td><div class="fw-500">Carla Méndez</div><div class="text-xs text-muted">carla.m@outlook.com</div></td><td>1 cliente</td><td>2 tests</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;height:5px;background:var(--border);border-radius:3px;"><div style="width:40%;height:100%;background:var(--amber);border-radius:3px;"></div></div><span class="text-xs">40%</span></div></td><td><span class="badge badge-amber">Pendiente</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <div class="page" id="page-s-supervision">
+      <div class="page-header"><h1>Revisiones pendientes</h1><p>Tests enviados por alumnos que esperan tu devolución</p></div>
+      <div class="supervision-list">
+        <div class="supervision-card" onclick="openModal('modal-supervision')"><div class="sup-header"><div class="sup-title">Test 1 – Anclas de Carrera</div><span class="badge badge-indigo">Para revisar</span></div><div class="sup-meta">Alumno: <b>Diego Fernández</b> · Cliente: <b>Mariana López</b> · Enviado hace 2 días</div><div class="sup-notes">"La clienta tiene puntajes altos en SC y PD. ¿Es coherente con su historia?"</div></div>
+        <div class="supervision-card" onclick="openModal('modal-supervision')"><div class="sup-header"><div class="sup-title">Test 2 – Tablero de Ideas</div><span class="badge badge-indigo">Para revisar</span></div><div class="sup-meta">Alumno: <b>Luciana Torres</b> · Cliente: <b>Roberto Sánchez</b> · Enviado hace 3 días</div><div class="sup-notes">"Roberto tiene ideas muy claras en SABER pero muy pocas en SOÑAR."</div></div>
+        <div class="supervision-card reviewed"><div class="sup-header"><div class="sup-title">Test 1 – Anclas de Carrera</div><span class="badge badge-green">Revisado</span></div><div class="sup-meta">Alumno: <b>Carla Méndez</b> · Cliente: <b>Pablo Ramos</b> · Revisado hace 5 días</div></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-s-modules">
+      <div class="page-header flex-between"><div><h1>Módulos del programa</h1><p>Contenido de la certificación</p></div><button class="btn btn-accent" onclick="showToast('Disponible en la versión real')">+ Nuevo módulo</button></div>
+      <div class="module-list">
+        <div class="module-card"><div class="module-number done">✓</div><div class="module-info"><div class="module-title">Módulo 1 – Introducción al método Poligiros</div><div class="module-desc">Fundamentos del coaching de carrera · 45 min</div></div><span class="badge badge-green">Publicado</span><button class="btn btn-sm btn-outline" onclick="showToast('Edición disponible en la versión real')">Editar</button></div>
+        <div class="module-card"><div class="module-number done">✓</div><div class="module-info"><div class="module-title">Módulo 2 – Tests y diagnóstico</div><div class="module-desc">Cómo aplicar los 4 tests · 60 min</div></div><span class="badge badge-green">Publicado</span><button class="btn btn-sm btn-outline" onclick="showToast('Edición disponible en la versión real')">Editar</button></div>
+        <div class="module-card"><div class="module-number" style="background:var(--amber-light);color:var(--amber);">3</div><div class="module-info"><div class="module-title">Módulo 3 – Herramientas de devolución</div><div class="module-desc">Interpretación de resultados · 55 min</div></div><span class="badge badge-amber">En proceso</span><button class="btn btn-sm btn-outline" onclick="showToast('Edición disponible en la versión real')">Editar</button></div>
+        <div class="module-card locked"><div class="module-number">4</div><div class="module-info"><div class="module-title">Módulo 4 – Práctica supervisada</div><div class="module-desc">Sesión completa con cliente real · 90 min</div></div><span class="badge badge-gray">Borrador</span></div>
+      </div>
+    </div>
+
+    <!-- STUDENT -->
+    <div class="page" id="page-t-program">
+      <div class="page-header"><h1>Mi programa</h1><p>Certificación en Coaching de Carrera — Método Poligiros®</p></div>
+      <div class="progress-ring-wrap">
+        <div class="progress-ring"><svg width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="28" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="35" cy="35" r="28" fill="none" stroke="var(--accent)" stroke-width="6" stroke-dasharray="175.9" stroke-dashoffset="43.9" stroke-linecap="round"/></svg><div class="progress-ring-label">75%</div></div>
+        <div><div class="fw-500" style="margin-bottom:4px;">Progreso del programa</div><div class="text-sm text-muted">3 de 4 módulos completados</div><div class="text-xs text-muted mt-4">Cohorte 4 · inicio Marzo 2025</div></div>
+      </div>
+      <div class="module-list">
+        <div class="module-card done"><div class="module-number done">✓</div><div class="module-info"><div class="module-title">Módulo 1 – Introducción al método Poligiros</div><div class="module-desc">Fundamentos · 45 min</div></div><span class="badge badge-green">Completado</span></div>
+        <div class="module-card done"><div class="module-number done">✓</div><div class="module-info"><div class="module-title">Módulo 2 – Tests y diagnóstico</div><div class="module-desc">Cómo aplicar los 4 tests · 60 min</div></div><span class="badge badge-green">Completado</span></div>
+        <div class="module-card"><div class="module-number" style="background:var(--amber-light);color:var(--amber);">3</div><div class="module-info"><div class="module-title">Módulo 3 – Herramientas de devolución</div><div class="module-desc">En progreso · 55 min</div></div><span class="badge badge-amber">En progreso</span></div>
+        <div class="module-card locked"><div class="module-number">4</div><div class="module-info"><div class="module-title">Módulo 4 – Práctica supervisada</div><div class="module-desc">Completá el módulo anterior para desbloquear</div></div><span class="badge badge-gray">Bloqueado</span></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-t-clients">
+      <div class="page-header flex-between"><div><h1>Mis clientes</h1><p>3 clientes activos</p></div><button class="btn btn-accent" onclick="openModal('modal-add-client')">+ Agregar cliente</button></div>
+      <div class="client-grid">
+        <div class="client-card"><div class="client-avatar">ML</div><div class="client-name">Mariana López</div><div class="client-email">m.lopez@gmail.com</div><div class="client-tests"><div class="test-dot done">AC</div><div class="test-dot done">TI</div><div class="test-dot pending">PV</div><div class="test-dot">PP</div></div></div>
+        <div class="client-card"><div class="client-avatar">AG</div><div class="client-name">Ana Gutiérrez</div><div class="client-email">ana.gut@outlook.com</div><div class="client-tests"><div class="test-dot done">AC</div><div class="test-dot pending">TI</div><div class="test-dot">PV</div><div class="test-dot">PP</div></div></div>
+        <div class="client-card"><div class="client-avatar">RS</div><div class="client-name">Roberto Sánchez</div><div class="client-email">rob.s@empresa.com</div><div class="client-tests"><div class="test-dot pending">AC</div><div class="test-dot">TI</div><div class="test-dot">PV</div><div class="test-dot">PP</div></div></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-t-supervision">
+      <div class="page-header"><h1>Supervisión</h1><p>Tests listos para enviar a Gaby</p></div>
+      <div class="supervision-list">
+        <div class="supervision-card" onclick="openModal('modal-send-sup')"><div class="sup-header"><div class="sup-title">Test 1 – Anclas de Carrera</div><span class="badge badge-amber">Listo para enviar</span></div><div class="sup-meta">Cliente: <b>Mariana López</b> · Completado hace 3 días</div></div>
+        <div class="supervision-card reviewed"><div class="sup-header"><div class="sup-title">Test 1 – Anclas de Carrera</div><span class="badge badge-green">Revisado por Gaby</span></div><div class="sup-meta">Cliente: <b>Ana Gutiérrez</b> · Revisado hace 4 días</div><div class="sup-notes">"Buen análisis. El puntaje alto en TF es coherente con su perfil. Explorá la tensión entre TF y SC."</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════ CLIENT PORTAL ══════════════════ -->
+<div id="screen-client">
+  <div class="client-topbar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" style="width:28px;height:28px;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <span class="logo-text" style="font-size:18px;">Poligiros</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="user-avatar amber">ML</div>
+      <div><div style="font-size:13px;font-weight:500;">Mariana López</div><div style="font-size:11px;color:var(--text3);">Cliente de Diego F.</div></div>
+      <button class="btn btn-sm btn-ghost" onclick="logout()" style="margin-left:8px;">Salir</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div id="client-home" class="client-body">
+    <div style="margin-bottom:28px;">
+      <h1 style="font-family:'DM Serif Display',serif;font-size:28px;font-weight:400;letter-spacing:-.3px;margin-bottom:6px;">Hola, Mariana 👋</h1>
+      <p style="font-size:14px;color:var(--text2);">Estos son tus tests asignados. Completá cada uno a tu ritmo.</p>
+    </div>
+    <div class="test-card-client" onclick="startAnclasTest()">
+      <div class="test-icon">⚓</div>
+      <div><div class="test-card-title">Test 1 – Anclas de Carrera</div><div class="test-card-sub">40 afirmaciones · Escala 1–6 · ~15 min</div></div>
+      <span class="badge badge-amber" style="margin-left:auto;margin-right:8px;">Pendiente</span>
+      <span style="color:var(--text3);font-size:18px;">→</span>
+    </div>
+    <div class="test-card-client done">
+      <div class="test-icon" style="background:var(--surface2);">💡</div>
+      <div><div class="test-card-title">Test 2 – Tablero de Ideas</div><div class="test-card-sub">3 columnas · Texto libre</div></div>
+      <span class="badge badge-green" style="margin-left:auto;">Enviado ✓</span>
+    </div>
+    <div class="test-card-client locked-test">
+      <div class="test-icon" style="background:var(--surface2);">🗺️</div>
+      <div><div class="test-card-title">Test 3 – Plan Vital Integral</div><div class="test-card-sub">No asignado aún</div></div>
+      <span class="badge badge-gray" style="margin-left:auto;">Pendiente asignación</span>
+    </div>
+    <div class="test-card-client locked-test">
+      <div class="test-icon" style="background:var(--surface2);">🔺</div>
+      <div><div class="test-card-title">Test 4 – Pirámide del Propósito</div><div class="test-card-sub">No asignado aún</div></div>
+      <span class="badge badge-gray" style="margin-left:auto;">Pendiente asignación</span>
+    </div>
+  </div>
+
+  <!-- STEP 1: 40 QUESTIONS -->
+  <div id="client-test-step1" class="client-body" style="display:none;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <button class="btn btn-ghost btn-sm" onclick="backToClientHome()">← Volver</button>
+      <div style="flex:1;">
+        <h1 style="font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;letter-spacing:-.3px;">Test 1 – Anclas de Carrera</h1>
+        <p style="font-size:13px;color:var(--text2);">Edgar H. Schein · Respondé con honestidad y velocidad</p>
+      </div>
+      <div id="q-counter" style="font-size:13px;color:var(--text2);font-weight:500;white-space:nowrap;"></div>
+    </div>
+    <div class="test-progress-bar"><div class="test-progress-fill" id="progress-fill"></div></div>
+    <div style="background:var(--accent-light);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--accent);line-height:1.5;">
+      <b>Escala:</b> 1 = No es verdadero para mí · 6 = Es siempre verdadero
+    </div>
+    <div id="questions-container"></div>
+    <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-top:1px solid var(--border);">
+      <span id="unanswered-msg" style="font-size:13px;color:var(--red);display:none;">⚠️ Respondé todas las afirmaciones</span>
+      <div style="margin-left:auto;"><button class="btn btn-accent" onclick="goToStep2()" style="padding:11px 28px;font-size:14px;">Continuar →</button></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: BONUS SELECTION -->
+  <div id="client-test-step2" class="client-body" style="display:none;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <button class="btn btn-ghost btn-sm" onclick="backToStep1()">← Volver</button>
+      <div><h1 style="font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;letter-spacing:-.3px;">Paso 2 de 2 — Selección de prioridades</h1></div>
+    </div>
+    <div class="bonus-instruction">
+      <h3>⭐ Elegí tus 3 afirmaciones más representativas</h3>
+      <p>De las afirmaciones con mayor puntaje, elegí las <b>3 que más te representan</b>. El sistema sumará <b>4 puntos adicionales</b> a cada una para reflejar tus prioridades reales.</p>
+    </div>
+    <div class="flex-between" style="margin-bottom:16px;">
+      <span style="font-size:14px;color:var(--text2);">Afirmaciones con puntaje más alto:</span>
+      <span class="bonus-counter" id="bonus-counter">Seleccionadas: 0 / 3</span>
+    </div>
+    <div id="bonus-container"></div>
+    <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-top:1px solid var(--border);">
+      <span id="bonus-msg" style="font-size:13px;color:var(--red);display:none;">⚠️ Seleccioná exactamente 3 afirmaciones</span>
+      <div style="margin-left:auto;"><button class="btn btn-accent" onclick="calculateResults()" style="padding:11px 28px;font-size:14px;">Ver resultados →</button></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: RESULTS -->
+  <div id="client-test-results" class="client-body" style="display:none;">
+    <div class="results-header">
+      <h2>Tus Anclas de Carrera</h2>
+      <p>Resultados personalizados basados en tus respuestas</p>
+    </div>
+    <div id="results-container"></div>
+    <div style="margin-top:24px;display:flex;justify-content:flex-end;gap:10px;">
+      <button class="btn btn-outline" onclick="backToClientHome()">Volver al inicio</button>
+      <button class="btn btn-accent" onclick="submitAndFinish()">Confirmar y enviar ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-supervision">
+  <div class="modal" style="width:540px;">
+    <h3>Revisión – Anclas de Carrera</h3>
+    <p class="modal-sub">Alumno: Diego Fernández · Cliente: Mariana López</p>
+    <div style="padding:12px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px;"><div class="text-xs text-muted fw-500" style="margin-bottom:5px;">NOTA DEL ALUMNO</div><p>"La clienta tiene puntajes altos en SC y PD. ¿Es coherente con su historia?"</p></div>
+    <div style="padding:12px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:16px;"><div class="text-xs text-muted fw-500" style="margin-bottom:5px;">RESULTADO PRINCIPAL</div><div style="display:flex;gap:8px;"><span class="badge badge-green">1° SC – 5.4</span><span class="badge badge-green">2° PD – 4.9</span><span class="badge badge-amber">3° TF – 4.4</span></div></div>
+    <div class="field"><label>Tu devolución</label><textarea class="field-input">Buen análisis. El puntaje alto en SC es coherente. Explorá la tensión entre SC y TF en la próxima sesión.</textarea></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-supervision')">Cancelar</button><button class="btn btn-accent" onclick="closeModal('modal-supervision');showToast('Revisión enviada a Diego')">Marcar como revisado ✓</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-client">
+  <div class="modal">
+    <h3>Agregar cliente</h3><p class="modal-sub">El cliente accederá a sus tests asignados.</p>
+    <div class="field"><label>Nombre completo</label><input type="text" placeholder="Ej: María González" id="new-client-name"></div>
+    <div class="field"><label>Email</label><input type="email" placeholder="Ej: maria@email.com"></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-add-client')">Cancelar</button><button class="btn btn-accent" onclick="closeModal('modal-add-client');showToast('Cliente agregado correctamente')">Crear cliente →</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-send-sup">
+  <div class="modal">
+    <h3>Enviar a supervisión</h3><p class="modal-sub">Test 1 – Anclas de Carrera · Mariana López</p>
+    <div class="field"><label>Notas para Gaby (opcional)</label><textarea class="field-input" placeholder="¿Qué observaste? ¿Tenés dudas sobre la interpretación?"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-send-sup')">Cancelar</button><button class="btn btn-amber" onclick="closeModal('modal-send-sup');showToast('Enviado a Gaby para revisión')">Enviar →</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+const QUESTIONS = [
+  "Sueño con ser tan bueno en lo que hago que mi consejo será requerido continuamente.",
+  "Me siento más satisfecho / realizado en mi trabajo cuando siento que logré integrar y optimizar los esfuerzos de otros.",
+  "Sueño con tener una carrera que me permita la libertad de trabajar independientemente y con planificación propia.",
+  "La seguridad y la estabilidad son más importantes para mi que la libertad y la autonomía.",
+  "Estoy siempre buscando ideas o proyectos que me permitan encarar un emprendimiento propio.",
+  "Voy a sentirme exitoso en mi carrera solo si siento que he hecho una contribución a la comunidad.",
+  "Sueño con tener una carrera que me permita resolver problemas o salir adelante en situaciones extremadamente desafiantes.",
+  "Cambiaría de empresa antes que asumir una responsabilidad que comprometiera mis objetivos personales y familiares.",
+  "Voy a sentirme exitoso en mi carrera sólo si puedo desarrollar mis habilidades técnicas o funcionales hasta el nivel más alto de competencia.",
+  "Sueño con estar a cargo de una organización compleja y con tomar decisiones que involucren a muchas personas.",
+  "Me siento más cómodo en mi trabajo cuando tengo libertad absoluta para definir tareas, procedimientos y planes.",
+  "Cambiaría de empresa antes que aceptar una posición que pusiera en juego mi seguridad en esa organización.",
+  "Armar mi propia empresa es más importante para mí que lograr una posición ejecutiva en una organización.",
+  "Me siento más realizado en mi carrera si puedo poner mi talento al servicio de otros.",
+  "Voy a sentirme exitoso en mi carrera sólo si enfrento y resuelvo desafíos muy complejos.",
+  "Sueño una carrera que me permitirá integrar mis necesidades personales, familiares y laborales.",
+  "Es más atractivo para mí convertirme en un profesional de nivel ejecutivo en mi área de experiencia que en un gerente general.",
+  "Voy a sentirme exitoso sólo si me convierto en gerente general de una empresa.",
+  "Voy a sentirme exitoso sólo si logro completa autonomía y libertad.",
+  "Prefiero trabajar en organizaciones que me den seguridad y estabilidad.",
+  "Me siento más realizado en mi carrera cuando puedo construir algo que es resultado de mis ideas y esfuerzo.",
+  "Usar mis capacidades para hacer del mundo un lugar mejor es más importante para mí que alcanzar una posición de alto nivel ejecutivo.",
+  "Me sentí más contento con mi carrera cuando pude resolver problemas que parecían imposibles o triunfar pese a grandes obstáculos.",
+  "Me siento exitoso en mi vida sólo si puedo equilibrar mis objetivos personales, familiares y de carrera.",
+  "Cambiaría de empresa antes que aceptar una rotación que me alejara de mi área de experiencia.",
+  "Llegar a ser gerente general es más atractivo para mí que ser un director funcional de mi área de experiencia.",
+  "La posibilidad de realizar un trabajo a mi manera, libre de reglas y limitaciones, es más importante para mí que la seguridad laboral.",
+  "Me siento más contento con mi trabajo cuando siento que tengo una completa seguridad financiera y de empleo.",
+  "Me sentiré realizado en mi carrera sólo si logro crear o construir algo desarrollado o creado enteramente por mí.",
+  "Sueño con tener una carrera que me permita realizar una contribución real a la humanidad y a la sociedad.",
+  "Busco oportunidades de trabajo que desafíen fuertemente mi capacidad de resolver problemas o mi perfil competitivo.",
+  "Equilibrar los requerimientos de la vida personal y profesional es más importante para mí que lograr una posición de alto nivel.",
+  "Me siento más satisfecho en mi trabajo cuando puedo utilizar mis conocimientos y habilidades específicas.",
+  "Cambiaría de empresa antes que aceptar un trabajo que me alejara del camino hacia la gerencia general.",
+  "Cambiaría de empresa antes que aceptar un trabajo que redujera mi autonomía y libertad.",
+  "Sueño con desarrollar una carrera que me permita sentir seguridad y estabilidad.",
+  "Sueño con poner en marcha y construir mi propio negocio.",
+  "Cambiaría de empresa antes que aceptar una posición en la que se desaprovechara mi habilidad de brindar servicio a otros.",
+  "Lidiar con problemas que parecen insolubles es más importante para mí que alcanzar una posición ejecutiva.",
+  "Siempre busqué oportunidades de trabajo que minimizaran la interferencia con lo familiar y personal."
+];
+
+// Ancla → items (1-indexed)
+const ANCLA_ITEMS = {
+  TF: [1,9,17,25,33],
+  GG: [2,10,18,26,34],
+  AU: [3,11,19,27,35],
+  SE: [4,12,20,28,36],
+  CE: [5,13,21,29,37],
+  SC: [6,14,22,30,38],
+  PD: [7,15,23,31,39],
+  EV: [8,16,24,32,40]
+};
+
+const ANCLA_INFO = {
+  TF: { name: "Técnico / Funcional", icon: "🔧", desc: "Tu identidad profesional está ligada al dominio de un área específica. Buscás ser experto/a reconocido/a y crecer dentro de tu especialidad." },
+  GG: { name: "Gerencia General", icon: "🏢", desc: "Sos motivado/a por liderar organizaciones complejas, integrar personas y tomar decisiones de alto impacto." },
+  AU: { name: "Autonomía / Independencia", icon: "🕊️", desc: "Valorás la libertad de trabajar a tu manera, sin restricciones externas. La autonomía es innegociable para vos." },
+  SE: { name: "Seguridad / Estabilidad", icon: "🛡️", desc: "Priorizás entornos predecibles y seguros. La estabilidad financiera y laboral te permite dar lo mejor de vos." },
+  CE: { name: "Creativo / Empresario", icon: "🚀", desc: "Te impulsa crear algo propio. Tenés espíritu emprendedor y encontrás satisfacción en construir desde cero." },
+  SC: { name: "Servicio a la Causa", icon: "🌱", desc: "El propósito y el impacto en otros son centrales para vos. Querés que tu trabajo tenga significado más allá del rol." },
+  PD: { name: "Puro Desafío", icon: "⚡", desc: "Los problemas complejos e imposibles te energizan. Necesitás un trabajo que constantemente ponga a prueba tus capacidades." },
+  EV: { name: "Estilo de Vida", icon: "⚖️", desc: "Buscás integrar armoniosamente lo profesional y lo personal. Tu bienestar integral no es negociable." }
+};
+
+const AI_INSIGHTS = {
+  TF: "Tu ancla dominante revela que encontrás tu mayor satisfacción en el dominio profundo de tu área. Esto sugiere que los roles que te permitirían seguir especializándote —consultoría, liderazgo técnico, mentoría— serían los más alineados con tu motivación real. Cuidado con aceptar posiciones de gestión pura: la distancia de tu especialidad puede erosionar tu energía.",
+  GG: "Tenés una orientación natural hacia la responsabilidad amplia. Vas a sentirte más realizado/a en roles donde puedas ver el resultado del conjunto, no solo de una parte. El desafío será construir credibilidad multidimensional: liderazgo, finanzas, personas. Ese camino requiere paciencia y visión de largo plazo.",
+  AU: "La independencia no es un capricho para vos: es una condición para rendir al máximo. Los entornos muy estructurados o jerárquicos van a desgastarte con el tiempo. Explorá modelos de trabajo freelance, emprendimiento o roles que te den margen real para definir cómo hacés las cosas.",
+  SE: "La estabilidad no es conformismo: es sabiduría sobre lo que necesitás para desempeñarte bien. Buscá organizaciones con propósito claro y trayectorias predecibles. Cuando tenés esa base, podés sorprender con tu nivel de compromiso y confiabilidad.",
+  CE: "Tenés una energía creadora genuina. El trabajo que te va a dar satisfacción duradera es aquel donde puedas dejar una huella concreta —algo que construiste vos. Explorá el emprendimiento, intrapreneurship o roles de innovación. El riesgo calculado no te asusta; lo que te agota es la rutina sin creación.",
+  SC: "Tu brújula interna apunta al impacto. No alcanza con hacer bien el trabajo si no sabés para qué sirve en un plano mayor. Buscá roles en sectores con misión clara o construí un relato de impacto en lo que ya hacés. Cuando alineás tus capacidades con una causa, tu potencial se multiplica.",
+  PD: "Los desafíos no te estresan: te activan. Necesitás contextos donde los problemas sean reales, complejos y sin respuestas obvias. Roles de resolución de crisis, consultoría estratégica, startups en etapas tempranas o investigación podrían ser tu ecosistema natural.",
+  EV: "Integrás lo que muchos separan artificialmente. Para vos, el éxito genuino incluye tiempo, salud, familia y trabajo bien hecho. Esto no te hace menos ambicioso/a —te hace más sostenible. Buscá empleadores que lo entiendan y negociá condiciones desde el primer día, no después."
+};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let currentRole = 'supervisor';
+let answers = new Array(40).fill(0); // 1-indexed stored at index 0..39
+let bonusSelected = new Set();
+
+// ══════════════════════════════════════════
+// LOGIN / SHELL
+// ══════════════════════════════════════════
+const roleEmails = { supervisor:'gaby@poligiros.com', student:'diego@email.com', client:'mariana@email.com' };
+
+function selectRole(role, btn) {
+  currentRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('login-email').value = roleEmails[role];
+}
+
+function doLogin() {
+  document.getElementById('screen-login').style.display = 'none';
+  if (currentRole === 'client') {
+    document.getElementById('screen-client').style.display = 'block';
+    return;
+  }
+  const shell = document.getElementById('app-shell');
+  shell.classList.add('visible');
+  if (currentRole === 'supervisor') { setupSupervisorSidebar(); showPage('page-s-overview'); }
+  else { setupStudentSidebar(); showPage('page-t-program'); }
+}
+
+function logout() {
+  document.getElementById('screen-login').style.display = 'flex';
+  document.getElementById('app-shell').classList.remove('visible');
+  document.getElementById('screen-client').style.display = 'none';
+  ['client-home','client-test-step1','client-test-step2','client-test-results'].forEach(id => {
+    document.getElementById(id).style.display = id === 'client-home' ? 'block' : 'none';
+  });
+  answers = new Array(40).fill(0);
+  bonusSelected.clear();
+}
+
+function setupSupervisorSidebar() {
+  document.getElementById('sidebar-avatar').textContent = 'GK';
+  document.getElementById('sidebar-avatar').className = 'user-avatar';
+  document.getElementById('sidebar-name').textContent = 'Gabriela K.';
+  document.getElementById('sidebar-role').textContent = 'Supervisora';
+  document.getElementById('sidebar-nav').innerHTML = `
+    <div class="nav-section-label">Principal</div>
+    <button class="nav-item active" onclick="showPage('page-s-overview',this)"><span class="nav-icon">📊</span> Panel general</button>
+    <button class="nav-item" onclick="showPage('page-s-students',this)"><span class="nav-icon">👥</span> Alumnos</button>
+    <button class="nav-item" onclick="showPage('page-s-supervision',this)"><span class="nav-icon">🔍</span> Supervisión<span class="nav-badge">3</span></button>
+    <div class="nav-section-label">Contenido</div>
+    <button class="nav-item" onclick="showPage('page-s-modules',this)"><span class="nav-icon">🎬</span> Módulos</button>`;
+}
+
+function setupStudentSidebar() {
+  document.getElementById('sidebar-avatar').textContent = 'DF';
+  document.getElementById('sidebar-avatar').className = 'user-avatar amber';
+  document.getElementById('sidebar-name').textContent = 'Diego Fernández';
+  document.getElementById('sidebar-role').textContent = 'Alumno-Coach';
+  document.getElementById('sidebar-nav').innerHTML = `
+    <div class="nav-section-label">Mi programa</div>
+    <button class="nav-item active" onclick="showPage('page-t-program',this)"><span class="nav-icon">📚</span> Módulos</button>
+    <div class="nav-section-label">Mis clientes</div>
+    <button class="nav-item" onclick="showPage('page-t-clients',this)"><span class="nav-icon">👤</span> Clientes</button>
+    <button class="nav-item" onclick="showPage('page-t-supervision',this)"><span class="nav-icon">📤</span> Supervisión<span class="nav-badge">2</span></button>`;
+}
+
+function showPage(pageId, navItem) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  if (navItem) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); navItem.classList.add('active'); }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.transform = 'translateX(-50%) translateY(80px)'; }, 2800);
+}
+
+// ══════════════════════════════════════════
+// ANCLAS TEST — STEP 1
+// ══════════════════════════════════════════
+function startAnclasTest() {
+  answers = new Array(40).fill(0);
+  bonusSelected.clear();
+  showClientView('client-test-step1');
+  renderQuestions();
+  updateProgress();
+}
+
+function renderQuestions() {
+  const container = document.getElementById('questions-container');
+  container.innerHTML = QUESTIONS.map((q, i) => `
+    <div class="question-block" id="qblock-${i}">
+      <div class="question-top">
+        <div class="q-num">${i+1}</div>
+        <div class="q-text">${q}</div>
+      </div>
+      <div class="scale-row">
+        <span class="scale-label">No es verdadero</span>
+        <div class="scale-btns">
+          ${[1,2,3,4,5,6].map(v => `<button class="scale-btn" onclick="setAnswer(${i},${v},this)">${v}</button>`).join('')}
+        </div>
+        <span class="scale-label right">Siempre verdadero</span>
+      </div>
+    </div>`).join('');
+}
+
+function setAnswer(qIndex, value, btn) {
+  answers[qIndex] = value;
+  const block = document.getElementById(`qblock-${qIndex}`);
+  block.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  block.classList.add('answered');
+  updateProgress();
+}
+
+function updateProgress() {
+  const answered = answers.filter(a => a > 0).length;
+  document.getElementById('progress-fill').style.width = (answered / 40 * 100) + '%';
+  document.getElementById('q-counter').textContent = `${answered} / 40`;
+}
+
+function goToStep2() {
+  const unanswered = answers.filter(a => a === 0).length;
+  if (unanswered > 0) {
+    document.getElementById('unanswered-msg').style.display = 'block';
+    document.getElementById('unanswered-msg').textContent = `⚠️ Faltan ${unanswered} afirmaciones sin respuesta`;
+    // Scroll to first unanswered
+    const firstUnanswered = answers.findIndex(a => a === 0);
+    document.getElementById(`qblock-${firstUnanswered}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById(`qblock-${firstUnanswered}`).style.borderColor = 'var(--red)';
+    setTimeout(() => { document.getElementById(`qblock-${firstUnanswered}`).style.borderColor = ''; }, 2000);
+    return;
+  }
+  document.getElementById('unanswered-msg').style.display = 'none';
+  buildBonusStep();
+  showClientView('client-test-step2');
+  window.scrollTo(0, 0);
+}
+
+// ══════════════════════════════════════════
+// ANCLAS TEST — STEP 2 (BONUS)
+// ══════════════════════════════════════════
+function buildBonusStep() {
+  bonusSelected.clear();
+  // Get all items sorted by score desc, show top 15 (or all with score >= 4)
+  const scored = answers.map((val, i) => ({ idx: i, val, q: QUESTIONS[i] }))
+    .filter(x => x.val >= 4)
+    .sort((a, b) => b.val - a.val);
+
+  // Show at least 10 items
+  const pool = scored.length >= 10 ? scored : answers.map((val,i) => ({idx:i,val,q:QUESTIONS[i]})).sort((a,b)=>b.val-a.val).slice(0,12);
+
+  const container = document.getElementById('bonus-container');
+  container.innerHTML = pool.map(item => `
+    <div class="bonus-card" id="bonus-${item.idx}" onclick="toggleBonus(${item.idx}, this)">
+      <div class="bonus-score-pill">${item.val}</div>
+      <div class="bonus-q-num">#${item.idx+1}</div>
+      <div class="bonus-q-text">${item.q}</div>
+      <div class="bonus-check">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" id="check-${item.idx}">
+          <path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>`).join('');
+  updateBonusCounter();
+}
+
+function toggleBonus(idx, card) {
+  if (bonusSelected.has(idx)) {
+    bonusSelected.delete(idx);
+    card.classList.remove('bonus-selected');
+  } else {
+    if (bonusSelected.size >= 3) {
+      showToast('Ya seleccionaste 3. Deseleccioná una para cambiar.');
+      return;
+    }
+    bonusSelected.add(idx);
+    card.classList.add('bonus-selected');
+    spawnSparkles(card);
+  }
+  updateBonusCounter();
+  // Disable unselected when 3 chosen
+  document.querySelectorAll('.bonus-card').forEach(c => {
+    const cidx = parseInt(c.id.split('-')[1]);
+    if (bonusSelected.size >= 3 && !bonusSelected.has(cidx)) c.classList.add('bonus-disabled');
+    else c.classList.remove('bonus-disabled');
+  });
+}
+
+function updateBonusCounter() {
+  const el = document.getElementById('bonus-counter');
+  el.textContent = `Seleccionadas: ${bonusSelected.size} / 3`;
+  el.style.color = bonusSelected.size === 3 ? 'var(--accent)' : 'var(--gold)';
+}
+
+function spawnSparkles(card) {
+  const rect = card.getBoundingClientRect();
+  const colors = ['#B8960C','#2D6A4F','#B5835A','#3D52A0'];
+  for (let i = 0; i < 8; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'spark';
+    spark.style.cssText = `
+      left: ${Math.random()*100}%;
+      top: ${Math.random()*100}%;
+      background: ${colors[Math.floor(Math.random()*colors.length)]};
+      animation-delay: ${Math.random()*0.2}s;
+    `;
+    card.appendChild(spark);
+    setTimeout(() => spark.remove(), 700);
+  }
+}
+
+function backToStep1() { showClientView('client-test-step1'); window.scrollTo(0,0); }
+
+// ══════════════════════════════════════════
+// ANCLAS TEST — STEP 3 (RESULTS)
+// ══════════════════════════════════════════
+function calculateResults() {
+  if (bonusSelected.size < 3) {
+    document.getElementById('bonus-msg').style.display = 'block';
+    return;
+  }
+  document.getElementById('bonus-msg').style.display = 'none';
+
+  // Apply bonus
+  const finalAnswers = [...answers];
+  bonusSelected.forEach(idx => { finalAnswers[idx] += 4; });
+
+  // Calculate scores per ancla (average of 5 items)
+  const scores = {};
+  Object.entries(ANCLA_ITEMS).forEach(([ancla, items]) => {
+    const total = items.reduce((sum, itemNum) => sum + finalAnswers[itemNum - 1], 0);
+    scores[ancla] = +(total / items.length).toFixed(2);
+  });
+
+  // Sort descending
+  const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const maxScore = ranked[0][1];
+
+  showClientView('client-test-results');
+  window.scrollTo(0, 0);
+
+  const container = document.getElementById('results-container');
+  const rankLabels = ['1°','2°','3°','4°','5°','6°','7°','8°'];
+  const rankClasses = ['rank-1','rank-2','rank-3','','','','',''];
+  const rankIconClasses = ['gold','silver','bronze','','','','',''];
+
+  container.innerHTML = ranked.map(([code, score], i) => {
+    const info = ANCLA_INFO[code];
+    const barPct = Math.round((score / 10) * 100);
+    return `
+      <div class="ancla-result-card ${rankClasses[i]}" id="result-${i}">
+        <div class="ancla-rank ${rankIconClasses[i]}">${rankLabels[i]}</div>
+        <div class="ancla-icon">${info.icon}</div>
+        <div class="ancla-info">
+          <div class="ancla-name">${info.name}</div>
+          <div class="ancla-code">${code}</div>
+          <div class="ancla-desc">${info.desc}</div>
+        </div>
+        <div class="ancla-bar-wrap">
+          <div class="ancla-score-label">${score}</div>
+          <div class="ancla-bar-track"><div class="ancla-bar-fill" id="bar-${i}" data-pct="${barPct}"></div></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // AI insight based on top ancla
+  const topAncla = ranked[0][0];
+  container.innerHTML += `
+    <div class="ai-insight" id="ai-card" style="opacity:0;transition:opacity .5s;">
+      <div class="ai-insight-label"><div class="ai-dot"></div>Análisis personalizado</div>
+      <p>${AI_INSIGHTS[topAncla]}</p>
+    </div>`;
+
+  // Staggered animation
+  ranked.forEach((_, i) => {
+    setTimeout(() => {
+      const card = document.getElementById(`result-${i}`);
+      if (card) card.classList.add('visible');
+      const bar = document.getElementById(`bar-${i}`);
+      if (bar) bar.style.width = bar.dataset.pct + '%';
+    }, i * 120 + 100);
+  });
+
+  setTimeout(() => {
+    const aiCard = document.getElementById('ai-card');
+    if (aiCard) aiCard.style.opacity = '1';
+  }, ranked.length * 120 + 400);
+}
+
+function submitAndFinish() {
+  showClientView('client-home');
+  window.scrollTo(0, 0);
+  // Update the test card to done
+  const card = document.querySelector('.test-card-client:first-child');
+  if (card) {
+    card.classList.add('done');
+    card.onclick = null;
+    card.querySelector('.badge').className = 'badge badge-green';
+    card.querySelector('.badge').textContent = 'Enviado ✓';
+    const arrow = card.querySelector('span:last-child');
+    if (arrow) arrow.style.display = 'none';
+  }
+  setTimeout(() => showToast('Test enviado. ¡Gracias, Mariana!'), 200);
+}
+
+function backToClientHome() { showClientView('client-home'); window.scrollTo(0,0); }
+
+function showClientView(id) {
+  ['client-home','client-test-step1','client-test-step2','client-test-results'].forEach(vid => {
+    document.getElementById(vid).style.display = vid === id ? 'block' : 'none';
+  });
+}
+</script>
+</body>
+</html>
