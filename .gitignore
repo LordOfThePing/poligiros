@@ -41,3 +41,5 @@ prisma/migrations/
 
 /.claude/
 /.agents/
+
+skills-lock.json
