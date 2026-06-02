@@ -1,0 +1,66 @@
+# Local dockerized backend, exposed to the internet via Cloudflare Tunnel.
+#
+#   [ Cloudflare Pages frontend ]  ──https──►  [ cloudflared ]
+#                                                   │  (same docker network)
+#                                              [ api : 3001 ]  ──►  [ postgres : 5432 ]
+#
+# The tunnel gives api.poligiros.com → http://api:3001 (configured in the
+# Cloudflare Zero Trust dashboard). No nginx / no open ports needed — the
+# only thing reaching in is the outbound tunnel.
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up -d --build
+# Reads variables from the root .env file (see .env.example → "ROOT" section).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-poligiros}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-poligiros}
+    ports:
+      - "127.0.0.1:5432:5432"          # host access for `npm run db:seed` / prisma studio
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-poligiros}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # host is `postgres` (the service name) on the compose network
+      DATABASE_URL: postgresql://${POSTGRES_USER:-poligiros}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-poligiros}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}      # the Cloudflare Pages origin, e.g. https://app.poligiros.com
+      NODE_ENV: production               # REQUIRED so the auth cookie gets the Secure flag
+      PORT: 3001
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      CLOUDFLARE_R2_ACCOUNT_ID: ${CLOUDFLARE_R2_ACCOUNT_ID:-}
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${CLOUDFLARE_R2_ACCESS_KEY_ID:-}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}
+      CLOUDFLARE_R2_BUCKET_NAME: ${CLOUDFLARE_R2_BUCKET_NAME:-}
+      CLOUDFLARE_R2_PUBLIC_URL: ${CLOUDFLARE_R2_PUBLIC_URL:-}
+    expose:
+      - "3001"                          # internal only; the tunnel reaches it, not the host
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
