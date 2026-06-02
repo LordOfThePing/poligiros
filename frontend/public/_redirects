@@ -1,0 +1,3 @@
+# SPA fallback for Cloudflare Pages: serve index.html for any path so
+# client-side routes (/t/:token, /supervisor/*, /student/*) resolve.
+/*    /index.html   200
