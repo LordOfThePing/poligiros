@@ -160,18 +160,56 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
   }
 
   if (testType === "TABLERO_IDEAS") {
+    // New shape stores per-column rankings as strings ([T5]); old responses only
+    // have the raw saber/querer/sonar arrays. Prefer the ranking when present,
+    // fall back to the raw list so historical responses still render.
+    const cols = [
+      { key: "saber", label: "Saber", rankKey: "saberRanking" },
+      { key: "querer", label: "Querer", rankKey: "quererRanking" },
+      { key: "sonar", label: "Soñar", rankKey: "sonarRanking" },
+    ]
+    const passion = (responses.saberPassion as boolean[] | undefined) ?? []
+    const saberAll = (responses.saber as string[] | undefined)?.filter(Boolean) ?? []
     return (
       <div className="space-y-4">
-        {["saber", "querer", "sonar"].map((col) => (
-          <div key={col}>
-            <p className="text-sm font-medium capitalize mb-1">{col === "sonar" ? "Soñar" : col.charAt(0).toUpperCase() + col.slice(1)}:</p>
+        {cols.map(({ key, label, rankKey }) => {
+          const ranked = (responses[rankKey] as string[] | undefined)?.filter(Boolean) ?? []
+          const raw = (responses[key] as string[] | undefined)?.filter(Boolean) ?? []
+          return (
+            <div key={key}>
+              <p className="text-sm font-medium mb-1">
+                {label}
+                {ranked.length > 0 && <span className="text-xs text-muted-foreground font-normal"> (en orden)</span>}:
+              </p>
+              {ranked.length > 0 ? (
+                <ol className="space-y-1 list-decimal list-inside">
+                  {ranked.map((v, i) => (
+                    <li key={i} className="text-sm text-muted-foreground">{v}</li>
+                  ))}
+                </ol>
+              ) : (
+                <ul className="space-y-1">
+                  {raw.map((v, i) => (
+                    <li key={i} className="text-sm text-muted-foreground">• {v}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+        {/* Full SABER list with the passion marks, when the new shape is present */}
+        {saberAll.length > 0 && passion.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-1">Saber — todas (★ = apasiona):</p>
             <ul className="space-y-1">
-              {(responses[col] as string[]).filter(Boolean).map((v: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground">• {v}</li>
+              {saberAll.map((v, i) => (
+                <li key={i} className="text-sm text-muted-foreground">
+                  {passion[i] ? "★" : "•"} {v}
+                </li>
               ))}
             </ul>
           </div>
-        ))}
+        )}
         {responses.brainstorming && (
           <div>
             <p className="text-sm font-medium mb-1">Brainstorming:</p>

@@ -62,21 +62,17 @@ export default function ClientDetailPage() {
         setClient(data)
         setLoading(false)
       })
-
-    // Get test IDs for assigning
-    fetch("/api/client/tests").then((r) => r.json()).then(setTests).catch(() => {})
   }, [id])
 
-  // Fetch all tests for assignment
+  // [T4] Single source of truth for the test list. The old code had a second
+  // useEffect hitting /api/client/tests (a 404 that failed silently) plus a
+  // re-fetch inside handleAssign — both removed; assign now uses `tests` state.
   useEffect(() => {
     fetch("/api/tests").then((r) => r.json()).then(setTests).catch(() => {})
   }, [])
 
   async function handleAssign(testType: string) {
-    // First get the test id
-    const res = await fetch("/api/tests")
-    const allTests = await res.json()
-    const test = allTests.find((t: any) => t.type === testType)
+    const test = tests.find((t) => t.type === testType)
     if (!test) return
 
     const r = await fetch(`/api/student/clients/${id}/assign`, {

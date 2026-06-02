@@ -24,6 +24,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Assignment not found" }, { status: 404 })
   }
 
+  // [T1] Block retake: a completed test must not be overwritten (it may already
+  // be under supervision). The token/login flow shows results read-only, but
+  // guard at the boundary so a direct POST can't clobber an existing response.
+  if (assignment.completedAt) {
+    return NextResponse.json({ error: "Ya completaste este test" }, { status: 409 })
+  }
+
   const { responses } = await req.json()
 
   const [testResponse] = await prisma.$transaction([

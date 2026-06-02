@@ -123,6 +123,22 @@ export default function PiramidePropositoPage() {
   const [saving, setSaving] = useState(false)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  // [T1] On mount, block retake: a completed assignment can't be re-taken. The
+  // submit API also returns 409, but redirect here so the client never sees a
+  // blank form for a test they already finished.
+  useEffect(() => {
+    fetch("/api/client/assignments")
+      .then((r) => r.json())
+      .then((cards: { assignment: { id: string; completedAt: string | null } | null }[]) => {
+        const card = cards.find((c) => c.assignment?.id === assignmentId)
+        if (card?.assignment?.completedAt) {
+          toast({ title: "Ya completaste este test", description: "Podés ver tus resultados desde el inicio." })
+          router.replace("/client")
+        }
+      })
+      .catch(() => {})
+  }, [assignmentId, router, toast])
+
   // Load draft
   useEffect(() => {
     const raw = localStorage.getItem(DRAFT_KEY(assignmentId))

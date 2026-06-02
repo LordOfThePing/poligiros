@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { selectBonusCandidates } from "@/lib/anclas"
 import { Sparkles, ChevronRight, Trophy } from "lucide-react"
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -113,14 +114,21 @@ export default function AnclasCarreraPage() {
   const answered = answers.filter((a) => a !== null).length
   const progressPct = Math.round((answered / 40) * 100)
 
+  // [T1] On mount, block retake: if this assignment is already completed, show
+  // the "already completed" screen instead of letting the client overwrite it.
+  useEffect(() => {
+    fetch("/api/client/assignments")
+      .then((r) => r.json())
+      .then((cards: { assignment: { id: string; completedAt: string | null } | null }[]) => {
+        const card = cards.find((c) => c.assignment?.id === assignmentId)
+        if (card?.assignment?.completedAt) setAlreadyCompleted(true)
+      })
+      .catch(() => {})
+  }, [assignmentId])
+
   // ── Step 2: compute bonus candidates ──────────────────────────────────────
-  const bonusCandidates = step >= 2
-    ? answers
-        .map((val, idx) => ({ idx, val: val ?? 0 }))
-        .filter((x) => x.val >= 4)
-        .sort((a, b) => b.val - a.val)
-        .slice(0, Math.max(10, answers.filter((a) => (a ?? 0) >= 4).length))
-    : []
+  // Tier-walk logic lives in lib/anclas.ts so it can be unit-tested.
+  const bonusCandidates = step >= 2 ? selectBonusCandidates(answers) : []
 
   // ── Step 1 → 2 ────────────────────────────────────────────────────────────
   function handleNextStep() {
