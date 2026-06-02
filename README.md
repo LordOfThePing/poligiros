@@ -2,96 +2,111 @@
 
 Plataforma de certificación en coaching de carrera para Gabriela Kyriazis.
 
+Arquitectura **dividida** en dos apps independientes:
+
+- **`frontend/`** — Vite + React 18 + React Router → Cloudflare Pages
+- **`backend/`** — Hono API + Prisma (Node 20) → Hetzner (Docker)
+
+Coaches y supervisora **inician sesión**; los clientes (coachees) **no**: acceden
+a cada test mediante un **enlace mágico** único y temporal (`/t/:token`).
+
 ## Setup local
 
-### 1. Clonar e instalar dependencias
+### 1. Base de datos (Postgres)
 
 ```bash
-git clone <repo>
-cd poligiros
+docker compose up -d        # levanta Postgres local (docker-compose.yml)
+```
+
+### 2. Backend
+
+```bash
+cd backend
 npm install
-```
-
-### 2. Variables de entorno
-
-Copiá `.env.example` a `.env` y completá los valores:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Descripción |
-|----------|-------------|
-| `DATABASE_URL` | URL de conexión a PostgreSQL |
-| `NEXTAUTH_SECRET` | Secreto para JWT (generá con `openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | URL base de la app (ej: `http://localhost:3000`) |
-| `SUPERVISOR_EMAIL` | Email de la supervisora |
-| `SUPERVISOR_PASSWORD` | Contraseña inicial de la supervisora |
-| `CLOUDFLARE_R2_ACCOUNT_ID` | ID de cuenta de Cloudflare |
-| `CLOUDFLARE_R2_ACCESS_KEY_ID` | Access key de R2 |
-| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | Secret key de R2 |
-| `CLOUDFLARE_R2_BUCKET_NAME` | Nombre del bucket R2 |
-| `CLOUDFLARE_R2_PUBLIC_URL` | URL pública del bucket |
-| `OPENAI_API_KEY` | API key de OpenAI (para insights de Anclas de Carrera) |
-| `RESEND_API_KEY` | API key de Resend (para emails de notificación) |
-
-### 3. Base de datos
-
-```bash
-npx prisma migrate dev --name init
-npx prisma db seed
+cp ../.env.example .env      # completá la sección BACKEND (ver abajo)
+npm run db:generate          # genera el cliente Prisma
+npm run db:migrate           # aplica migraciones
+npm run db:seed              # datos demo
+npm run dev                  # API en http://localhost:3001
 ```
 
 El seed crea:
-- **Supervisora**: credenciales de `SUPERVISOR_EMAIL` / `SUPERVISOR_PASSWORD`
-- **Demo alumna 1**: `alumna1@demo.com` / `alumna123`
-- **Demo alumna 2**: `alumna2@demo.com` / `alumna123`
-- **Demo cliente 1**: `cliente1@demo.com` / `cliente123`
-- **Demo cliente 2**: `cliente2@demo.com` / `cliente123`
 
-### 4. Iniciar
+- **Supervisora**: `SUPERVISOR_EMAIL` / `SUPERVISOR_PASSWORD`
+- **Alumna 1**: `alumna1@demo.com` / `alumna123`
+- **Alumna 2**: `alumna2@demo.com` / `alumna123`
+- **Cliente 1**: Carlos López — *sin login, solo enlace mágico*
+- **Cliente 2**: María Fernández — *sin login, solo enlace mágico*
+
+### 3. Frontend
 
 ```bash
-npm run dev
+cd frontend
+npm install
+echo "VITE_API_URL=http://localhost:3001" > .env
+npm run dev                  # app en http://localhost:5173
 ```
 
-Abrí [http://localhost:3000](http://localhost:3000)
+Abrí [http://localhost:5173](http://localhost:5173) e iniciá sesión como supervisora.
 
-## Deploy en Railway
+## Variables de entorno
 
-1. Crear un proyecto en Railway con PostgreSQL addon
-2. Configurar todas las variables de entorno del `.env.example`
-3. Conectar el repositorio — Railway usa `railway.toml` para el build y deploy
+Ver [`.env.example`](.env.example) — está dividido en una sección **BACKEND**
+(`backend/.env`) y una **FRONTEND** (`frontend/.env`).
 
-El build command corre automáticamente las migraciones de Prisma.
+| App | Variable | Descripción |
+|-----|----------|-------------|
+| backend | `DATABASE_URL` | Conexión a PostgreSQL (requerida) |
+| backend | `JWT_SECRET` | Secreto JWT — `openssl rand -base64 32` (requerida) |
+| backend | `FRONTEND_URL` | Origen permitido para CORS |
+| backend | `PORT` | Puerto de la API (default 3001) |
+| backend | `SUPERVISOR_EMAIL` / `SUPERVISOR_PASSWORD` | Credenciales iniciales de la supervisora (seed) |
+| backend | `OPENAI_API_KEY` | Insights de Anclas (opcional en dev) |
+| backend | `RESEND_API_KEY` | Emails de notificación (opcional en dev) |
+| backend | `CLOUDFLARE_R2_*` | Storage de materiales (opcional en dev) |
+| frontend | `VITE_API_URL` | URL base de la API |
+
+## Tests
+
+```bash
+cd backend  && npm test      # auth/JWT
+cd frontend && npm test      # lógica de scoring de Anclas
+```
+
+## Deploy
+
+- **Frontend → Cloudflare Pages**: build `npm run build` en `frontend/`, output
+  `dist`, variable `VITE_API_URL=https://api.poligiros.com`. Auto-deploy en cada push.
+- **Backend → Hetzner (Docker)**: `docker-compose.prod.yml` (api + postgres + nginx),
+  TLS con un Cloudflare Origin Certificate en `nginx/`. Para desplegar:
+
+  ```bash
+  ./deploy.sh
+  ```
 
 ## Estructura del proyecto
 
 ```
-app/
-  api/           API routes
-  supervisor/    Dashboard de supervisora
-  student/       Dashboard de student coach
-  client/        Portal del cliente
-  login/         Página de login
-components/
-  ui/            Componentes shadcn/ui
-  supervisor/    Sidebar de supervisora
-  student/       Sidebar de student
-  client/        Topbar de cliente
-lib/
-  auth.ts        Configuración NextAuth
-  prisma.ts      Cliente Prisma singleton
-  r2.ts          Upload a Cloudflare R2
-  email.ts       Emails via Resend
-  date.ts        Helpers de fechas
-prisma/
-  schema.prisma  Schema de la base de datos
-  seed.ts        Script de seed
+backend/
+  src/
+    index.ts          App Hono + registro de rutas + CORS
+    lib/              auth (JWT/cookie), prisma, r2, email, date
+    routes/           auth · client (token) · student · supervisor
+  prisma/             schema.prisma + seed.ts
+  Dockerfile
+frontend/
+  src/
+    App.tsx           Árbol de rutas (React Router)
+    lib/              api · auth · anclas · date
+    components/       ui (shadcn) · tablero/SortableList
+    pages/            login · supervisor/* · student/* · client/ (token flow)
+nginx/                Config TLS de producción
+docker-compose.prod.yml
+deploy.sh
 ```
 
 ## Roles
 
-- **SUPERVISOR**: Gaby — ve todo, revisa supervisiones, gestiona módulos y cohortes
-- **STUDENT_COACH**: Alumnas — completan módulos, gestionan clientes, registran sesiones
-- **CLIENT_USER**: Clientes — completan los tests diagnósticos
+- **SUPERVISOR**: Gaby — ve todo, revisa supervisiones, gestiona módulos y cohortes.
+- **STUDENT_COACH**: Alumnas — completan módulos, gestionan clientes, registran sesiones, generan enlaces de test.
+- **Clientes (coachees)**: sin cuenta — completan los tests y ven sus resultados vía enlace mágico temporal.
