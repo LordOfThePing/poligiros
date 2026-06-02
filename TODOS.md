@@ -5,7 +5,15 @@ enough context to pick up cold in 3 months.
 
 ---
 
-## A1 — Magic-link client access (no coachee login) — DECISION PENDING
+## A1 — Magic-link client access (no coachee login) — ✅ DECIDED, in Task 3
+
+**Decided 2026-06-02:** Adopt magic-links. Token lifecycle = short completion window
+(`completeBy` ~14d) + long results window (`resultsViewableUntil` ~365d). Client-facing
+feedback via a new `coachFeedback` field; `supervisorNotes` stays internal. Folded into
+the Task 3 migration — see [TASK3-CONTRACT.md](TASK3-CONTRACT.md). Original analysis below.
+
+---
+
 
 **What:** Replace client (coachee) login accounts with unique, expiring access links.
 Only SUPERVISOR and STUDENT_COACH log in. Coaches generate a per-assignment link;
