@@ -46,7 +46,13 @@ the login cookie needs HTTPS. The tunnel solves all three.
 
 ### 1b. Deploy the frontend to Cloudflare Pages
 
-1. Dashboard → **Workers & Pages → Create → Pages → Connect to Git** → pick this repo.
+> **Use the `Pages` tab, not "Import a repository" / Workers.** Deploying this
+> Vite-5 app as a *Worker* fails with `The version of Vite … cannot be
+> automatically configured … update to at least 6.0.0` (the Workers path forces
+> the Cloudflare Vite plugin). Classic Pages just builds and serves `dist`, no
+> Vite-version requirement. SPA routing is handled by `frontend/public/_redirects`.
+
+1. Dashboard → **Workers & Pages → Create → `Pages` tab → Connect to Git** → pick this repo.
 2. Branch: `phase2-fixes` (or `main` once merged). Build settings:
 
    | Setting | Value |
