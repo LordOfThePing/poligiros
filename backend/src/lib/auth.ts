@@ -1,9 +1,10 @@
 import { SignJWT, jwtVerify } from "jose"
 import bcrypt from "bcryptjs"
-import { prisma } from "./prisma.js"
-import type { Context, MiddlewareHandler } from "hono"
+import type { MiddlewareHandler } from "hono"
 import { getCookie } from "hono/cookie"
 import type { AppVariables } from "./types.js"
+// prisma is imported lazily inside loginUser so the JWT/middleware path stays
+// free of the DB client (keeps auth verification unit-testable without Prisma).
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "change-me-in-production"
@@ -37,6 +38,7 @@ export async function loginUser(
   email: string,
   password: string
 ): Promise<JWTPayload | null> {
+  const { prisma } = await import("./prisma.js")
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) return null
 

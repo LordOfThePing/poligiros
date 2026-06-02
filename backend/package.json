@@ -10,7 +10,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "npx tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "vitest run"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -24,6 +25,7 @@
     "hono": "^4.6.0",
     "jose": "^5.9.3",
     "openai": "^4.56.0",
+    "poligiros": "file:..",
     "resend": "^3.4.0"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/node": "^20",
     "prisma": "^5.17.0",
     "tsx": "^4.16.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.6"
   }
 }
