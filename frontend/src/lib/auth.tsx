@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { useNavigate, Navigate } from "react-router-dom"
-import { apiJson, apiPost } from "./api"
+import { api } from "./api"
 
 export type Role = "SUPERVISOR" | "STUDENT_COACH"
 
@@ -25,22 +25,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Hydrate on mount
-    apiJson<AuthUser>("/auth/me")
-      .then(setUser)
+    // Hydrate on mount. A 401 returns a JSON error body, so guard on res.ok
+    // instead of parsing it as a user (otherwise `user` becomes truthy).
+    api("/auth/me")
+      .then((res) => (res.ok ? (res.json() as Promise<AuthUser>) : null))
+      .then((data) => setUser(data))
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
   }, [])
 
   async function login(email: string, password: string) {
-    await apiPost("/auth/login", { email, password })
-    const me = await apiJson<AuthUser>("/auth/me")
-    setUser(me)
+    const res = await api("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    })
+    if (!res.ok) throw new Error("Login failed")
+
+    const meRes = await api("/auth/me")
+    if (!meRes.ok) throw new Error("Session hydration failed")
+    setUser((await meRes.json()) as AuthUser)
   }
 
   async function logout() {
     try {
-      await apiPost("/auth/logout", {})
+      await api("/auth/logout", { method: "POST", body: JSON.stringify({}) })
     } catch {
       // ignore errors on logout
     }

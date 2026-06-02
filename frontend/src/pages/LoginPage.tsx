@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
@@ -18,11 +18,12 @@ export default function LoginPage() {
 
   const callbackUrl = searchParams.get("callbackUrl") || "/"
 
-  // If already logged in, redirect appropriately
-  if (user) {
+  // If already logged in, redirect appropriately (in an effect, not during render)
+  useEffect(() => {
+    if (!user) return
     if (user.role === "SUPERVISOR") navigate("/supervisor/panel", { replace: true })
     else navigate("/student/programa", { replace: true })
-  }
+  }, [user, navigate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
