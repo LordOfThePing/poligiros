@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-poligiros}
     ports:
-      - "127.0.0.1:5432:5432"          # host access for `npm run db:seed` / prisma studio
+      - "127.0.0.1:5433:5432"          # host port 5433 (5432 is a native Postgres); container still uses 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -45,6 +45,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL}      # the Cloudflare Pages origin, e.g. https://app.poligiros.com
       NODE_ENV: production               # REQUIRED so the auth cookie gets the Secure flag
       PORT: 3001
+      SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL:-gaby@poligiros.com}   # for `db:seed` run inside the container
+      SUPERVISOR_PASSWORD: ${SUPERVISOR_PASSWORD:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       CLOUDFLARE_R2_ACCOUNT_ID: ${CLOUDFLARE_R2_ACCOUNT_ID:-}
