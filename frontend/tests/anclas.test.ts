@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { selectBonusCandidates } from "../lib/anclas"
+import { selectBonusCandidates } from "../src/lib/anclas"
 
 // The tier walk: start at 6, drop a tier at a time until >= minCount items
 // qualify; otherwise return everything sorted. null answers count as 0.
@@ -33,7 +33,6 @@ describe("selectBonusCandidates", () => {
   })
 
   it("honors a custom minCount", () => {
-    // minScore 6 → 1 item (<2); minScore 5 → [6,5,5] (>=2) → return those
     const result = selectBonusCandidates([6, 5, 5, 4], 2)
     expect(result.map((c) => c.val)).toEqual([6, 5, 5])
   })
