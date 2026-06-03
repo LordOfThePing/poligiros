@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Copy } from "lucide-react"
+import { ArrowLeft, Plus, Copy, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
+import ResultsView from "../client/ResultsView"
 
 const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   ANCLAS_CARRERA: { title: "Test de Anclas de Carrera" },
@@ -24,7 +25,7 @@ type Assignment = {
   test: { id: string; type: string; title: string }
   completedAt: string | null
   accessToken: string | null
-  response: unknown
+  response: { responses: Record<string, unknown> } | null
   supervision: { id: string; status: string } | null
 }
 
@@ -52,6 +53,12 @@ export default function ClientDetailPage() {
   const [supervisionModal, setSupervisionModal] = useState<{ assignmentId: string; testTitle: string } | null>(null)
   const [supervisionNotes, setSupervisionNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [resultModal, setResultModal] = useState<{
+    title: string
+    testType: string
+    responses: Record<string, unknown>
+    completedAt: string
+  } | null>(null)
 
   function refreshClient() {
     return apiJson<Client>(`/student/clients/${id}`)
@@ -158,6 +165,22 @@ export default function ClientDetailPage() {
                         Reenviar
                       </Button>
                     )}
+                    {assignment?.completedAt && assignment.response && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setResultModal({
+                            title: info.title,
+                            testType: assignment.test.type,
+                            responses: assignment.response!.responses,
+                            completedAt: assignment.completedAt!,
+                          })
+                        }
+                      >
+                        <Eye className="h-3 w-3 mr-1" /> Ver resultado
+                      </Button>
+                    )}
                     {assignment?.completedAt && !assignment.supervision && (
                       <Button
                         size="sm"
@@ -228,6 +251,22 @@ export default function ClientDetailPage() {
               {submitting ? "Enviando..." : "Enviar"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!resultModal} onOpenChange={(open) => !open && setResultModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif">{resultModal?.title}</DialogTitle>
+          </DialogHeader>
+          {resultModal && (
+            <ResultsView
+              testType={resultModal.testType}
+              responses={resultModal.responses}
+              coachFeedback={null}
+              completedAt={resultModal.completedAt}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

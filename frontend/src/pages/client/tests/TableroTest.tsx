@@ -158,6 +158,10 @@ export default function TableroTest({ token, assignmentId }: TableroTestProps) {
   }
 
   async function handleSubmit() {
+    if (!brainstorming.trim()) {
+      toast({ title: "Escribí al menos una idea en el brainstorming antes de enviar", variant: "destructive" })
+      return
+    }
     setSaving(true)
     const responses = {
       saber: saberItems.map((i) => i.text),
@@ -394,7 +398,7 @@ export default function TableroTest({ token, assignmentId }: TableroTestProps) {
 
           <StepBar step={step} pct={stepPct}>
             <Button variant="outline" onClick={() => setStep(2)}>← Atrás</Button>
-            <Button onClick={handleSubmit} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark flex-1">
+            <Button onClick={handleSubmit} disabled={saving || !brainstorming.trim()} className="bg-brand-accent hover:bg-brand-accent-dark flex-1">
               {saving ? "Enviando..." : "Enviar tablero"}
             </Button>
           </StepBar>

@@ -131,29 +131,40 @@ client.post("/t/:token/ai-insight", async (c) => {
   const { ranking, scores } = await c.req.json()
   const top3 = (ranking as string[]).slice(0, 3)
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content:
-          "Sos un experto en coaching de carrera. Respondés en español rioplatense, de forma cálida, directa y personalizada. Máximo 4 oraciones.",
-      },
-      {
-        role: "user",
-        content: `Una persona completó el Test de Anclas de Carrera de Edgar Schein.
+  // The insight is an optional enhancement — if there's no API key or OpenAI
+  // errors, return a null insight (HTTP 200) so the client can still submit.
+  if (!process.env.OPENAI_API_KEY) {
+    return c.json({ insight: null })
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Sos un experto en coaching de carrera. Respondés en español rioplatense, de forma cálida, directa y personalizada. Máximo 4 oraciones.",
+        },
+        {
+          role: "user",
+          content: `Una persona completó el Test de Anclas de Carrera de Edgar Schein.
 Sus top 3 anclas son:
 1. ${ANCHOR_NAMES[top3[0]]} (${top3[0]}): ${scores[top3[0]]} puntos
 2. ${ANCHOR_NAMES[top3[1]]} (${top3[1]}): ${scores[top3[1]]} puntos
 3. ${ANCHOR_NAMES[top3[2]]} (${top3[2]}): ${scores[top3[2]]} puntos
 Generá un insight personalizado sobre su perfil de carrera: qué tipo de trabajo, entorno y decisiones le darían más satisfacción a largo plazo.`,
-      },
-    ],
-    max_tokens: 250,
-  })
+        },
+      ],
+      max_tokens: 250,
+    })
 
-  const insight = completion.choices[0].message.content ?? ""
-  return c.json({ insight })
+    const insight = completion.choices[0]?.message?.content ?? null
+    return c.json({ insight })
+  } catch (e) {
+    console.error("ai-insight generation failed:", e)
+    return c.json({ insight: null })
+  }
 })
 
 export default client

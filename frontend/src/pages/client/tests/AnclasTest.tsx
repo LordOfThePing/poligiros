@@ -110,6 +110,9 @@ export default function AnclasTest({ token }: AnclasTestProps) {
   const [loadingInsight, setLoadingInsight] = useState(false)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [submitError, setSubmitError] = useState(false)
+  // Captured at step 2→3 so a failed submit can be retried without recomputing.
+  const [finalAnswers, setFinalAnswers] = useState<number[]>([])
 
   const answered = answers.filter((a) => a !== null).length
   const progressPct = Math.round((answered / 40) * 100)
@@ -129,33 +132,14 @@ export default function AnclasTest({ token }: AnclasTestProps) {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function handleBonusSubmit() {
-    if (bonusItems.length !== 3) return
-
-    const finalAnswers = [...answers] as number[]
-    bonusItems.forEach((idx) => { finalAnswers[idx] = (finalAnswers[idx] || 0) + 4 })
-
-    const s = calcScores(finalAnswers)
-    const r = rankAnchors(s)
-    setScores(s)
-    setRanking(r)
-    setStep(3)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-
+  // Persists the response. Separated from the AI insight so the test is always
+  // saved even when the (optional) insight is unavailable. Safe to call again
+  // on retry — the backend upserts the response.
+  async function persistResponse(fa: number[], s: Record<string, number>, r: string[], insight: string | null) {
     setSaving(true)
-    setLoadingInsight(true)
-
+    setSubmitError(false)
     try {
-      const insightRes = await fetch(`${API_URL}/client/t/${token}/ai-insight`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ ranking: r, scores: s }),
-      })
-      const { insight } = await insightRes.json()
-      setAiInsight(insight)
-
-      await fetch(`${API_URL}/client/t/${token}/submit`, {
+      const res = await fetch(`${API_URL}/client/t/${token}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -163,20 +147,63 @@ export default function AnclasTest({ token }: AnclasTestProps) {
           responses: {
             rawAnswers: answers,
             bonusItems,
-            finalAnswers,
+            finalAnswers: fa,
             scores: s,
             ranking: r,
             aiInsight: insight,
           },
         }),
       })
-      setDone(true)
+      if (res.ok || res.status === 409) {
+        setDone(true)
+      } else {
+        setSubmitError(true)
+      }
+    } catch (e) {
+      console.error(e)
+      setSubmitError(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleBonusSubmit() {
+    if (bonusItems.length !== 3) return
+
+    const fa = [...answers] as number[]
+    bonusItems.forEach((idx) => { fa[idx] = (fa[idx] || 0) + 4 })
+
+    const s = calcScores(fa)
+    const r = rankAnchors(s)
+    setScores(s)
+    setRanking(r)
+    setFinalAnswers(fa)
+    setStep(3)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+
+    // Best-effort AI insight — must never block or fail the submission.
+    setLoadingInsight(true)
+    let insight: string | null = null
+    try {
+      const insightRes = await fetch(`${API_URL}/client/t/${token}/ai-insight`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ranking: r, scores: s }),
+      })
+      if (insightRes.ok) {
+        const data = await insightRes.json()
+        insight = data.insight ?? null
+      }
     } catch (e) {
       console.error(e)
     } finally {
-      setSaving(false)
+      setAiInsight(insight)
       setLoadingInsight(false)
     }
+
+    // Always persist, regardless of insight outcome.
+    await persistResponse(fa, s, r, insight)
   }
 
   function toggleBonus(idx: number) {
@@ -405,10 +432,31 @@ export default function AnclasTest({ token }: AnclasTestProps) {
         )}
       </div>
 
+      {saving && (
+        <p className="text-sm text-muted-foreground text-center font-medium">
+          Guardando tus resultados...
+        </p>
+      )}
+
       {done && (
         <p className="text-sm text-green-700 text-center font-medium">
           ✓ Tus resultados fueron guardados correctamente.
         </p>
+      )}
+
+      {submitError && !saving && (
+        <div className="text-center space-y-3">
+          <p className="text-sm text-destructive font-medium">
+            No pudimos guardar tus resultados. Revisá tu conexión e intentá de nuevo.
+          </p>
+          <Button
+            onClick={() => persistResponse(finalAnswers, scores, ranking, aiInsight)}
+            className="bg-brand-accent hover:bg-brand-accent-dark"
+            size="lg"
+          >
+            Reintentar envío
+          </Button>
+        </div>
       )}
     </div>
   )
