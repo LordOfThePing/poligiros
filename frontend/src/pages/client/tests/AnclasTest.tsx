@@ -1,10 +1,10 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { selectBonusCandidates } from "@/lib/anclas"
-import { Sparkles, ChevronRight } from "lucide-react"
+import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
 
 const API_URL = import.meta.env.VITE_API_URL as string
 
@@ -114,10 +114,50 @@ export default function AnclasTest({ token }: AnclasTestProps) {
   // Captured at step 2→3 so a failed submit can be retried without recomputing.
   const [finalAnswers, setFinalAnswers] = useState<number[]>([])
 
+  // Which statement currently has keyboard focus (for the highlight + indicator).
+  const [focusedIdx, setFocusedIdx] = useState<number | null>(null)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+
   const answered = answers.filter((a) => a !== null).length
   const progressPct = Math.round((answered / 40) * 100)
 
   const bonusCandidates = step >= 2 ? selectBonusCandidates(answers) : []
+
+  // Focus the first statement on mount so the keyboard flow works immediately,
+  // without scrolling the page away from the instructions.
+  useEffect(() => {
+    if (step === 1) cardRefs.current[0]?.focus({ preventScroll: true })
+  }, [step])
+
+  function setAnswer(idx: number, val: number) {
+    setAnswers((prev) => {
+      const next = [...prev]
+      next[idx] = val
+      return next
+    })
+    setUnanswered((prev) => {
+      const next = new Set(prev)
+      next.delete(idx)
+      return next
+    })
+  }
+
+  // Keyboard-fast entry on a focused statement: 1-6 records the answer and jumps
+  // to the next statement; Arrow Up/Down move between them. (Tab also moves
+  // card-to-card because the score buttons are tabIndex={-1}.)
+  function handleCardKey(e: React.KeyboardEvent, idx: number) {
+    if (e.key >= "1" && e.key <= "6") {
+      e.preventDefault()
+      setAnswer(idx, Number(e.key))
+      cardRefs.current[idx + 1]?.focus()
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault()
+      cardRefs.current[idx + 1]?.focus()
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      cardRefs.current[idx - 1]?.focus()
+    }
+  }
 
   function handleNextStep() {
     const missing = new Set<number>()
@@ -223,63 +263,84 @@ export default function AnclasTest({ token }: AnclasTestProps) {
           <p className="text-sm text-muted-foreground">Respondé las 40 afirmaciones según cuánto te representan</p>
         </div>
 
+        {/* Keyboard-fast instructions */}
+        <div className="flex items-start gap-2.5 rounded-lg bg-brand-accent/5 border border-brand-accent/20 px-3.5 py-2.5 text-xs text-muted-foreground">
+          <Keyboard className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
+          <span className="leading-relaxed">
+            Tip: respondé con el teclado. <Kbd>Tab</Kbd> pasa a la siguiente afirmación y las teclas{" "}
+            <Kbd>1</Kbd>–<Kbd>6</Kbd> registran tu respuesta y avanzan solas. También podés tocar los números.
+          </span>
+        </div>
+
         <div className="sticky top-0 bg-brand-bg/95 backdrop-blur py-3 z-10">
           <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>{answered} de 40 respondidas</span>
+            <span>
+              {answered} de 40 respondidas
+              {focusedIdx !== null && (
+                <span className="text-brand-accent font-medium"> · afirmación {focusedIdx + 1}</span>
+              )}
+            </span>
             <span>{progressPct}%</span>
           </div>
           <Progress value={progressPct} className="h-2" />
         </div>
 
-        <div className="space-y-6">
-          {QUESTIONS.map((q, idx) => (
-            <div
-              key={idx}
-              id={`q-${idx}`}
-              className={cn(
-                "bg-white rounded-xl border p-5 space-y-3 transition-colors",
-                unanswered.has(idx) ? "border-destructive bg-red-50/50" : "border-border"
-              )}
-            >
-              <p className="text-sm text-foreground">
-                <span className="font-medium text-brand-accent mr-2">{idx + 1}.</span>
-                {q}
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                {[1, 2, 3, 4, 5, 6].map((val) => (
-                  <button
-                    key={val}
-                    onClick={() => {
-                      setAnswers((prev) => {
-                        const next = [...prev]
-                        next[idx] = val
-                        return next
-                      })
-                      setUnanswered((prev) => {
-                        const next = new Set(prev)
-                        next.delete(idx)
-                        return next
-                      })
-                    }}
-                    className={cn(
-                      "w-10 h-10 rounded-full border-2 text-sm font-bold transition-all",
-                      answers[idx] === val
-                        ? "bg-brand-accent border-brand-accent text-white scale-110"
-                        : "border-border text-muted-foreground hover:border-brand-accent hover:text-brand-accent"
-                    )}
-                  >
-                    {val}
-                  </button>
-                ))}
-              </div>
-              {idx === 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground pt-1">
-                  <span>1 = No es verdadero para mí</span>
-                  <span>6 = Es siempre verdadero</span>
+        <div className="space-y-4">
+          {QUESTIONS.map((q, idx) => {
+            const isFocused = focusedIdx === idx
+            const isAnswered = answers[idx] !== null
+            return (
+              <div
+                key={idx}
+                id={`q-${idx}`}
+                ref={(el) => {
+                  cardRefs.current[idx] = el
+                }}
+                tabIndex={0}
+                onFocus={() => setFocusedIdx(idx)}
+                onBlur={() => setFocusedIdx((f) => (f === idx ? null : f))}
+                onKeyDown={(e) => handleCardKey(e, idx)}
+                className={cn(
+                  "bg-white rounded-xl border p-5 space-y-3 outline-none transition-all duration-200",
+                  unanswered.has(idx) ? "border-destructive bg-red-50/50" : "border-border",
+                  isFocused &&
+                    "border-brand-accent ring-2 ring-brand-accent/60 shadow-lg scale-[1.015] bg-brand-accent/[0.02]"
+                )}
+              >
+                <p className="text-sm text-foreground flex items-start gap-2">
+                  <span className="font-medium text-brand-accent">{idx + 1}.</span>
+                  <span className="flex-1">{q}</span>
+                  {isAnswered && (
+                    <Check className="h-4 w-4 text-green-600 shrink-0 animate-[sparkle-pulse_0.3s_ease]" />
+                  )}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {[1, 2, 3, 4, 5, 6].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setAnswer(idx, val)}
+                      className={cn(
+                        "w-10 h-10 rounded-full border-2 text-sm font-bold transition-all",
+                        answers[idx] === val
+                          ? "bg-brand-accent border-brand-accent text-white scale-110"
+                          : "border-border text-muted-foreground hover:border-brand-accent hover:text-brand-accent"
+                      )}
+                    >
+                      {val}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
-          ))}
+                {idx === 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                    <span>1 = No es verdadero para mí</span>
+                    <span>6 = Es siempre verdadero</span>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         {unanswered.size > 0 && (
@@ -459,5 +520,13 @@ export default function AnclasTest({ token }: AnclasTestProps) {
         </div>
       )}
     </div>
+  )
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex items-center justify-center min-w-[1.5em] px-1 py-0.5 rounded border border-border bg-muted font-mono text-[0.7rem] font-medium text-foreground">
+      {children}
+    </kbd>
   )
 }
