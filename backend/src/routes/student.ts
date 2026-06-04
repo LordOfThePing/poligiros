@@ -417,4 +417,33 @@ student.post("/my-tests/:id/ai-ideas", async (c) => {
   return c.json({ ideas: await generateTableroIdeas(body) })
 })
 
+/** GET /student/my-tests/:id/develop — post-test workspace (coach side). */
+student.get("/my-tests/:id/develop", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const assignment = await loadMyAssignment(user.id, id)
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  const development = await prisma.ideaDevelopment.findUnique({ where: { assignmentId: id } })
+  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
+  const selectedIdea = (development?.selectedIdea ?? responses.selectedIdea ?? "") as string
+  return c.json({ selectedIdea, kind: development?.kind ?? null, content: development?.content ?? {} })
+})
+
+/** PUT /student/my-tests/:id/develop */
+student.put("/my-tests/:id/develop", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const assignment = await loadMyAssignment(user.id, id)
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  const { kind, content } = await c.req.json()
+  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
+  const selectedIdea = (responses.selectedIdea ?? "") as string
+  const dev = await prisma.ideaDevelopment.upsert({
+    where: { assignmentId: id },
+    update: { kind, content },
+    create: { assignmentId: id, kind, content, selectedIdea },
+  })
+  return c.json(dev)
+})
+
 export default student

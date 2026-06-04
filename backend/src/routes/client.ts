@@ -129,4 +129,41 @@ client.post("/t/:token/ai-ideas", async (c) => {
   return c.json({ ideas })
 })
 
+/**
+ * GET /client/t/:token/develop — the post-test workspace for the chosen idea.
+ * Returns the selected idea plus any saved (user-authored) canvas/job content.
+ */
+client.get("/t/:token/develop", async (c) => {
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { accessToken: c.req.param("token") },
+    include: { response: true, development: true },
+  })
+  if (!assignment) return c.json({ error: "invalid" }, 404)
+  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
+  const selectedIdea = (assignment.development?.selectedIdea ?? responses.selectedIdea ?? "") as string
+  return c.json({
+    selectedIdea,
+    kind: assignment.development?.kind ?? null,
+    content: assignment.development?.content ?? {},
+  })
+})
+
+/** PUT /client/t/:token/develop — save the user-authored canvas / job research. */
+client.put("/t/:token/develop", async (c) => {
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { accessToken: c.req.param("token") },
+    include: { response: true },
+  })
+  if (!assignment) return c.json({ error: "invalid" }, 404)
+  const { kind, content } = await c.req.json()
+  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
+  const selectedIdea = (responses.selectedIdea ?? "") as string
+  const dev = await prisma.ideaDevelopment.upsert({
+    where: { assignmentId: assignment.id },
+    update: { kind, content },
+    create: { assignmentId: assignment.id, kind, content, selectedIdea },
+  })
+  return c.json(dev)
+})
+
 export default client

@@ -46,6 +46,7 @@ export default function StudentTakeTestPage() {
           responses={assignment.response.responses}
           coachFeedback={null}
           completedAt={assignment.completedAt}
+          api={sessionTestApi(assignment.id)}
         />
       </div>
     )

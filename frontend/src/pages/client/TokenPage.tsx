@@ -94,6 +94,7 @@ export default function TokenPage() {
             responses={data.responses}
             coachFeedback={data.coachFeedback}
             completedAt={data.completedAt}
+            api={tokenTestApi(token!)}
           />
         </div>
       </div>

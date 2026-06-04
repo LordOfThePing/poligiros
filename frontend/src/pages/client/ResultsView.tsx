@@ -3,12 +3,17 @@ import { Sparkles } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
+import { DevelopIdea } from "@/components/DevelopIdea"
+import type { TestApi } from "@/lib/testApi"
 
 interface ResultsViewProps {
   testType: string
   responses: Record<string, unknown>
   coachFeedback: string | null
   completedAt: string
+  // When provided (the test-taker's own view), enables the post-test
+  // "develop your idea" workspace for the Tablero. Omitted for read-only views.
+  api?: TestApi
 }
 
 const ANCHOR_NAMES: Record<string, string> = {
@@ -17,7 +22,7 @@ const ANCHOR_NAMES: Record<string, string> = {
   PD: "Puro Desafío", EV: "Estilo de Vida",
 }
 
-export default function ResultsView({ testType, responses, coachFeedback, completedAt }: ResultsViewProps) {
+export default function ResultsView({ testType, responses, coachFeedback, completedAt, api }: ResultsViewProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -145,6 +150,9 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
           <RawDataView testType={testType} responses={responses} />
         </div>
       )}
+
+      {/* Post-test workspace (only on the test-taker's own view) */}
+      {api && testType === "TABLERO_IDEAS" && <DevelopIdea api={api} />}
 
       {/* Coach feedback */}
       {coachFeedback && (
