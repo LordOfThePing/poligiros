@@ -1,0 +1,50 @@
+// Transport-agnostic API for the test components, so the same Anclas / Tablero /
+// Pirámide UIs work both for coachees (magic-link token flow) and for coaches
+// taking tests logged-in (session flow). The component calls api.submit(...)
+// etc. without knowing which transport it is.
+
+const API_URL = import.meta.env.VITE_API_URL as string
+
+export interface TestApi {
+  submit(responses: unknown): Promise<Response>
+  aiInsight(payload: unknown): Promise<{ insight: string | null }>
+  aiIdeas(payload: unknown): Promise<{ ideas: string[] }>
+}
+
+function post(body: unknown): RequestInit {
+  return {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  }
+}
+
+function makeApi(base: string): TestApi {
+  return {
+    submit: (responses) => fetch(`${base}/submit`, post({ responses })),
+    aiInsight: async (payload) => {
+      try {
+        const res = await fetch(`${base}/ai-insight`, post(payload))
+        return res.ok ? await res.json() : { insight: null }
+      } catch {
+        return { insight: null }
+      }
+    },
+    aiIdeas: async (payload) => {
+      try {
+        const res = await fetch(`${base}/ai-ideas`, post(payload))
+        return res.ok ? await res.json() : { ideas: [] }
+      } catch {
+        return { ideas: [] }
+      }
+    },
+  }
+}
+
+/** Coachee flow — token is the credential. */
+export const tokenTestApi = (token: string): TestApi => makeApi(`${API_URL}/client/t/${token}`)
+
+/** Coach flow — authenticated session (httpOnly cookie). */
+export const sessionTestApi = (assignmentId: string): TestApi =>
+  makeApi(`${API_URL}/student/my-tests/${assignmentId}`)

@@ -5,6 +5,7 @@ import AnclasTest from "./tests/AnclasTest"
 import TableroTest from "./tests/TableroTest"
 import PiramideTest from "./tests/PiramideTest"
 import ResultsView from "./ResultsView"
+import { tokenTestApi } from "@/lib/testApi"
 
 const API_URL = import.meta.env.VITE_API_URL as string
 
@@ -101,17 +102,18 @@ export default function TokenPage() {
 
   // state === "form"
   if (data.state === "form") {
+    const api = tokenTestApi(token!)
     return (
       <div className="min-h-screen bg-brand-bg py-8">
         <div className="max-w-2xl mx-auto px-4">
           {data.testType === "ANCLAS_CARRERA" && (
-            <AnclasTest token={token!} assignmentId={data.assignmentId} />
+            <AnclasTest api={api} assignmentId={data.assignmentId} />
           )}
           {data.testType === "TABLERO_IDEAS" && (
-            <TableroTest token={token!} assignmentId={data.assignmentId} />
+            <TableroTest api={api} assignmentId={data.assignmentId} />
           )}
           {data.testType === "PIRAMIDE_PROPOSITO" && (
-            <PiramideTest token={token!} assignmentId={data.assignmentId} />
+            <PiramideTest api={api} assignmentId={data.assignmentId} />
           )}
           {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO"].includes(data.testType) && (
             <div className="text-center py-16">

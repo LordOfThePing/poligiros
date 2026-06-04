@@ -5,8 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-
-const API_URL = import.meta.env.VITE_API_URL as string
+import type { TestApi } from "@/lib/testApi"
 
 const DRAFT_KEY = (id: string) => `piramide-draft-${id}`
 
@@ -109,11 +108,11 @@ function HelperPanel({ items, onSelect }: { items: string[]; onSelect: (item: st
 }
 
 interface PiramideTestProps {
-  token: string
+  api: TestApi
   assignmentId: string
 }
 
-export default function PiramideTest({ token, assignmentId }: PiramideTestProps) {
+export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   const { toast } = useToast()
 
   const [rol, setRol] = useState("")
@@ -165,12 +164,7 @@ export default function PiramideTest({ token, assignmentId }: PiramideTestProps)
     saveDraft()
 
     const propositoFinal = synth
-    const res = await fetch(`${API_URL}/client/t/${token}/submit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ responses: { rol, valores, fortalezas, contextos, especialidad, propositoFinal } }),
-    })
+    const res = await api.submit({ rol, valores, fortalezas, contextos, especialidad, propositoFinal })
 
     setSaving(false)
 

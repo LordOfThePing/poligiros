@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { selectBonusCandidates, groupRankedAnchors } from "@/lib/anclas"
 import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
-
-const API_URL = import.meta.env.VITE_API_URL as string
+import type { TestApi } from "@/lib/testApi"
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -95,11 +94,11 @@ function rankAnchors(scores: Record<string, number>): string[] {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface AnclasTestProps {
-  token: string
+  api: TestApi
   assignmentId: string
 }
 
-export default function AnclasTest({ token }: AnclasTestProps) {
+export default function AnclasTest({ api }: AnclasTestProps) {
   const [step, setStep] = useState(1)
   const [answers, setAnswers] = useState<(number | null)[]>(Array(40).fill(null))
   const [unanswered, setUnanswered] = useState<Set<number>>(new Set())
@@ -179,20 +178,13 @@ export default function AnclasTest({ token }: AnclasTestProps) {
     setSaving(true)
     setSubmitError(false)
     try {
-      const res = await fetch(`${API_URL}/client/t/${token}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          responses: {
-            rawAnswers: answers,
-            bonusItems,
-            finalAnswers: fa,
-            scores: s,
-            ranking: r,
-            aiInsight: insight,
-          },
-        }),
+      const res = await api.submit({
+        rawAnswers: answers,
+        bonusItems,
+        finalAnswers: fa,
+        scores: s,
+        ranking: r,
+        aiInsight: insight,
       })
       if (res.ok || res.status === 409) {
         setDone(true)
@@ -225,16 +217,8 @@ export default function AnclasTest({ token }: AnclasTestProps) {
     setLoadingInsight(true)
     let insight: string | null = null
     try {
-      const insightRes = await fetch(`${API_URL}/client/t/${token}/ai-insight`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ ranking: r, scores: s }),
-      })
-      if (insightRes.ok) {
-        const data = await insightRes.json()
-        insight = data.insight ?? null
-      }
+      const data = await api.aiInsight({ ranking: r, scores: s })
+      insight = data.insight ?? null
     } catch (e) {
       console.error(e)
     } finally {

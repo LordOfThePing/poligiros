@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, X, Sparkles, Check } from "lucide-react"
 import { SortableList, type RankItem } from "@/components/tablero/SortableList"
+import type { TestApi } from "@/lib/testApi"
 
-const API_URL = import.meta.env.VITE_API_URL as string
 const DRAFT_KEY = (id: string) => `tablero-ideas-draft-${id}`
 
 // Stable, within-session unique id for ranked items (values may be duplicate
@@ -47,11 +47,11 @@ const toItems = (values: string[]): RankItem[] =>
   values.map((s) => s.trim()).filter(Boolean).map((text) => ({ id: uid(), text }))
 
 interface TableroTestProps {
-  token: string
+  api: TestApi
   assignmentId: string
 }
 
-export default function TableroTest({ token, assignmentId }: TableroTestProps) {
+export default function TableroTest({ api, assignmentId }: TableroTestProps) {
   const { toast } = useToast()
 
   const [step, setStep] = useState(1)
@@ -175,12 +175,7 @@ export default function TableroTest({ token, assignmentId }: TableroTestProps) {
     }
 
     try {
-      const res = await fetch(`${API_URL}/client/t/${token}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ responses }),
-      })
+      const res = await api.submit(responses)
       if (res.ok) {
         localStorage.removeItem(DRAFT_KEY(assignmentId))
         setDone(true)
