@@ -21,6 +21,8 @@ import SupervisorCohortesPage from "@/pages/supervisor/CohortesPage"
 // Pages - student
 import StudentProgramaPage from "@/pages/student/ProgramaPage"
 import StudentModuleDetailPage from "@/pages/student/ModuleDetailPage"
+import StudentMyTestsPage from "@/pages/student/MyTestsPage"
+import StudentTakeTestPage from "@/pages/student/TakeTestPage"
 import StudentClientesPage from "@/pages/student/ClientesPage"
 import StudentClientDetailPage from "@/pages/student/ClientDetailPage"
 import StudentSupervisionPage from "@/pages/student/SupervisionPage"
@@ -94,6 +96,8 @@ export default function App() {
             <Route index element={<Navigate to="/student/programa" replace />} />
             <Route path="programa" element={<StudentProgramaPage />} />
             <Route path="programa/:id" element={<StudentModuleDetailPage />} />
+            <Route path="my-tests" element={<StudentMyTestsPage />} />
+            <Route path="my-tests/:id" element={<StudentTakeTestPage />} />
             <Route path="clientes" element={<StudentClientesPage />} />
             <Route path="clientes/:id" element={<StudentClientDetailPage />} />
             <Route path="supervision" element={<StudentSupervisionPage />} />

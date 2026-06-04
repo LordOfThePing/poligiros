@@ -2,9 +2,11 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
-import { apiJson } from "@/lib/api"
+import { apiJson, apiPost } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 const TEST_CODES: Record<string, string> = {
   ANCLAS_CARRERA: "AC",
@@ -19,16 +21,41 @@ const STATUS_COLORS: Record<string, string> = {
   unassigned: "bg-gray-100 text-gray-500",
 }
 
+type Test = { id: string; type: string; title: string }
+type CoachAssignment = { id: string; completedAt: string | null; test: { type: string } }
+
 export default function AlumnoDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { toast } = useToast()
   const [student, setStudent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [allTests, setAllTests] = useState<Test[]>([])
+  const [coachTests, setCoachTests] = useState<CoachAssignment[]>([])
+  const [assigning, setAssigning] = useState<string | null>(null)
+
+  function loadCoachTests() {
+    apiJson<CoachAssignment[]>(`/supervisor/coaches/${id}/tests`).then(setCoachTests).catch(() => {})
+  }
 
   useEffect(() => {
     apiJson<any>(`/supervisor/students/${id}`)
       .then((data) => { setStudent(data); setLoading(false) })
       .catch(() => setLoading(false))
+    apiJson<Test[]>("/supervisor/tests").then(setAllTests).catch(() => {})
+    loadCoachTests()
   }, [id])
+
+  async function handleAssignToCoach(testId: string) {
+    setAssigning(testId)
+    try {
+      await apiPost(`/supervisor/coaches/${id}/assign`, { testId })
+      toast({ title: "Test asignado al coach" })
+      loadCoachTests()
+    } catch {
+      toast({ title: "Error al asignar", variant: "destructive" })
+    }
+    setAssigning(null)
+  }
 
   if (loading) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
   if (!student) return <div className="text-muted-foreground text-sm py-8">Alumno no encontrado</div>
@@ -86,6 +113,45 @@ export default function AlumnoDetailPage() {
             </Card>
           ))
         )}
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h2 className="font-serif text-xl">Tests del coach</h2>
+          <p className="text-sm text-muted-foreground">Tests que asignás a {student.name} (los hace logueado/a en su panel)</p>
+        </div>
+        <Card className="bg-white">
+          <CardContent className="py-4 space-y-2">
+            {allTests
+              .filter((t) => t.type !== "PLAN_VITAL")
+              .map((t) => {
+                const assignment = coachTests.find((a) => a.test.type === t.type)
+                return (
+                  <div key={t.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-border last:border-0">
+                    <span className="text-sm font-medium text-foreground">{t.title}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {assignment?.completedAt && (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Completado ✓</Badge>
+                      )}
+                      {assignment && !assignment.completedAt && (
+                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">Pendiente</Badge>
+                      )}
+                      {!assignment && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={assigning === t.id}
+                          onClick={() => handleAssignToCoach(t.id)}
+                        >
+                          {assigning === t.id ? "Asignando..." : "Asignar"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="space-y-2">

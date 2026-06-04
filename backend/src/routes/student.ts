@@ -5,6 +5,7 @@ import {
   sendSupervisionSubmittedEmail,
   sendSessionRecordedEmail,
 } from "../lib/email.js"
+import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
@@ -341,6 +342,79 @@ student.post("/modules/:id/complete", async (c) => {
   })
 
   return c.json({ ok: true })
+})
+
+/* ─────────────────────────────────────────
+   Coach self-tests — the coach takes tests logged-in. Their assignments live on
+   a coach-as-coachee Client (Client.userId === the coach's own User id, owned by
+   the supervisor). Authorize every route by that link.
+───────────────────────────────────────── */
+
+async function loadMyAssignment(userId: string, id: string) {
+  return prisma.testAssignment.findFirst({
+    where: { id, client: { userId } },
+    include: { test: true, response: true },
+  })
+}
+
+/** GET /student/my-tests */
+student.get("/my-tests", async (c) => {
+  const user = c.get("user")
+  const myClient = await prisma.client.findUnique({ where: { userId: user.id } })
+  if (!myClient) return c.json([])
+
+  const assignments = await prisma.testAssignment.findMany({
+    where: { clientId: myClient.id },
+    include: { test: true, response: true },
+    orderBy: { assignedAt: "asc" },
+  })
+  return c.json(assignments)
+})
+
+/** GET /student/my-tests/:id */
+student.get("/my-tests/:id", async (c) => {
+  const user = c.get("user")
+  const assignment = await loadMyAssignment(user.id, c.req.param("id"))
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  return c.json(assignment)
+})
+
+/** POST /student/my-tests/:id/submit */
+student.post("/my-tests/:id/submit", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const assignment = await loadMyAssignment(user.id, id)
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  if (assignment.completedAt) return c.json({ error: "already_completed" }, 409)
+
+  const { responses } = await c.req.json()
+  const [testResponse] = await prisma.$transaction([
+    prisma.testResponse.upsert({
+      where: { assignmentId: id },
+      update: { responses },
+      create: { assignmentId: id, responses },
+    }),
+    prisma.testAssignment.update({ where: { id }, data: { completedAt: new Date() } }),
+  ])
+  return c.json(testResponse)
+})
+
+/** POST /student/my-tests/:id/ai-insight */
+student.post("/my-tests/:id/ai-insight", async (c) => {
+  const user = c.get("user")
+  const assignment = await loadMyAssignment(user.id, c.req.param("id"))
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  const { ranking, scores } = await c.req.json()
+  return c.json({ insight: await generateAnclasInsight(ranking, scores) })
+})
+
+/** POST /student/my-tests/:id/ai-ideas */
+student.post("/my-tests/:id/ai-ideas", async (c) => {
+  const user = c.get("user")
+  const assignment = await loadMyAssignment(user.id, c.req.param("id"))
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  const body = await c.req.json()
+  return c.json({ ideas: await generateTableroIdeas(body) })
 })
 
 export default student

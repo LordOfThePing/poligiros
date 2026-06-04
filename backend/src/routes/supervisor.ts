@@ -430,4 +430,42 @@ supervisor.get("/tests", async (c) => {
   return c.json(tests)
 })
 
+/* ─────────────────────────────────────────
+   Coach tests — Gaby is the coaches' coach. Assignments live on each coach's
+   coach-as-coachee Client (Client.userId === coach, owned by the supervisor).
+───────────────────────────────────────── */
+
+/** GET /supervisor/coaches/:userId/tests — the coach's own test assignments */
+supervisor.get("/coaches/:userId/tests", async (c) => {
+  const coachClient = await prisma.client.findUnique({
+    where: { userId: c.req.param("userId") },
+    include: {
+      assignments: { include: { test: true, response: true }, orderBy: { assignedAt: "asc" } },
+    },
+  })
+  return c.json(coachClient?.assignments ?? [])
+})
+
+/** POST /supervisor/coaches/:userId/assign — assign a test to a coach */
+supervisor.post("/coaches/:userId/assign", async (c) => {
+  const supervisorUser = c.get("user")
+  const coachUserId = c.req.param("userId")
+  const { testId } = await c.req.json()
+
+  const coachClient = await prisma.client.findUnique({ where: { userId: coachUserId } })
+  if (!coachClient) return c.json({ error: "El coach no tiene perfil de coachee" }, 404)
+
+  const test = await prisma.test.findUnique({ where: { id: testId } })
+  if (!test || test.type === "PLAN_VITAL") return c.json({ error: "Test not assignable" }, 400)
+
+  // Logged-in flow: no magic-link token; the coach takes it in their dashboard.
+  const assignment = await prisma.testAssignment.upsert({
+    where: { testId_clientId: { testId, clientId: coachClient.id } },
+    update: { assignedBy: supervisorUser.id },
+    create: { testId, clientId: coachClient.id, assignedBy: supervisorUser.id },
+    include: { test: true, response: true },
+  })
+  return c.json(assignment, 201)
+})
+
 export default supervisor

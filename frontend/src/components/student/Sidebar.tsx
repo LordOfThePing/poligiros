@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
-import { BookOpen, Users, ClipboardCheck, FileText, LogOut } from "lucide-react"
+import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProfileBanner } from "@/components/ProfileBanner"
 
 const links = [
   { href: "/student/programa", label: "Mi Programa", icon: BookOpen },
+  { href: "/student/my-tests", label: "Mis Tests", icon: ListChecks },
   { href: "/student/clientes", label: "Mis Clientes", icon: Users },
   { href: "/student/supervision", label: "Supervisión", icon: ClipboardCheck },
   { href: "/student/registros", label: "Mis Registros", icon: FileText },
