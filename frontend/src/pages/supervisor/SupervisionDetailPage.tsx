@@ -9,6 +9,8 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
+import { groupRankedAnchors } from "@/lib/anclas"
+import { RawDataView } from "@/components/RawDataView"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -17,16 +19,19 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
     PD: "Puro Desafío", EV: "Estilo de Vida",
   }
 
-  if (testType === "ANCLAS_CARRERA" && responses.ranking) {
+  if (testType === "ANCLAS_CARRERA" && responses.scores) {
     return (
       <div className="space-y-4">
         <div className="space-y-2">
           <p className="text-sm font-medium">Ranking de anclas:</p>
-          {(responses.ranking as string[]).map((anchor: string, i: number) => (
-            <div key={anchor} className="flex items-center gap-3 text-sm">
-              <span className="w-5 text-muted-foreground">{i + 1}.</span>
-              <span className="flex-1">{ANCHOR_NAMES[anchor]} ({anchor})</span>
-              <span className="font-medium">{responses.scores?.[anchor]}/6</span>
+          {groupRankedAnchors(responses.scores, responses.ranking).map((group) => (
+            <div key={group.rank} className="flex items-start gap-3 text-sm">
+              <span className="w-5 text-muted-foreground shrink-0">{group.rank}.</span>
+              <span className="flex-1">
+                {group.anchors.map((a) => `${ANCHOR_NAMES[a]} (${a})`).join(" · ")}
+                {group.anchors.length > 1 && <span className="text-xs text-muted-foreground"> — empate</span>}
+              </span>
+              <span className="font-medium shrink-0">{group.score}/6</span>
             </div>
           ))}
         </div>
@@ -36,6 +41,7 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
             <p className="text-sm">{responses.aiInsight}</p>
           </div>
         )}
+        <RawDataView testType={testType} responses={responses} />
       </div>
     )
   }
@@ -80,6 +86,7 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
             <p className="text-sm">{responses.propositoFinal}</p>
           </div>
         )}
+        <RawDataView testType={testType} responses={responses} />
       </div>
     )
   }

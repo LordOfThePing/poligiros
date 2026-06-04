@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { selectBonusCandidates } from "@/lib/anclas"
+import { selectBonusCandidates, groupRankedAnchors } from "@/lib/anclas"
 import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
 
 const API_URL = import.meta.env.VITE_API_URL as string
@@ -421,8 +421,6 @@ export default function AnclasTest({ token }: AnclasTestProps) {
   }
 
   // ─── Step 3: Results ───────────────────────────────────────────────────────
-  const maxScore = Object.values(scores).length > 0 ? Math.max(...Object.values(scores)) : 6
-
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
@@ -431,43 +429,53 @@ export default function AnclasTest({ token }: AnclasTestProps) {
       </div>
 
       <div className="space-y-3">
-        {ranking.map((anchor, rank) => {
-          const info = ANCHOR_INFO[anchor]
-          const score = scores[anchor]
-          const barWidth = maxScore > 0 ? (score / 6) * 100 : 0
-
+        {/* Dense ranking: tied anchors share a rank and sit side by side. */}
+        {groupRankedAnchors(scores, ANCHOR_ORDER).map((group) => {
+          const isTop = group.rank === 1
           return (
-            <div key={anchor} className={cn(
+            <div key={group.rank} className={cn(
               "bg-white rounded-xl border border-border p-5",
-              rank === 0 && "border-brand-accent/50 shadow-sm"
+              isTop && "border-brand-accent/50 shadow-sm"
             )}>
               <div className="flex items-start gap-4">
                 <div className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base",
-                  rank === 0 ? "bg-brand-accent text-white" : "bg-muted text-muted-foreground"
+                  isTop ? "bg-brand-accent text-white" : "bg-muted text-muted-foreground"
                 )}>
-                  {rank === 0 ? "🏆" : rank + 1}
+                  {isTop ? "🏆" : group.rank}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-lg">{info.icon}</span>
-                    <span className="font-semibold text-foreground">{info.name}</span>
-                    <Badge variant="outline" className="text-xs">{anchor}</Badge>
-                    {rank === 0 && <Badge className="bg-brand-accent text-white hover:bg-brand-accent text-xs">1er ancla</Badge>}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Puntuación</span>
-                      <span className="font-medium text-foreground">{score}/6</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-brand-accent rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
-                  </div>
+                <div className={cn(
+                  "flex-1 min-w-0 grid gap-x-6 gap-y-4",
+                  group.anchors.length > 1 && "sm:grid-cols-2"
+                )}>
+                  {group.anchors.map((anchor) => {
+                    const info = ANCHOR_INFO[anchor]
+                    const barWidth = (scores[anchor] / 6) * 100
+                    return (
+                      <div key={anchor} className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-lg">{info.icon}</span>
+                          <span className="font-semibold text-foreground">{info.name}</span>
+                          <Badge variant="outline" className="text-xs">{anchor}</Badge>
+                          {isTop && <Badge className="bg-brand-accent text-white hover:bg-brand-accent text-xs">1er ancla</Badge>}
+                          {group.anchors.length > 1 && <Badge variant="secondary" className="text-xs">empate</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
+                        <div className="mt-3 space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Puntuación</span>
+                            <span className="font-medium text-foreground">{scores[anchor]}/6</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full bg-brand-accent rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>

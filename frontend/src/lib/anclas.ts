@@ -30,3 +30,29 @@ export function selectBonusCandidates(
   }
   return [...scored].sort((a, b) => b.val - a.val)
 }
+
+export type RankGroup = { rank: number; score: number; anchors: string[] }
+
+/**
+ * Group anchors into a DENSE ranking: anchors with the same score share one
+ * rank position (and render side by side), and the list shortens on ties
+ * (1, 2, 3 over groups — not 1, 1, 3). Within a tie, anchors keep the order
+ * given by `order` (defaults to the object's key order) for stable display.
+ */
+export function groupRankedAnchors(
+  scores: Record<string, number>,
+  order?: string[],
+): RankGroup[] {
+  const keys = (order ?? Object.keys(scores)).filter((k) => k in scores)
+  const sorted = [...keys].sort((a, b) => scores[b] - scores[a])
+  const groups: RankGroup[] = []
+  for (const anchor of sorted) {
+    const last = groups[groups.length - 1]
+    if (last && last.score === scores[anchor]) {
+      last.anchors.push(anchor)
+    } else {
+      groups.push({ rank: groups.length + 1, score: scores[anchor], anchors: [anchor] })
+    }
+  }
+  return groups
+}

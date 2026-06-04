@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge"
 import { Sparkles } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
+import { groupRankedAnchors } from "@/lib/anclas"
+import { RawDataView } from "@/components/RawDataView"
 
 interface ResultsViewProps {
   testType: string
@@ -23,19 +25,26 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
       </div>
 
       {/* Test-specific results */}
-      {testType === "ANCLAS_CARRERA" && Boolean(responses.ranking) && (
+      {testType === "ANCLAS_CARRERA" && Boolean(responses.scores) && (
         <div className="space-y-4">
           <h2 className="font-serif text-2xl text-foreground">Tus Anclas de Carrera</h2>
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">Ranking de anclas:</p>
-            {(responses.ranking as string[]).map((anchor: string, i: number) => (
-              <div key={anchor} className="flex items-center gap-3 text-sm bg-white rounded-lg border border-border px-4 py-3">
-                <span className="w-5 text-muted-foreground font-medium">{i + 1}.</span>
-                <span className="flex-1 font-medium">{ANCHOR_NAMES[anchor]}</span>
-                <Badge variant="outline" className="text-xs">{anchor}</Badge>
-                <span className="font-medium text-brand-accent">
-                  {(responses.scores as Record<string, number>)?.[anchor]}/6
-                </span>
+            {groupRankedAnchors(
+              responses.scores as Record<string, number>,
+              responses.ranking as string[] | undefined,
+            ).map((group) => (
+              <div key={group.rank} className="flex items-start gap-3 text-sm bg-white rounded-lg border border-border px-4 py-3">
+                <span className="w-5 text-muted-foreground font-medium shrink-0">{group.rank}.</span>
+                <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1">
+                  {group.anchors.map((anchor) => (
+                    <span key={anchor} className="flex items-center gap-2">
+                      <span className="font-medium">{ANCHOR_NAMES[anchor]}</span>
+                      <Badge variant="outline" className="text-xs">{anchor}</Badge>
+                    </span>
+                  ))}
+                </div>
+                <span className="font-medium text-brand-accent shrink-0">{group.score}/6</span>
               </div>
             ))}
           </div>
@@ -48,6 +57,7 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
               <p className="text-sm leading-relaxed">{responses.aiInsight as string}</p>
             </div>
           )}
+          <RawDataView testType={testType} responses={responses} />
         </div>
       )}
 
@@ -98,6 +108,7 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
               <p className="text-sm leading-relaxed">{responses.propositoFinal as string}</p>
             </div>
           )}
+          <RawDataView testType={testType} responses={responses} />
         </div>
       )}
 

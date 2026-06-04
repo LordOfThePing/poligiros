@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { selectBonusCandidates } from "../src/lib/anclas"
+import { selectBonusCandidates, groupRankedAnchors } from "../src/lib/anclas"
 
 // The tier walk: start at 6, drop a tier at a time until >= minCount items
 // qualify; otherwise return everything sorted. null answers count as 0.
@@ -41,5 +41,32 @@ describe("selectBonusCandidates", () => {
     const result = selectBonusCandidates([4, 6, 5, 6, 5])
     const vals = result.map((c) => c.val)
     expect([...vals]).toEqual([...vals].sort((a, b) => b - a))
+  })
+})
+
+describe("groupRankedAnchors", () => {
+  it("groups ties into a shared, dense rank position", () => {
+    const groups = groupRankedAnchors({ TF: 6, GG: 6, AU: 5, SE: 4 })
+    expect(groups).toEqual([
+      { rank: 1, score: 6, anchors: ["TF", "GG"] },
+      { rank: 2, score: 5, anchors: ["AU"] },
+      { rank: 3, score: 4, anchors: ["SE"] },
+    ])
+  })
+
+  it("shortens the list on ties (ranks are dense, not 1,1,3)", () => {
+    const groups = groupRankedAnchors({ A: 5, B: 5, C: 5, D: 1 })
+    expect(groups.map((g) => g.rank)).toEqual([1, 2])
+    expect(groups[0].anchors).toEqual(["A", "B", "C"])
+  })
+
+  it("gives every anchor its own rank when all scores differ", () => {
+    const groups = groupRankedAnchors({ A: 6, B: 5, C: 4 })
+    expect(groups.map((g) => g.rank)).toEqual([1, 2, 3])
+  })
+
+  it("respects a provided order for stable tie display", () => {
+    const groups = groupRankedAnchors({ A: 5, B: 5 }, ["B", "A"])
+    expect(groups[0].anchors).toEqual(["B", "A"])
   })
 })
