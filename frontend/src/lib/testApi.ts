@@ -3,7 +3,8 @@
 // taking tests logged-in (session flow). The component calls api.submit(...)
 // etc. without knowing which transport it is.
 
-const API_URL = import.meta.env.VITE_API_URL as string
+// Strip any trailing slash so `${base}/submit` never becomes `//submit`.
+const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
 export interface TestApi {
   submit(responses: unknown): Promise<Response>

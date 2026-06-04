@@ -7,7 +7,7 @@ import PiramideTest from "./tests/PiramideTest"
 import ResultsView from "./ResultsView"
 import { tokenTestApi } from "@/lib/testApi"
 
-const API_URL = import.meta.env.VITE_API_URL as string
+const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
 type TokenState =
   | { state: "loading" }

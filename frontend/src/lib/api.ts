@@ -1,6 +1,7 @@
 import { toast } from "@/hooks/use-toast"
 
-const API_URL = import.meta.env.VITE_API_URL as string
+// Strip any trailing slash so paths like `/auth/login` don't become `//auth/login`.
+const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
 export async function api(path: string, init?: RequestInit): Promise<Response> {
   const url = `${API_URL}${path}`
