@@ -33,6 +33,7 @@ model User {
   createdAt DateTime @default(now())
 
   clients             Client[]
+  coacheeProfile      Client?              @relation("CoachAsCoachee")
   enrollments         Enrollment[]
   moduleProgress      ModuleProgress[]
   supervisionRequests SupervisionRequest[] @relation("StudentRequests")
@@ -98,6 +99,10 @@ model Client {
   student     User             @relation(fields: [studentId], references: [id])
   name        String
   email       String
+  // For a coach-as-coachee, points at the coach's own User (they take tests
+  // logged-in). null for normal coachees (no login, magic-link only).
+  userId      String?          @unique
+  user        User?            @relation("CoachAsCoachee", fields: [userId], references: [id])
   assignments TestAssignment[]
   sessions    SessionRecord[]
   createdAt   DateTime         @default(now())

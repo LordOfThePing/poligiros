@@ -4,14 +4,25 @@ import bcrypt from "bcryptjs"
 const prisma = new PrismaClient()
 
 async function main() {
-  // 1. Supervisor
+  // ── 0. Wipe everything (children → parents) for a clean reseed ─────────────
+  await prisma.supervisionRequest.deleteMany()
+  await prisma.testResponse.deleteMany()
+  await prisma.testAssignment.deleteMany()
+  await prisma.sessionRecord.deleteMany()
+  await prisma.moduleProgress.deleteMany()
+  await prisma.material.deleteMany()
+  await prisma.enrollment.deleteMany()
+  await prisma.client.deleteMany()
+  await prisma.module.deleteMany()
+  await prisma.cohort.deleteMany()
+  await prisma.test.deleteMany()
+  await prisma.user.deleteMany()
+
+  // ── 1. Supervisor (Gaby) ───────────────────────────────────────────────────
   const supervisorEmail = process.env.SUPERVISOR_EMAIL || "gaby@poligiros.com"
   const supervisorPassword = process.env.SUPERVISOR_PASSWORD || "supervisor123"
-
-  await prisma.user.upsert({
-    where: { email: supervisorEmail },
-    update: {},
-    create: {
+  const gaby = await prisma.user.create({
+    data: {
       email: supervisorEmail,
       name: "Gabriela Kyriazis",
       password: await bcrypt.hash(supervisorPassword, 12),
@@ -19,119 +30,50 @@ async function main() {
     },
   })
 
-  // 2. Four Tests
-  const tests = [
-    {
-      type: TestType.ANCLAS_CARRERA,
-      title: "Test de Anclas de Carrera",
-      description: "Identificá tus anclas de carrera según la metodología de Edgar Schein.",
-      orderIndex: 1,
-    },
-    {
-      type: TestType.TABLERO_IDEAS,
-      title: "Tablero de Ideas",
-      description: "Explorá tus saberes, deseos y aspiraciones para generar nuevas ideas profesionales.",
-      orderIndex: 2,
-    },
-    {
-      type: TestType.PLAN_VITAL,
-      title: "Plan Vital Integral®",
-      description: "Próximamente disponible.",
-      orderIndex: 3,
-    },
-    {
-      type: TestType.PIRAMIDE_PROPOSITO,
-      title: "Pirámide del Propósito",
-      description: "Construí tu propósito profesional de forma estructurada.",
-      orderIndex: 4,
-    },
+  // ── 2. Four Tests ──────────────────────────────────────────────────────────
+  await prisma.test.createMany({
+    data: [
+      { type: TestType.ANCLAS_CARRERA, title: "Test de Anclas de Carrera", description: "Identificá tus anclas de carrera según la metodología de Edgar Schein.", orderIndex: 1 },
+      { type: TestType.TABLERO_IDEAS, title: "Tablero de Ideas", description: "Explorá tus saberes, deseos y aspiraciones para generar nuevas ideas profesionales.", orderIndex: 2 },
+      { type: TestType.PLAN_VITAL, title: "Plan Vital Integral®", description: "Próximamente disponible.", orderIndex: 3 },
+      { type: TestType.PIRAMIDE_PROPOSITO, title: "Pirámide del Propósito", description: "Construí tu propósito profesional de forma estructurada.", orderIndex: 4 },
+    ],
+  })
+
+  // ── 3. Active cohort ───────────────────────────────────────────────────────
+  const cohort = await prisma.cohort.create({
+    data: { name: "Cohorte Demo", startDate: new Date("2025-01-01"), active: true },
+  })
+
+  // ── 4. Five generic coaches, each with a coach-as-coachee Client owned by Gaby ─
+  // Gaby is the coach of the coaches: they take tests logged-in, and their
+  // assignments live on a Client record whose `userId` points back at them.
+  const coachPassword = process.env.COACH_PASSWORD || "coach123"
+  const coachHash = await bcrypt.hash(coachPassword, 12)
+  const coaches = [
+    { name: "Juan", email: "juan@poligiros.com" },
+    { name: "María", email: "maria@poligiros.com" },
+    { name: "Carlos", email: "carlos@poligiros.com" },
+    { name: "Sofía", email: "sofia@poligiros.com" },
+    { name: "Diego", email: "diego@poligiros.com" },
   ]
 
-  for (const test of tests) {
-    await prisma.test.upsert({
-      where: { type: test.type },
-      update: {},
-      create: test,
+  for (const c of coaches) {
+    const coach = await prisma.user.create({
+      data: { email: c.email, name: c.name, password: coachHash, role: Role.STUDENT_COACH },
+    })
+    await prisma.enrollment.create({ data: { userId: coach.id, cohortId: cohort.id } })
+    // Coach-as-coachee: owned by Gaby, linked to the coach's own User.
+    await prisma.client.create({
+      data: { studentId: gaby.id, userId: coach.id, name: c.name, email: c.email },
     })
   }
 
-  // 3. Active Cohort
-  const cohort = await prisma.cohort.upsert({
-    where: { id: "cohort-demo" },
-    update: {},
-    create: {
-      id: "cohort-demo",
-      name: "Cohorte Demo",
-      startDate: new Date("2025-01-01"),
-      active: true,
-    },
-  })
-
-  // 4. Two Student Coaches
-  const student1 = await prisma.user.upsert({
-    where: { email: "alumna1@demo.com" },
-    update: {},
-    create: {
-      email: "alumna1@demo.com",
-      name: "Ana García",
-      password: await bcrypt.hash("alumna123", 12),
-      role: Role.STUDENT_COACH,
-    },
-  })
-
-  const student2 = await prisma.user.upsert({
-    where: { email: "alumna2@demo.com" },
-    update: {},
-    create: {
-      email: "alumna2@demo.com",
-      name: "Laura Martínez",
-      password: await bcrypt.hash("alumna123", 12),
-      role: Role.STUDENT_COACH,
-    },
-  })
-
-  // Enroll students in cohort
-  await prisma.enrollment.upsert({
-    where: { userId_cohortId: { userId: student1.id, cohortId: cohort.id } },
-    update: {},
-    create: { userId: student1.id, cohortId: cohort.id },
-  })
-
-  await prisma.enrollment.upsert({
-    where: { userId_cohortId: { userId: student2.id, cohortId: cohort.id } },
-    update: {},
-    create: { userId: student2.id, cohortId: cohort.id },
-  })
-
-  // 5. Two plain Client records (no linked user accounts — A1 magic-link model)
-  await prisma.client.upsert({
-    where: { id: "client-demo-1" },
-    update: {},
-    create: {
-      id: "client-demo-1",
-      studentId: student1.id,
-      name: "Carlos López",
-      email: "cliente1@demo.com",
-    },
-  })
-
-  await prisma.client.upsert({
-    where: { id: "client-demo-2" },
-    update: {},
-    create: {
-      id: "client-demo-2",
-      studentId: student2.id,
-      name: "María Fernández",
-      email: "cliente2@demo.com",
-    },
-  })
-
   console.log("✅ Seed completado:")
   console.log(`   Supervisor: ${supervisorEmail} / ${supervisorPassword}`)
-  console.log("   Student 1:  alumna1@demo.com / alumna123")
-  console.log("   Student 2:  alumna2@demo.com / alumna123")
-  console.log("   Client 1:   Carlos López (no login — magic-link only)")
-  console.log("   Client 2:   María Fernández (no login — magic-link only)")
+  for (const c of coaches) {
+    console.log(`   Coach:      ${c.email} / ${coachPassword}  (${c.name})`)
+  }
 }
 
 main()
