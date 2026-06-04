@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import { BookOpen, Users, ClipboardCheck, FileText, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ProfileBanner } from "@/components/ProfileBanner"
 
 const links = [
   { href: "/student/programa", label: "Mi Programa", icon: BookOpen },
@@ -19,7 +20,7 @@ export function StudentSidebar() {
     <aside className="w-64 shrink-0 bg-white border-r border-border flex flex-col h-full">
       <div className="p-6 border-b border-border">
         <h1 className="font-serif text-2xl text-brand-accent">Poligiros</h1>
-        <p className="text-xs text-muted-foreground mt-1">Student Coach</p>
+        <p className="text-xs text-muted-foreground mt-1">Coach</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -40,7 +41,8 @@ export function StudentSidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-2">
+        <ProfileBanner />
         <Button
           variant="ghost"
           className="w-full justify-start text-muted-foreground hover:text-foreground gap-3"

@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ProfileBanner } from "@/components/ProfileBanner"
 
 const links = [
   { href: "/supervisor/panel", label: "Panel", icon: LayoutDashboard },
@@ -50,7 +51,8 @@ export function SupervisorSidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-2">
+        <ProfileBanner />
         <Button
           variant="ghost"
           className="w-full justify-start text-muted-foreground hover:text-foreground gap-3"

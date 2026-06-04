@@ -26,6 +26,40 @@
     --input: 40 10% 88%;
     --ring: 151 41% 30%;
     --radius: 0.5rem;
+
+    /* Brand palette (space-separated RGB) — default = SUPERVISOR (forest green).
+       bg/surface stay constant across roles; accent/secondary swap by data-role. */
+    --brand-bg: 247 245 240;
+    --brand-surface: 255 255 255;
+    --brand-accent: 45 106 79;
+    --brand-accent-dark: 30 77 56;
+    --brand-accent-light: 74 138 106;
+    --brand-secondary: 181 131 90;
+    --brand-secondary-dark: 139 98 66;
+  }
+
+  /* COACH — indigo */
+  html[data-role="STUDENT_COACH"] {
+    --primary: 243 75% 59%;
+    --ring: 243 75% 59%;
+    --secondary: 215 16% 47%;
+    --brand-accent: 79 70 229;
+    --brand-accent-dark: 67 56 202;
+    --brand-accent-light: 129 140 248;
+    --brand-secondary: 100 116 139;
+    --brand-secondary-dark: 71 85 105;
+  }
+
+  /* COACHEE (token flow) — terracotta */
+  html[data-role="COACHEE"] {
+    --primary: 20 51% 53%;
+    --ring: 20 51% 53%;
+    --secondary: 86 19% 51%;
+    --brand-accent: 194 114 74;
+    --brand-accent-dark: 154 86 52;
+    --brand-accent-light: 212 150 116;
+    --brand-secondary: 138 157 105;
+    --brand-secondary-dark: 106 124 80;
   }
 
   * {

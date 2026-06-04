@@ -17,13 +17,15 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          bg: "#F7F5F0",
-          surface: "#FFFFFF",
-          accent: "#2D6A4F",
-          "accent-dark": "#1E4D38",
-          "accent-light": "#4A8A6A",
-          secondary: "#B5835A",
-          "secondary-dark": "#8B6242",
+          // CSS-variable-backed so the palette can be swapped per role via a
+          // data-role attribute on <html> (see index.css). Space-separated RGB.
+          bg: "rgb(var(--brand-bg) / <alpha-value>)",
+          surface: "rgb(var(--brand-surface) / <alpha-value>)",
+          accent: "rgb(var(--brand-accent) / <alpha-value>)",
+          "accent-dark": "rgb(var(--brand-accent-dark) / <alpha-value>)",
+          "accent-light": "rgb(var(--brand-accent-light) / <alpha-value>)",
+          secondary: "rgb(var(--brand-secondary) / <alpha-value>)",
+          "secondary-dark": "rgb(var(--brand-secondary-dark) / <alpha-value>)",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

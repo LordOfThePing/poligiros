@@ -25,6 +25,16 @@ export default function TokenPage() {
   const { token } = useParams<{ token: string }>()
   const [data, setData] = useState<TokenState>({ state: "loading" })
 
+  // The coachee (token) flow gets its own terracotta theme.
+  useEffect(() => {
+    document.documentElement.dataset.role = "COACHEE"
+    return () => {
+      if (document.documentElement.dataset.role === "COACHEE") {
+        delete document.documentElement.dataset.role
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (!token) return
     fetch(`${API_URL}/client/t/${token}`, { credentials: "include" })

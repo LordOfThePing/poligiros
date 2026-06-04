@@ -34,6 +34,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // Drive the role-based color theme via data-role on <html>. When logged out,
+  // clear it (default green) — but never clobber the COACHEE theme that the
+  // public token page sets for itself.
+  useEffect(() => {
+    const el = document.documentElement
+    if (user) el.dataset.role = user.role
+    else if (el.dataset.role !== "COACHEE") delete el.dataset.role
+  }, [user])
+
   async function login(email: string, password: string) {
     const res = await api("/auth/login", {
       method: "POST",
