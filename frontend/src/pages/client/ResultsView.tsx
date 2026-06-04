@@ -80,14 +80,48 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
               </div>
             )
           })}
-          {Boolean(responses.brainstorming) && (
-            <div>
-              <p className="text-sm font-medium mb-2">Brainstorming:</p>
-              <p className="text-sm text-muted-foreground bg-white rounded border border-border px-4 py-3 whitespace-pre-wrap">
-                {responses.brainstorming as string}
-              </p>
-            </div>
-          )}
+          {(() => {
+            const ideas = (responses.brainstormIdeas as string[] | undefined)?.filter(Boolean) ?? []
+            const ai = (responses.aiIdeas as string[] | undefined)?.filter(Boolean) ?? []
+            const selected = responses.selectedIdea as string | undefined
+            const legacy = responses.brainstorming as string | undefined
+            return (
+              <>
+                {ideas.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Tus ideas:</p>
+                    <ol className="space-y-1 list-decimal list-inside">
+                      {ideas.map((v, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">{v}</li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                {ai.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Ideas sugeridas por IA:</p>
+                    <ul className="space-y-1">
+                      {ai.map((v, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">✨ {v}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {selected && (
+                  <div className="bg-brand-accent/5 border border-brand-accent/20 rounded-xl p-4">
+                    <p className="text-xs font-medium text-brand-accent mb-1">Idea elegida para desarrollar</p>
+                    <p className="text-sm text-foreground">{selected}</p>
+                  </div>
+                )}
+                {legacy && ideas.length === 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Brainstorming:</p>
+                    <p className="text-sm text-muted-foreground bg-white rounded border border-border px-4 py-3 whitespace-pre-wrap">{legacy}</p>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
 

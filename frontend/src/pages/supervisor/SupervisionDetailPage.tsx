@@ -59,7 +59,33 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
             </ul>
           </div>
         ))}
-        {responses.brainstorming && (
+        {Array.isArray(responses.brainstormIdeas) && responses.brainstormIdeas.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-1">Ideas (brainstorming):</p>
+            <ol className="space-y-1 list-decimal list-inside">
+              {(responses.brainstormIdeas as string[]).map((v: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground">{v}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+        {Array.isArray(responses.aiIdeas) && responses.aiIdeas.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-1">Ideas sugeridas por IA:</p>
+            <ul className="space-y-1">
+              {(responses.aiIdeas as string[]).map((v: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground">✨ {v}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {responses.selectedIdea && (
+          <div className="bg-brand-accent/5 border border-brand-accent/20 rounded-lg p-3">
+            <p className="text-xs font-medium text-brand-accent mb-0.5">Idea elegida para desarrollar</p>
+            <p className="text-sm">{responses.selectedIdea}</p>
+          </div>
+        )}
+        {responses.brainstorming && !responses.brainstormIdeas && (
           <div>
             <p className="text-sm font-medium mb-1">Brainstorming:</p>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{responses.brainstorming}</p>

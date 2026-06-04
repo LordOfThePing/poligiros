@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
@@ -73,6 +72,14 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
   const [sonarRank, setSonarRank] = useState<RankItem[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+
+  // ── Step 3 (F4-F6): brainstorming idea cards → AI cards → pick one ──────────
+  const [ideaCards, setIdeaCards] = useState<RankItem[]>([]) // user's own, ordered
+  const [newIdea, setNewIdea] = useState("")
+  const [aiIdeas, setAiIdeas] = useState<string[]>([]) // AI-generated (after the user's)
+  const [ideasGenerated, setIdeasGenerated] = useState(false)
+  const [loadingIdeas, setLoadingIdeas] = useState(false)
+  const [selectedIdea, setSelectedIdea] = useState<string | null>(null) // the chosen one
 
   // [T6] Draft load with old-format migration. The draft only persists the
   // step-1 string columns + brainstorming, so old-format drafts load cleanly —
@@ -157,9 +164,41 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  // ── Step 3 helpers (idea cards + AI) ────────────────────────────────────────
+  function addIdea() {
+    const t = newIdea.trim()
+    if (!t) return
+    setIdeaCards((prev) => [...prev, { id: uid(), text: t }])
+    setNewIdea("")
+  }
+  function removeIdea(id: string, text: string) {
+    setIdeaCards((prev) => prev.filter((x) => x.id !== id))
+    if (selectedIdea === text) setSelectedIdea(null)
+  }
+  // F5: AI cards only after the user created (and could order) their own.
+  async function generateAiIdeas() {
+    if (ideaCards.length === 0) return
+    setLoadingIdeas(true)
+    try {
+      const { ideas } = await api.aiIdeas({
+        saber: saberItems.map((i) => i.text),
+        querer: quererItems.map((i) => i.text),
+        sonar: sonarItems.map((i) => i.text),
+        brainstormIdeas: ideaCards.map((i) => i.text),
+      })
+      setAiIdeas(ideas)
+      setIdeasGenerated(true)
+      if (ideas.length === 0) {
+        toast({ title: "No se pudieron generar ideas con IA — seguí con las tuyas" })
+      }
+    } finally {
+      setLoadingIdeas(false)
+    }
+  }
+
   async function handleSubmit() {
-    if (!brainstorming.trim()) {
-      toast({ title: "Escribí al menos una idea en el brainstorming antes de enviar", variant: "destructive" })
+    if (!selectedIdea) {
+      toast({ title: "Elegí una idea para desarrollar antes de finalizar", variant: "destructive" })
       return
     }
     setSaving(true)
@@ -171,7 +210,9 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
       quererRanking: quererRank.map((i) => i.text),
       sonar: sonarItems.map((i) => i.text),
       sonarRanking: sonarRank.map((i) => i.text),
-      brainstorming,
+      brainstormIdeas: ideaCards.map((i) => i.text), // user's, ordered
+      aiIdeas, // AI-generated
+      selectedIdea, // the idea chosen to develop
     }
 
     try {
@@ -362,10 +403,10 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
         </>
       )}
 
-      {/* ── Step 3: brainstorming with ranked reference ── */}
+      {/* ── Step 3: idea cards → AI cards → pick one to develop ── */}
       {step === 3 && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-[35%_1fr] gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-[32%_1fr] gap-6">
             <aside className="space-y-4 md:sticky md:top-4 md:self-start">
               <p className="font-serif text-lg text-foreground">Conectando datos →</p>
               <RankedChips title="Mis apasionantes (SABER)" items={saberRank} chip="bg-brand-accent/10 text-brand-accent" />
@@ -373,28 +414,110 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
               <RankedChips title="Mis aspiraciones (SOÑAR)" items={sonarRank} chip="bg-indigo-100 text-indigo-700" />
             </aside>
 
-            <div className="space-y-3">
+            <div className="space-y-5">
               <div className="bg-gray-800 text-white rounded-lg px-4 py-3">
                 <h2 className="font-serif text-lg font-medium">BRAINSTORMING: Conectando Datos</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                A partir de unir, mezclar los datos de las tres columnas, escribí todas las posibilidades que se te ocurren:
-                nuevas ideas de negocio, trabajos, ocupaciones, proyectos laborales que te resultan atractivos. No descartes
-                ninguna posibilidad por considerarla difícil o inviable.
+                Uniendo y mezclando los datos de las tres columnas, anotá cada posibilidad como una tarjeta:
+                ideas de negocio, trabajos, ocupaciones o proyectos. Ordenalas de más a menos atractiva.
+                Después podés sumar ideas generadas por IA. Al final, elegí <strong>una</strong> para desarrollar.
               </p>
-              <Textarea
-                value={brainstorming}
-                onChange={(e) => setBrainstorming(e.target.value)}
-                placeholder="Escribí todas tus ideas aquí..."
-                className="min-h-[240px] text-sm"
-              />
+
+              {/* Your idea cards */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tus ideas</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={newIdea}
+                    onChange={(e) => setNewIdea(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addIdea() } }}
+                    placeholder="Ej: Estudio de diseño para pymes"
+                    className="text-sm"
+                  />
+                  <Button variant="outline" onClick={addIdea} className="shrink-0">
+                    <Plus className="h-3 w-3 mr-1" /> Agregar
+                  </Button>
+                </div>
+                {ideaCards.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Agregá al menos una idea para continuar.</p>
+                ) : (
+                  <SortableList
+                    items={ideaCards}
+                    onReorder={setIdeaCards}
+                    renderItem={(item, index) => (
+                      <div
+                        onClick={() => setSelectedIdea(item.text)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors",
+                          selectedIdea === item.text
+                            ? "border-brand-accent bg-brand-accent/10"
+                            : "border-border bg-white hover:border-brand-accent/50"
+                        )}
+                      >
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-xs text-white shrink-0">{index + 1}</span>
+                        <span className="flex-1">{item.text}</span>
+                        {selectedIdea === item.text && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeIdea(item.id, item.text) }}
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                          aria-label="Quitar"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  />
+                )}
+              </div>
+
+              {/* AI ideas — only after the user has created their own */}
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={generateAiIdeas}
+                  disabled={ideaCards.length === 0 || loadingIdeas}
+                  className="w-full"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {loadingIdeas ? "Generando ideas..." : ideasGenerated ? "Volver a generar con IA" : "Generar ideas con IA"}
+                </Button>
+                {ideasGenerated && aiIdeas.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ideas sugeridas por IA</p>
+                    {aiIdeas.map((idea, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setSelectedIdea(idea)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm cursor-pointer transition-colors",
+                          selectedIdea === idea
+                            ? "border-brand-accent bg-brand-accent/10"
+                            : "border-brand-accent/40 bg-brand-accent/[0.03] hover:bg-brand-accent/10"
+                        )}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />
+                        <span className="flex-1">{idea}</span>
+                        {selectedIdea === idea && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {selectedIdea && (
+                <p className="text-sm text-foreground bg-brand-accent/5 border border-brand-accent/20 rounded-lg px-3 py-2">
+                  Vas a desarrollar: <strong>{selectedIdea}</strong>
+                </p>
+              )}
             </div>
           </div>
 
           <StepBar step={step} pct={stepPct}>
             <Button variant="outline" onClick={() => setStep(2)}>← Atrás</Button>
-            <Button onClick={handleSubmit} disabled={saving || !brainstorming.trim()} className="bg-brand-accent hover:bg-brand-accent-dark flex-1">
-              {saving ? "Enviando..." : "Enviar tablero"}
+            <Button onClick={handleSubmit} disabled={saving || !selectedIdea} className="bg-brand-accent hover:bg-brand-accent-dark flex-1">
+              {saving ? "Enviando..." : "Finalizar test"}
             </Button>
           </StepBar>
         </>
