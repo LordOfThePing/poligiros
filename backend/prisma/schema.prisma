@@ -28,9 +28,18 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  password  String
+  password  String? // null until the invited coach registers (invite-only)
   role      Role     @default(STUDENT_COACH)
   createdAt DateTime @default(now())
+
+  // Invite-only registration (pending until the coach sets a password)
+  inviteToken     String?   @unique
+  inviteExpiresAt DateTime?
+
+  // Coach profile (filled by the coach at registration)
+  phone        String?
+  especialidad String?
+  bio          String?
 
   clients             Client[]
   coacheeProfile      Client?              @relation("CoachAsCoachee")

@@ -45,6 +45,16 @@ export default function AlumnoDetailPage() {
     loadCoachTests()
   }, [id])
 
+  async function handleResendInvite() {
+    try {
+      const res = await apiPost<{ link: string }>(`/supervisor/coaches/${id}/resend-invite`, {})
+      await navigator.clipboard.writeText(res.link).catch(() => {})
+      toast({ title: "Nuevo enlace copiado al portapapeles" })
+    } catch {
+      toast({ title: "No se pudo reenviar la invitación", variant: "destructive" })
+    }
+  }
+
   async function handleAssignToCoach(testId: string) {
     setAssigning(testId)
     try {
@@ -66,10 +76,18 @@ export default function AlumnoDetailPage() {
         <Link to="/supervisor/alumnos" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div>
-          <h1 className="font-serif text-3xl text-foreground">{student.name}</h1>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="font-serif text-3xl text-foreground">{student.name}</h1>
+            {student.pending && <Badge variant="secondary" className="text-xs">Pendiente</Badge>}
+          </div>
           <p className="text-muted-foreground text-sm">{student.email}</p>
         </div>
+        {student.pending && (
+          <Button variant="outline" size="sm" onClick={handleResendInvite}>
+            Reenviar invitación
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">

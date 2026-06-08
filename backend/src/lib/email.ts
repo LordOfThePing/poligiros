@@ -42,6 +42,20 @@ export async function sendSupervisionReviewedEmail(
   })
 }
 
+export async function sendCoachInviteEmail(coachEmail: string, name: string, link: string) {
+  await resend.emails.send({
+    from: FROM,
+    to: coachEmail,
+    subject: "Te invitaron a Poligiros",
+    html: `
+      <p>Hola ${name || ""},</p>
+      <p>Gaby te invitó a sumarte a su programa de coaching en Poligiros.</p>
+      <p>Completá tu registro desde este enlace: <a href="${link}">${link}</a></p>
+      <p>El enlace vence en 7 días.</p>
+    `,
+  })
+}
+
 export async function sendSessionRecordedEmail(
   supervisorEmail: string,
   studentName: string,

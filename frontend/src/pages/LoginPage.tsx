@@ -33,8 +33,13 @@ export default function LoginPage() {
     try {
       await login(email, password)
       navigate(callbackUrl)
-    } catch {
-      setError("Email o contraseña incorrectos")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ""
+      setError(
+        msg === "user_not_activated"
+          ? "Tu cuenta aún no fue activada. Usá el enlace de invitación que te enviaron para registrarte."
+          : "Email o contraseña incorrectos"
+      )
       setLoading(false)
     }
   }

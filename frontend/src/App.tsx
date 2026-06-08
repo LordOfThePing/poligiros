@@ -6,6 +6,7 @@ import { StudentSidebar } from "@/components/student/Sidebar"
 
 // Pages - public
 import LoginPage from "@/pages/LoginPage"
+import RegisterPage from "@/pages/RegisterPage"
 import TokenPage from "@/pages/client/TokenPage"
 
 // Pages - supervisor
@@ -62,6 +63,7 @@ export default function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/invite/:token" element={<RegisterPage />} />
           <Route path="/t/:token" element={<TokenPage />} />
 
           {/* Supervisor routes */}

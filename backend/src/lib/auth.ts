@@ -40,7 +40,7 @@ export async function loginUser(
 ): Promise<JWTPayload | null> {
   const { prisma } = await import("./prisma.js")
   const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) return null
+  if (!user || !user.password) return null // null password = pending invite
 
   const match = await bcrypt.compare(password, user.password)
   if (!match) return null

@@ -69,8 +69,24 @@ async function main() {
     })
   }
 
+  // ── Gaby also as a COACH (separate account) → Pedro coachee ─────────────────
+  // Demonstrates the full chain: Gaby (supervisor) → Gaby (coach) → Pedro.
+  const gabyCoach = await prisma.user.create({
+    data: { email: "gaby.coach@poligiros.com", name: "Gaby (Coach)", password: coachHash, role: Role.STUDENT_COACH },
+  })
+  await prisma.enrollment.create({ data: { userId: gabyCoach.id, cohortId: cohort.id } })
+  // Coach-as-coachee for Gaby-coach, owned by Gaby-supervisor.
+  await prisma.client.create({
+    data: { studentId: gaby.id, userId: gabyCoach.id, name: "Gaby (Coach)", email: "gaby.coach@poligiros.com" },
+  })
+  // Pedro: a real coachee (no login) owned by the Gaby-coach.
+  await prisma.client.create({
+    data: { studentId: gabyCoach.id, name: "Pedro", email: "pedro@demo.com" },
+  })
+
   console.log("✅ Seed completado:")
   console.log(`   Supervisor: ${supervisorEmail} / ${supervisorPassword}`)
+  console.log(`   Gaby-coach: gaby.coach@poligiros.com / ${coachPassword}  (→ coachee Pedro)`)
   for (const c of coaches) {
     console.log(`   Coach:      ${c.email} / ${coachPassword}  (${c.name})`)
   }

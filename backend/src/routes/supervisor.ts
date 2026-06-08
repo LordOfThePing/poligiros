@@ -1,7 +1,8 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/prisma.js"
 import { uploadToR2 } from "../lib/r2.js"
-import { sendSupervisionReviewedEmail } from "../lib/email.js"
+import { sendSupervisionReviewedEmail, sendCoachInviteEmail } from "../lib/email.js"
+import { randomBytes } from "node:crypto"
 import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
@@ -129,6 +130,7 @@ supervisor.get("/students", async (c) => {
       clientCount: s.clients.length,
       testsSubmitted: completedTests,
       modulesCompleted: s.moduleProgress.length,
+      pending: s.password === null, // invited but not yet registered
       lastActivity:
         s.sessionRecords[0]?.createdAt ??
         s.enrollments[0]?.enrolledAt ??
@@ -175,7 +177,9 @@ supervisor.get("/students/:id", async (c) => {
   })
 
   if (!student) return c.json({ error: "Not found" }, 404)
-  return c.json(student)
+  // Never leak the password hash / invite token; expose a `pending` flag instead.
+  const { password, inviteToken, ...safe } = student
+  return c.json({ ...safe, pending: password === null })
 })
 
 /* ─────────────────────────────────────────
@@ -466,6 +470,55 @@ supervisor.post("/coaches/:userId/assign", async (c) => {
     include: { test: true, response: true },
   })
   return c.json(assignment, 201)
+})
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const inviteLink = (token: string) =>
+  `${process.env.FRONTEND_URL || "http://localhost:5173"}/invite/${token}`
+
+/** POST /supervisor/coaches/invite — create a pending coach + invite link. */
+supervisor.post("/coaches/invite", async (c) => {
+  const supervisorUser = c.get("user")
+  const { email, name, cohortId } = await c.req.json()
+  if (!email || !name) return c.json({ error: "Nombre y email requeridos" }, 400)
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) return c.json({ error: "Ya existe un usuario con ese email" }, 400)
+
+  const inviteToken = randomBytes(32).toString("base64url")
+  const inviteExpiresAt = new Date(Date.now() + INVITE_TTL_MS)
+
+  const coach = await prisma.user.create({
+    data: { email, name, role: "STUDENT_COACH", password: null, inviteToken, inviteExpiresAt },
+  })
+  if (cohortId) {
+    await prisma.enrollment.create({ data: { userId: coach.id, cohortId } }).catch(() => {})
+  }
+  // Coach-as-coachee Client (so the coach can take tests later), owned by the supervisor.
+  await prisma.client.create({
+    data: { studentId: supervisorUser.id, userId: coach.id, name, email },
+  })
+
+  const link = inviteLink(inviteToken)
+  sendCoachInviteEmail(email, name, link).catch(() => {})
+  return c.json({ coach: { id: coach.id, name, email }, link }, 201)
+})
+
+/** POST /supervisor/coaches/:userId/resend-invite — regenerate the link. */
+supervisor.post("/coaches/:userId/resend-invite", async (c) => {
+  const userId = c.req.param("userId")
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) return c.json({ error: "Not found" }, 404)
+  if (user.password) return c.json({ error: "El coach ya está registrado" }, 400)
+
+  const inviteToken = randomBytes(32).toString("base64url")
+  await prisma.user.update({
+    where: { id: userId },
+    data: { inviteToken, inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+  })
+  const link = inviteLink(inviteToken)
+  sendCoachInviteEmail(user.email, user.name, link).catch(() => {})
+  return c.json({ link })
 })
 
 export default supervisor

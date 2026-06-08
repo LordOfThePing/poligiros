@@ -11,10 +11,19 @@ export interface AuthUser {
   role: Role
 }
 
+export interface RegisterData {
+  name: string
+  password: string
+  phone?: string
+  especialidad?: string
+  bio?: string
+}
+
 interface AuthContextType {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  register: (token: string, data: RegisterData) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -48,11 +57,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ email, password }),
     })
-    if (!res.ok) throw new Error("Login failed")
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || "login_failed")
+    }
 
     const meRes = await api("/auth/me")
     if (!meRes.ok) throw new Error("Session hydration failed")
     setUser((await meRes.json()) as AuthUser)
+  }
+
+  async function register(token: string, data: RegisterData) {
+    const res = await api(`/auth/register/${token}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || "register_failed")
+    }
+    const { user } = await res.json()
+    setUser(user as AuthUser)
   }
 
   async function logout() {
@@ -65,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )
