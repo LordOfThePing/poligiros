@@ -18,7 +18,7 @@ interface ResultsViewProps {
 
 const ANCHOR_NAMES: Record<string, string> = {
   TF: "Técnico/Funcional", GG: "Gerencia General", AU: "Autonomía",
-  SE: "Seguridad/Estabilidad", CE: "Creativo-Empresario", SC: "Servicio a la Causa",
+  SE: "Seguridad/Estabilidad", CE: "Creativo-Emprendedor", SC: "Servicio a la Causa",
   PD: "Puro Desafío", EV: "Estilo de Vida",
 }
 
@@ -49,7 +49,7 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
                     </span>
                   ))}
                 </div>
-                <span className="font-medium text-brand-accent shrink-0">{group.score}/6</span>
+                <span className="font-medium text-brand-accent shrink-0">{group.score}</span>
               </div>
             ))}
           </div>

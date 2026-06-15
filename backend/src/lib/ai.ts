@@ -11,7 +11,7 @@ const ANCHOR_NAMES: Record<string, string> = {
   GG: "Gerencia General",
   AU: "Autonomía",
   SE: "Seguridad/Estabilidad",
-  CE: "Creativo-Empresario",
+  CE: "Creativo-Emprendedor",
   SC: "Servicio a la Causa",
   PD: "Puro Desafío",
   EV: "Estilo de Vida",

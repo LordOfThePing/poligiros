@@ -68,7 +68,7 @@ const ANCHOR_INFO: Record<string, { name: string; description: string; icon: str
   GG: { name: "Gerencia General", icon: "🏢", description: "Te motiva liderar organizaciones complejas, integrar personas y tomar decisiones de alto impacto." },
   AU: { name: "Autonomía", icon: "🦅", description: "Valorás la libertad de trabajar a tu manera. La autonomía es innegociable para vos." },
   SE: { name: "Seguridad/Estabilidad", icon: "⚓", description: "Priorizás entornos predecibles y seguros. La estabilidad te permite dar lo mejor de vos." },
-  CE: { name: "Creativo-Empresario", icon: "🚀", description: "Te impulsa crear algo propio. Encontrás satisfacción en construir desde cero." },
+  CE: { name: "Creativo-Emprendedor", icon: "🚀", description: "Te impulsa crear algo propio. Encontrás satisfacción en construir desde cero." },
   SC: { name: "Servicio a la Causa", icon: "🌿", description: "El propósito y el impacto en otros son centrales. Querés que tu trabajo tenga significado mayor." },
   PD: { name: "Puro Desafío", icon: "⚡", description: "Los problemas complejos te energizan. Necesitás un trabajo que desafíe constantemente tus capacidades." },
   EV: { name: "Estilo de Vida", icon: "⚖️", description: "Buscás integrar armoniosamente lo profesional y lo personal. Tu bienestar integral no es negociable." },
@@ -405,6 +405,9 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   }
 
   // ─── Step 3: Results ───────────────────────────────────────────────────────
+  // The average can exceed 6 (bonus items add +4), so bars scale to the top
+  // anchor rather than to a fixed /6 max.
+  const topScore = Math.max(...Object.values(scores), 1)
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
@@ -434,7 +437,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
                 )}>
                   {group.anchors.map((anchor) => {
                     const info = ANCHOR_INFO[anchor]
-                    const barWidth = (scores[anchor] / 6) * 100
+                    const barWidth = (scores[anchor] / topScore) * 100
                     return (
                       <div key={anchor} className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -448,7 +451,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
                         <div className="mt-3 space-y-1">
                           <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Puntuación</span>
-                            <span className="font-medium text-foreground">{scores[anchor]}/6</span>
+                            <span className="font-medium text-foreground">{scores[anchor]}</span>
                           </div>
                           <div className="h-2 rounded-full bg-muted overflow-hidden">
                             <div

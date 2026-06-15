@@ -15,7 +15,7 @@ import { RawDataView } from "@/components/RawDataView"
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
     TF: "Técnico/Funcional", GG: "Gerencia General", AU: "Autonomía",
-    SE: "Seguridad/Estabilidad", CE: "Creativo-Empresario", SC: "Servicio a la Causa",
+    SE: "Seguridad/Estabilidad", CE: "Creativo-Emprendedor", SC: "Servicio a la Causa",
     PD: "Puro Desafío", EV: "Estilo de Vida",
   }
 
@@ -31,7 +31,7 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
                 {group.anchors.map((a) => `${ANCHOR_NAMES[a]} (${a})`).join(" · ")}
                 {group.anchors.length > 1 && <span className="text-xs text-muted-foreground"> — empate</span>}
               </span>
-              <span className="font-medium shrink-0">{group.score}/6</span>
+              <span className="font-medium shrink-0">{group.score}</span>
             </div>
           ))}
         </div>
