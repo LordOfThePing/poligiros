@@ -435,12 +435,13 @@ student.put("/my-tests/:id/develop", async (c) => {
   const id = c.req.param("id")
   const assignment = await loadMyAssignment(user.id, id)
   if (!assignment) return c.json({ error: "Not found" }, 404)
-  const { kind, content } = await c.req.json()
+  const { kind, content, selectedIdea: bodyIdea } = await c.req.json()
   const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
-  const selectedIdea = (responses.selectedIdea ?? "") as string
+  const existing = await prisma.ideaDevelopment.findUnique({ where: { assignmentId: id } })
+  const selectedIdea = (bodyIdea ?? existing?.selectedIdea ?? responses.selectedIdea ?? "") as string
   const dev = await prisma.ideaDevelopment.upsert({
     where: { assignmentId: id },
-    update: { kind, content },
+    update: { kind, content, selectedIdea },
     create: { assignmentId: id, kind, content, selectedIdea },
   })
   return c.json(dev)

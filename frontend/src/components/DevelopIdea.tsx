@@ -1,25 +1,15 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Briefcase, Lightbulb, Save } from "lucide-react"
 import type { TestApi } from "@/lib/testApi"
+import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 
 // Post-test workspace (F7): the user develops the idea they chose in the Tablero.
 // The app is only the platform — all content is authored by the user, no AI.
 // Business idea → Business Model Canvas; job idea → a research workspace.
-
-const CANVAS_BLOCKS: { key: string; label: string }[] = [
-  { key: "sociosClave", label: "Socios clave" },
-  { key: "actividadesClave", label: "Actividades clave" },
-  { key: "recursosClave", label: "Recursos clave" },
-  { key: "propuestaValor", label: "Propuesta de valor" },
-  { key: "relacionClientes", label: "Relación con clientes" },
-  { key: "canales", label: "Canales" },
-  { key: "segmentos", label: "Segmentos de clientes" },
-  { key: "estructuraCostos", label: "Estructura de costos" },
-  { key: "fuentesIngresos", label: "Fuentes de ingresos" },
-]
 
 const JOB_FIELDS: { key: string; label: string; placeholder: string }[] = [
   { key: "roles", label: "Puestos / roles a investigar", placeholder: "Uno por línea..." },
@@ -52,20 +42,28 @@ export function DevelopIdea({ api }: { api: TestApi }) {
   async function save() {
     if (!kind) return
     setSaving(true)
-    const res = await api.saveDevelopment({ kind, content })
+    const res = await api.saveDevelopment({ kind, content, selectedIdea })
     setSaving(false)
     toast(res.ok ? { title: "Guardado" } : { title: "Error al guardar", variant: "destructive" })
   }
 
-  // No workspace until the test is done and an idea was chosen.
-  if (loading || !selectedIdea) return null
+  if (loading) return null
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-white p-5">
-      <div>
+      <div className="space-y-2">
         <h3 className="font-serif text-xl text-foreground">Desarrollá tu idea</h3>
-        <p className="text-sm text-muted-foreground">
-          Idea elegida: <strong>{selectedIdea}</strong>
+        <label className="block text-sm text-muted-foreground">
+          Idea a desarrollar
+          <Input
+            value={selectedIdea}
+            onChange={(e) => setSelectedIdea(e.target.value)}
+            placeholder="Escribí la idea que vas a desarrollar..."
+            className="mt-1 text-foreground"
+          />
+        </label>
+        <p className="text-xs text-muted-foreground">
+          Podés editarla si tu coach propuso cambios respecto a la elegida en el Tablero.
         </p>
       </div>
 
@@ -84,18 +82,7 @@ export function DevelopIdea({ api }: { api: TestApi }) {
       )}
 
       {kind === "CANVAS" && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {CANVAS_BLOCKS.map((b) => (
-            <div key={b.key}>
-              <p className="text-xs font-medium text-muted-foreground mb-1">{b.label}</p>
-              <Textarea
-                value={content[b.key] ?? ""}
-                onChange={(e) => set(b.key, e.target.value)}
-                className="text-sm min-h-[90px]"
-              />
-            </div>
-          ))}
-        </div>
+        <BusinessModelCanvas idea={selectedIdea} content={content} onChange={set} />
       )}
 
       {kind === "JOB" && (

@@ -85,4 +85,20 @@
   .sidebar-link-inactive {
     @apply text-muted-foreground hover:bg-muted hover:text-foreground;
   }
+
+  /* Business Model Canvas: mobile stacks; desktop uses the reference layout. */
+  .bmc-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.625rem;
+  }
+  @media (min-width: 1024px) {
+    .bmc-grid {
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-areas:
+        "socios actividades propuesta relaciones segmentos"
+        "socios recursos     propuesta canales    segmentos"
+        "costos costos       costos    ingresos   ingresos";
+    }
+  }
 }

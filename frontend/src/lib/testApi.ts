@@ -17,7 +17,7 @@ export interface TestApi {
   aiInsight(payload: unknown): Promise<{ insight: string | null }>
   aiIdeas(payload: unknown): Promise<{ ideas: string[] }>
   getDevelopment(): Promise<DevelopmentData>
-  saveDevelopment(data: { kind: string; content: unknown }): Promise<Response>
+  saveDevelopment(data: { kind: string; content: unknown; selectedIdea?: string }): Promise<Response>
 }
 
 function post(body: unknown): RequestInit {

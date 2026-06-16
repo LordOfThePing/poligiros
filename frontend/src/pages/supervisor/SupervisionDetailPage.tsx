@@ -12,6 +12,7 @@ import { api, apiJson, apiPost } from "@/lib/api"
 import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
 import { EditableResult } from "@/components/EditableResult"
+import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -217,6 +218,23 @@ export default function SupervisionDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Read-only view of the coachee's Business Model Canvas (post-Tablero). */}
+      {req.assignment?.test?.type === "TABLERO_IDEAS" &&
+        req.assignment?.development?.kind === "CANVAS" && (
+          <Card className="bg-white">
+            <CardHeader>
+              <CardTitle className="font-serif text-lg">Modelo de Negocios Canvas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BusinessModelCanvas
+                readOnly
+                idea={req.assignment.development.selectedIdea ?? ""}
+                content={(req.assignment.development.content ?? {}) as Record<string, string>}
+              />
+            </CardContent>
+          </Card>
+        )}
 
       <Card className="bg-white">
         <CardHeader>

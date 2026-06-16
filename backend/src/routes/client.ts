@@ -155,12 +155,15 @@ client.put("/t/:token/develop", async (c) => {
     include: { response: true },
   })
   if (!assignment) return c.json({ error: "invalid" }, 404)
-  const { kind, content } = await c.req.json()
+  const { kind, content, selectedIdea: bodyIdea } = await c.req.json()
   const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
-  const selectedIdea = (responses.selectedIdea ?? "") as string
+  const existing = await prisma.ideaDevelopment.findUnique({ where: { assignmentId: assignment.id } })
+  // The user can edit the idea in the workspace; fall back to the saved value,
+  // then to the Tablero's chosen idea when the body omits it.
+  const selectedIdea = (bodyIdea ?? existing?.selectedIdea ?? responses.selectedIdea ?? "") as string
   const dev = await prisma.ideaDevelopment.upsert({
     where: { assignmentId: assignment.id },
-    update: { kind, content },
+    update: { kind, content, selectedIdea },
     create: { assignmentId: assignment.id, kind, content, selectedIdea },
   })
   return c.json(dev)
