@@ -6,18 +6,10 @@
 // Strip any trailing slash so `${base}/submit` never becomes `//submit`.
 const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
-export interface DevelopmentData {
-  selectedIdea: string
-  kind: string | null
-  content: Record<string, unknown>
-}
-
 export interface TestApi {
   submit(responses: unknown): Promise<Response>
   aiInsight(payload: unknown): Promise<{ insight: string | null }>
   aiIdeas(payload: unknown): Promise<{ ideas: string[] }>
-  getDevelopment(): Promise<DevelopmentData>
-  saveDevelopment(data: { kind: string; content: unknown; selectedIdea?: string }): Promise<Response>
 }
 
 function post(body: unknown): RequestInit {
@@ -48,21 +40,6 @@ function makeApi(base: string): TestApi {
         return { ideas: [] }
       }
     },
-    getDevelopment: async () => {
-      try {
-        const res = await fetch(`${base}/develop`, { credentials: "include" })
-        return res.ok ? await res.json() : { selectedIdea: "", kind: null, content: {} }
-      } catch {
-        return { selectedIdea: "", kind: null, content: {} }
-      }
-    },
-    saveDevelopment: (data) =>
-      fetch(`${base}/develop`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }),
   }
 }
 

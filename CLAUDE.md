@@ -89,6 +89,15 @@ Supervisor reviews             →  SupervisionRequest (REVIEWED)
 `PLAN_VITAL` is a permanent placeholder — the assign route skips it.
 `POST /student/assignments/:id/resend` mints a fresh token + resets `completeBy`.
 
+`MODELO_NEGOCIO` ("Modelo de Negocio") is a normal assignable test like the others
+(its own catalog row + magic link), not a post-test add-on. Its form
+(`frontend/src/pages/client/tests/ModeloNegocioTest.tsx`) lets the client pick a
+**Canvas** (Business Model Canvas) or **JOB** (job research) mode and fill it in,
+then `submit`. The idea field **pre-fills from the client's latest completed
+Tablero** — the form-state endpoints return `prefillIdea` via `latestTableroIdea()`
+in `backend/src/routes/client.ts` (reused by `student.ts`), but it's freely
+editable. The canvas pages render at `max-w-6xl` (the rest stay `max-w-2xl`).
+
 **Feedback visibility:** `SupervisionRequest.supervisorNotes` is internal
 (supervisor↔coach). `SupervisionRequest.coachFeedback` is shown to the client on
 their results link. Do not surface `supervisorNotes` to clients.
@@ -101,12 +110,15 @@ different shape:
 | Test | Key fields in `responses` |
 |------|--------------------------|
 | `ANCLAS_CARRERA` | `rawAnswers[40]`, `bonusItems[3]`, `finalAnswers[40]`, `scores{TF,GG,AU,SE,CE,SC,PD,EV}`, `ranking[8]`, `aiInsight` |
-| `TABLERO_IDEAS` | `saber[]`, `saberPassion[]` (parallel bool), `saberRanking[]` (strings), `querer[]`, `quererRanking[]`, `sonar[]`, `sonarRanking[]`, `brainstorming` |
+| `TABLERO_IDEAS` | `saber[]`, `saberPassion[]` (parallel bool), `saberRanking[]` (strings), `querer[]`, `quererRanking[]`, `sonar[]`, `sonarRanking[]`, `brainstormIdeas[]`, `aiIdeas[]`, `selectedIdea` |
 | `PIRAMIDE_PROPOSITO` | `rol`, `valores`, `fortalezas`, `contextos`, `especialidad`, `propositoFinal` |
+| `MODELO_NEGOCIO` | `kind` (`"CANVAS"` \| `"JOB"`), `selectedIdea`, `content{}` (keyed by canvas-block or job-field key) |
 
 The supervisor's `ResponseViewer` (`frontend/src/pages/supervisor/SupervisionDetailPage.tsx`)
 branches on `testType`. The Tablero branch prefers the `*Ranking` arrays and
-falls back to the raw lists for legacy responses.
+falls back to the raw lists for legacy responses. The `MODELO_NEGOCIO` branch
+renders read-only via `ModeloNegocioResult` (same component used on the client's
+results page).
 
 ## Anclas de Carrera scoring
 
@@ -124,6 +136,28 @@ dynamic columns → mark passions + drag-rank (via `frontend/src/components/tabl
 → brainstorming. Rankings are stored as **strings** (not indices). Draft auto-saves
 the step-1 columns to `localStorage` (`tablero-ideas-draft-{assignmentId}`); the
 loader tolerates the old `{saber,querer,sonar,brainstorming}` format.
+
+## Modelo de Negocio — Business Model Canvas
+
+`frontend/src/components/canvas/` holds the canvas pieces, all driven by
+`canvasModel.ts` (the single source of truth):
+
+| File | Purpose |
+|------|---------|
+| `canvasModel.ts` | `CANVAS_BLOCKS` (key/label/guiding-question/tint/grid-area), `CANVAS_GRID_AREAS`, `JOB_FIELDS`, `INSTRUCTIONS` |
+| `BusinessModelCanvas.tsx` | Presentational canvas; editable (`onChange`) **or** `readOnly`. Layout via the `.bmc-grid` class in `index.css` (stacks on mobile, reference grid at `lg`) |
+| `InfoHint.tsx` | Dependency-free per-block `(i)` hint (hover + tap); no Radix Tooltip is installed |
+| `ModeloNegocioResult.tsx` | Read-only view of a submitted response; branches on `kind` (canvas vs job) |
+
+The canvas-block keys (`sociosClave`, `actividadesClave`, `recursosClave`,
+`propuestaValor`, `relacionClientes`, `canales`, `segmentos`, `estructuraCostos`,
+`fuentesIngresos`) are also the keys written into `responses.content`. The coach &
+supervisor can edit a submitted Modelo via `ModeloNegocioEditor` in
+`EditableResult.tsx`.
+
+> History: this began as a post-Tablero workspace (the F7 `IdeaDevelopment` model
+> + `DevelopIdea` component + `/develop` routes). That was removed when it became a
+> standalone test — don't look for `IdeaDevelopment`, `DevelopIdea`, or `/develop`.
 
 ## Shared utilities
 

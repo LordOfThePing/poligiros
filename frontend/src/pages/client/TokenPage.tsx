@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react"
 import AnclasTest from "./tests/AnclasTest"
 import TableroTest from "./tests/TableroTest"
 import PiramideTest from "./tests/PiramideTest"
+import { ModeloNegocioTest } from "./tests/ModeloNegocioTest"
 import ResultsView from "./ResultsView"
 import { tokenTestApi } from "@/lib/testApi"
 
@@ -11,7 +12,7 @@ const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
 type TokenState =
   | { state: "loading" }
-  | { state: "form"; testType: string; assignmentId: string; title: string }
+  | { state: "form"; testType: string; assignmentId: string; title: string; prefillIdea?: string }
   | {
       state: "results"
       testType: string
@@ -86,15 +87,16 @@ export default function TokenPage() {
   }
 
   if (data.state === "results") {
+    // Modelo de Negocio renders a wide canvas; other results stay narrow.
+    const wide = data.testType === "MODELO_NEGOCIO"
     return (
       <div className="min-h-screen bg-brand-bg py-8">
-        <div className="max-w-2xl mx-auto px-4">
+        <div className={`${wide ? "max-w-6xl" : "max-w-2xl"} mx-auto px-4`}>
           <ResultsView
             testType={data.testType}
             responses={data.responses}
             coachFeedback={data.coachFeedback}
             completedAt={data.completedAt}
-            api={tokenTestApi(token!)}
           />
         </div>
       </div>
@@ -104,9 +106,10 @@ export default function TokenPage() {
   // state === "form"
   if (data.state === "form") {
     const api = tokenTestApi(token!)
+    const wide = data.testType === "MODELO_NEGOCIO"
     return (
       <div className="min-h-screen bg-brand-bg py-8">
-        <div className="max-w-2xl mx-auto px-4">
+        <div className={`${wide ? "max-w-6xl" : "max-w-2xl"} mx-auto px-4`}>
           {data.testType === "ANCLAS_CARRERA" && (
             <AnclasTest api={api} assignmentId={data.assignmentId} />
           )}
@@ -116,7 +119,10 @@ export default function TokenPage() {
           {data.testType === "PIRAMIDE_PROPOSITO" && (
             <PiramideTest api={api} assignmentId={data.assignmentId} />
           )}
-          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO"].includes(data.testType) && (
+          {data.testType === "MODELO_NEGOCIO" && (
+            <ModeloNegocioTest api={api} assignmentId={data.assignmentId} prefillIdea={data.prefillIdea} />
+          )}
+          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].includes(data.testType) && (
             <div className="text-center py-16">
               <h2 className="font-serif text-2xl">{data.title}</h2>
               <p className="text-muted-foreground mt-2">Este tipo de test no está disponible en este momento.</p>

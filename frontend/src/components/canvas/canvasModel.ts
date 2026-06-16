@@ -96,6 +96,14 @@ export const CANVAS_GRID_AREAS = `
   "costos costos       costos    ingresos   ingresos"
 `
 
+// "Puesto de trabajo" mode — research workspace, the JOB alternative to the Canvas.
+export const JOB_FIELDS: { key: string; label: string; placeholder: string }[] = [
+  { key: "roles", label: "Puestos / roles a investigar", placeholder: "Uno por línea..." },
+  { key: "busquedas", label: "Búsquedas y job postings", placeholder: "Dónde y qué buscaste..." },
+  { key: "links", label: "Links encontrados", placeholder: "Pegá los links relevantes..." },
+  { key: "notas", label: "Notas", placeholder: "Requisitos, observaciones, próximos pasos..." },
+]
+
 export const INSTRUCTIONS: string[] = [
   "Lee cada recuadro y comprende qué se espera en cada parte del modelo.",
   "Escribe tus ideas con frases cortas y concretas.",

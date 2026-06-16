@@ -6,6 +6,7 @@ import { sessionTestApi } from "@/lib/testApi"
 import AnclasTest from "@/pages/client/tests/AnclasTest"
 import TableroTest from "@/pages/client/tests/TableroTest"
 import PiramideTest from "@/pages/client/tests/PiramideTest"
+import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
 import ResultsView from "@/pages/client/ResultsView"
 
 type Assignment = {
@@ -13,6 +14,7 @@ type Assignment = {
   completedAt: string | null
   test: { type: string; title: string }
   response: { responses: Record<string, unknown> } | null
+  prefillIdea?: string
 }
 
 export default function StudentTakeTestPage() {
@@ -36,17 +38,20 @@ export default function StudentTakeTestPage() {
     </Link>
   )
 
+  // Modelo de Negocio renders a wide canvas; other tests stay narrow.
+  const wide = assignment.test.type === "MODELO_NEGOCIO"
+  const widthClass = wide ? "max-w-6xl" : "max-w-2xl"
+
   // Completed → read-only results
   if (assignment.completedAt && assignment.response) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className={`${widthClass} mx-auto`}>
         {back}
         <ResultsView
           testType={assignment.test.type}
           responses={assignment.response.responses}
           coachFeedback={null}
           completedAt={assignment.completedAt}
-          api={sessionTestApi(assignment.id)}
         />
       </div>
     )
@@ -56,12 +61,15 @@ export default function StudentTakeTestPage() {
   const api = sessionTestApi(assignment.id)
   const t = assignment.test.type
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className={`${widthClass} mx-auto`}>
       {back}
       {t === "ANCLAS_CARRERA" && <AnclasTest api={api} assignmentId={assignment.id} />}
       {t === "TABLERO_IDEAS" && <TableroTest api={api} assignmentId={assignment.id} />}
       {t === "PIRAMIDE_PROPOSITO" && <PiramideTest api={api} assignmentId={assignment.id} />}
-      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO"].includes(t) && (
+      {t === "MODELO_NEGOCIO" && (
+        <ModeloNegocioTest api={api} assignmentId={assignment.id} prefillIdea={assignment.prefillIdea} />
+      )}
+      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].includes(t) && (
         <p className="text-muted-foreground text-sm">Este tipo de test no está disponible.</p>
       )}
     </div>

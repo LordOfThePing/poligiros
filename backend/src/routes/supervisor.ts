@@ -193,7 +193,7 @@ supervisor.get("/supervision", async (c) => {
       student: true,
       supervisor: true,
       assignment: {
-        include: { test: true, client: true, response: true, development: true },
+        include: { test: true, client: true, response: true },
       },
     },
     orderBy: { createdAt: "desc" },

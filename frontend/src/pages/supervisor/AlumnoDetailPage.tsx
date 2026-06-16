@@ -13,6 +13,7 @@ const TEST_CODES: Record<string, string> = {
   TABLERO_IDEAS: "TI",
   PLAN_VITAL: "PV",
   PIRAMIDE_PROPOSITO: "PP",
+  MODELO_NEGOCIO: "MN",
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -105,7 +106,7 @@ export default function AlumnoDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2 flex-wrap">
-                  {["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO"].map((type) => {
+                  {["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].map((type) => {
                     const assignment = client.assignments.find((a: any) => a.test.type === type)
                     let status = "unassigned"
                     if (assignment?.completedAt) status = "completed"

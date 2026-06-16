@@ -17,8 +17,9 @@ const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   TABLERO_IDEAS: { title: "Tablero de Ideas" },
   PLAN_VITAL: { title: "Plan Vital Integral®", comingSoon: true },
   PIRAMIDE_PROPOSITO: { title: "Pirámide del Propósito" },
+  MODELO_NEGOCIO: { title: "Modelo de Negocio" },
 }
-const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO"]
+const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"]
 
 type Assignment = {
   id: string

@@ -6,6 +6,7 @@ import {
   sendSessionRecordedEmail,
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
+import { latestTableroIdea } from "./client.js"
 import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
@@ -376,7 +377,10 @@ student.get("/my-tests/:id", async (c) => {
   const user = c.get("user")
   const assignment = await loadMyAssignment(user.id, c.req.param("id"))
   if (!assignment) return c.json({ error: "Not found" }, 404)
-  return c.json(assignment)
+  // Modelo de Negocio pre-fills the idea from the coach's latest Tablero.
+  const prefillIdea =
+    assignment.test.type === "MODELO_NEGOCIO" ? await latestTableroIdea(assignment.clientId) : undefined
+  return c.json({ ...assignment, prefillIdea })
 })
 
 /** POST /student/my-tests/:id/submit */
@@ -415,36 +419,6 @@ student.post("/my-tests/:id/ai-ideas", async (c) => {
   if (!assignment) return c.json({ error: "Not found" }, 404)
   const body = await c.req.json()
   return c.json({ ideas: await generateTableroIdeas(body) })
-})
-
-/** GET /student/my-tests/:id/develop — post-test workspace (coach side). */
-student.get("/my-tests/:id/develop", async (c) => {
-  const user = c.get("user")
-  const id = c.req.param("id")
-  const assignment = await loadMyAssignment(user.id, id)
-  if (!assignment) return c.json({ error: "Not found" }, 404)
-  const development = await prisma.ideaDevelopment.findUnique({ where: { assignmentId: id } })
-  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
-  const selectedIdea = (development?.selectedIdea ?? responses.selectedIdea ?? "") as string
-  return c.json({ selectedIdea, kind: development?.kind ?? null, content: development?.content ?? {} })
-})
-
-/** PUT /student/my-tests/:id/develop */
-student.put("/my-tests/:id/develop", async (c) => {
-  const user = c.get("user")
-  const id = c.req.param("id")
-  const assignment = await loadMyAssignment(user.id, id)
-  if (!assignment) return c.json({ error: "Not found" }, 404)
-  const { kind, content, selectedIdea: bodyIdea } = await c.req.json()
-  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
-  const existing = await prisma.ideaDevelopment.findUnique({ where: { assignmentId: id } })
-  const selectedIdea = (bodyIdea ?? existing?.selectedIdea ?? responses.selectedIdea ?? "") as string
-  const dev = await prisma.ideaDevelopment.upsert({
-    where: { assignmentId: id },
-    update: { kind, content, selectedIdea },
-    create: { assignmentId: id, kind, content, selectedIdea },
-  })
-  return c.json(dev)
 })
 
 /** PUT /student/responses/:assignmentId — coach edits a coachee's result. */

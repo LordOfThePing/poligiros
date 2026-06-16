@@ -10,12 +10,13 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { apiJson, apiPost } from "@/lib/api"
 
-const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO"]
+const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"]
 const TEST_CODES: Record<string, string> = {
   ANCLAS_CARRERA: "AC",
   TABLERO_IDEAS: "TI",
   PLAN_VITAL: "PV",
   PIRAMIDE_PROPOSITO: "PP",
+  MODELO_NEGOCIO: "MN",
 }
 
 type Assignment = {

@@ -4,6 +4,17 @@ import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 
 const client = new Hono()
 
+/** The idea the client picked in their most recent completed Tablero de Ideas, if any. */
+export async function latestTableroIdea(clientId: string): Promise<string> {
+  const tablero = await prisma.testAssignment.findFirst({
+    where: { clientId, test: { type: "TABLERO_IDEAS" }, completedAt: { not: null } },
+    orderBy: { completedAt: "desc" },
+    include: { response: true },
+  })
+  const responses = (tablero?.response?.responses ?? {}) as Record<string, unknown>
+  return (responses.selectedIdea ?? "") as string
+}
+
 /** Token state machine helper */
 function getAssignmentState(assignment: {
   completedAt: Date | null
@@ -53,6 +64,11 @@ client.get("/t/:token", async (c) => {
       testType: assignment.test.type,
       assignmentId: assignment.id,
       title: assignment.test.title,
+      // Modelo de Negocio pre-fills the idea from the client's latest Tablero.
+      prefillIdea:
+        assignment.test.type === "MODELO_NEGOCIO"
+          ? await latestTableroIdea(assignment.clientId)
+          : undefined,
     })
   }
 
@@ -127,46 +143,6 @@ client.post("/t/:token/ai-ideas", async (c) => {
   const body = await c.req.json()
   const ideas = await generateTableroIdeas(body)
   return c.json({ ideas })
-})
-
-/**
- * GET /client/t/:token/develop — the post-test workspace for the chosen idea.
- * Returns the selected idea plus any saved (user-authored) canvas/job content.
- */
-client.get("/t/:token/develop", async (c) => {
-  const assignment = await prisma.testAssignment.findUnique({
-    where: { accessToken: c.req.param("token") },
-    include: { response: true, development: true },
-  })
-  if (!assignment) return c.json({ error: "invalid" }, 404)
-  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
-  const selectedIdea = (assignment.development?.selectedIdea ?? responses.selectedIdea ?? "") as string
-  return c.json({
-    selectedIdea,
-    kind: assignment.development?.kind ?? null,
-    content: assignment.development?.content ?? {},
-  })
-})
-
-/** PUT /client/t/:token/develop — save the user-authored canvas / job research. */
-client.put("/t/:token/develop", async (c) => {
-  const assignment = await prisma.testAssignment.findUnique({
-    where: { accessToken: c.req.param("token") },
-    include: { response: true },
-  })
-  if (!assignment) return c.json({ error: "invalid" }, 404)
-  const { kind, content, selectedIdea: bodyIdea } = await c.req.json()
-  const responses = (assignment.response?.responses ?? {}) as Record<string, unknown>
-  const existing = await prisma.ideaDevelopment.findUnique({ where: { assignmentId: assignment.id } })
-  // The user can edit the idea in the workspace; fall back to the saved value,
-  // then to the Tablero's chosen idea when the body omits it.
-  const selectedIdea = (bodyIdea ?? existing?.selectedIdea ?? responses.selectedIdea ?? "") as string
-  const dev = await prisma.ideaDevelopment.upsert({
-    where: { assignmentId: assignment.id },
-    update: { kind, content, selectedIdea },
-    create: { assignmentId: assignment.id, kind, content, selectedIdea },
-  })
-  return c.json(dev)
 })
 
 export default client

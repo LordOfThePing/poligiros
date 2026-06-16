@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Plus, X, ChevronUp, ChevronDown, Save } from "lucide-react"
+import { CANVAS_BLOCKS, JOB_FIELDS } from "@/components/canvas/canvasModel"
 
 // Editable test result (F7 follow-up): coach + supervisor can modify fields,
 // values, and order, then save back to the stored response.
@@ -44,6 +45,7 @@ export function EditableResult({
       {testType === "ANCLAS_CARRERA" && <AnclasEditor data={data} setField={setField} />}
       {testType === "TABLERO_IDEAS" && <TableroEditor data={data} setField={setField} />}
       {testType === "PIRAMIDE_PROPOSITO" && <PiramideEditor data={data} setField={setField} />}
+      {testType === "MODELO_NEGOCIO" && <ModeloNegocioEditor data={data} setField={setField} />}
       <Button onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
         <Save className="h-4 w-4 mr-2" /> {saving ? "Guardando..." : "Guardar cambios"}
       </Button>
@@ -115,6 +117,27 @@ function TableroEditor({ data, setField }: { data: Data; setField: (k: string, v
         <Label className="text-xs">Idea elegida</Label>
         <Input value={data.selectedIdea ?? ""} onChange={(e) => setField("selectedIdea", e.target.value)} className="text-sm" />
       </div>
+    </div>
+  )
+}
+
+function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  const kind = (data.kind as "CANVAS" | "JOB" | undefined) ?? "CANVAS"
+  const content: Record<string, string> = data.content ?? {}
+  const setContent = (key: string, value: string) => setField("content", { ...content, [key]: value })
+  const fields = kind === "JOB" ? JOB_FIELDS : CANVAS_BLOCKS
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label className="text-xs">Idea</Label>
+        <Input value={data.selectedIdea ?? ""} onChange={(e) => setField("selectedIdea", e.target.value)} className="text-sm" />
+      </div>
+      {fields.map((f) => (
+        <div key={f.key} className="space-y-1">
+          <Label className="text-xs">{f.label}</Label>
+          <Textarea value={content[f.key] ?? ""} onChange={(e) => setContent(f.key, e.target.value)} className="text-sm min-h-[70px]" />
+        </div>
+      ))}
     </div>
   )
 }

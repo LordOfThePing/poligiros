@@ -12,7 +12,7 @@ import { api, apiJson, apiPost } from "@/lib/api"
 import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
 import { EditableResult } from "@/components/EditableResult"
-import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
+import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -119,6 +119,10 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
     )
   }
 
+  if (testType === "MODELO_NEGOCIO") {
+    return <ModeloNegocioResult responses={responses} />
+  }
+
   return <pre className="text-xs text-muted-foreground overflow-auto">{JSON.stringify(responses, null, 2)}</pre>
 }
 
@@ -161,9 +165,11 @@ export default function SupervisionDetailPage() {
   if (!req) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
 
   const responses = req.assignment?.response?.responses
+  // Modelo de Negocio needs room for the wide canvas.
+  const wide = req.assignment?.test?.type === "MODELO_NEGOCIO"
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className={`space-y-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
       <div className="flex items-center gap-3">
         <Link to="/supervisor/supervision" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
@@ -218,23 +224,6 @@ export default function SupervisionDetailPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* Read-only view of the coachee's Business Model Canvas (post-Tablero). */}
-      {req.assignment?.test?.type === "TABLERO_IDEAS" &&
-        req.assignment?.development?.kind === "CANVAS" && (
-          <Card className="bg-white">
-            <CardHeader>
-              <CardTitle className="font-serif text-lg">Modelo de Negocios Canvas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <BusinessModelCanvas
-                readOnly
-                idea={req.assignment.development.selectedIdea ?? ""}
-                content={(req.assignment.development.content ?? {}) as Record<string, string>}
-              />
-            </CardContent>
-          </Card>
-        )}
 
       <Card className="bg-white">
         <CardHeader>
