@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { apiJson, apiPost } from "@/lib/api"
+import { api, apiJson, apiPost } from "@/lib/api"
 import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
+import { EditableResult } from "@/components/EditableResult"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -128,8 +129,9 @@ export default function SupervisionDetailPage() {
   const [notes, setNotes] = useState("")
   const [coachFeedback, setCoachFeedback] = useState("")
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
 
-  useEffect(() => {
+  function load() {
     apiJson<any[]>("/supervisor/supervision")
       .then((all) => {
         const found = all.find((r: any) => r.id === id)
@@ -140,7 +142,8 @@ export default function SupervisionDetailPage() {
         }
       })
       .catch(() => {})
-  }, [id])
+  }
+  useEffect(load, [id])
 
   async function handleReview() {
     setSaving(true)
@@ -186,11 +189,31 @@ export default function SupervisionDetailPage() {
 
       {responses && (
         <Card className="bg-white">
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
+              {editing ? "Cancelar" : "Editar"}
+            </Button>
           </CardHeader>
           <CardContent>
-            <ResponseViewer testType={req.assignment.test.type} responses={responses} />
+            {editing ? (
+              <EditableResult
+                testType={req.assignment.test.type}
+                responses={responses}
+                onSave={async (updated) => {
+                  await api(`/supervisor/responses/${req.assignment.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ responses: updated }),
+                  })
+                  toast({ title: "Resultado actualizado" })
+                  setEditing(false)
+                  load()
+                }}
+              />
+            ) : (
+              <ResponseViewer testType={req.assignment.test.type} responses={responses} />
+            )}
           </CardContent>
         </Card>
       )}

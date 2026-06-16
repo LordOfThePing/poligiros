@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Copy, Eye } from "lucide-react"
+import { ArrowLeft, Plus, Copy, Eye, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { apiJson, apiPost } from "@/lib/api"
-import ResultsView from "../client/ResultsView"
+import { api, apiJson, apiPost } from "@/lib/api"
+import { EditableResult } from "@/components/EditableResult"
 
 const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   ANCLAS_CARRERA: { title: "Test de Anclas de Carrera" },
@@ -54,6 +54,7 @@ export default function ClientDetailPage() {
   const [supervisionNotes, setSupervisionNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [resultModal, setResultModal] = useState<{
+    assignmentId: string
     title: string
     testType: string
     responses: Record<string, unknown>
@@ -155,7 +156,7 @@ export default function ClientDetailPage() {
                         Asignar
                       </Button>
                     )}
-                    {assignment && !assignment.completedAt && assignment.accessToken && (
+                    {assignment && assignment.accessToken && (
                       <Button size="sm" variant="ghost" onClick={() => copyLink(assignment.accessToken!)}>
                         <Copy className="h-3 w-3 mr-1" /> Copiar enlace
                       </Button>
@@ -165,12 +166,24 @@ export default function ClientDetailPage() {
                         Reenviar
                       </Button>
                     )}
+                    {assignment?.completedAt && assignment.accessToken && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          window.open(`${window.location.origin}/t/${assignment.accessToken}`, "_blank", "noopener")
+                        }
+                      >
+                        <Eye className="h-3 w-3 mr-1" /> Ver resultado
+                      </Button>
+                    )}
                     {assignment?.completedAt && assignment.response && (
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() =>
                           setResultModal({
+                            assignmentId: assignment.id,
                             title: info.title,
                             testType: assignment.test.type,
                             responses: assignment.response!.responses,
@@ -178,7 +191,7 @@ export default function ClientDetailPage() {
                           })
                         }
                       >
-                        <Eye className="h-3 w-3 mr-1" /> Ver resultado
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
                       </Button>
                     )}
                     {assignment?.completedAt && !assignment.supervision && (
@@ -257,14 +270,22 @@ export default function ClientDetailPage() {
       <Dialog open={!!resultModal} onOpenChange={(open) => !open && setResultModal(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif">{resultModal?.title}</DialogTitle>
+            <DialogTitle className="font-serif">Editar resultado — {resultModal?.title}</DialogTitle>
           </DialogHeader>
           {resultModal && (
-            <ResultsView
+            <EditableResult
               testType={resultModal.testType}
               responses={resultModal.responses}
-              coachFeedback={null}
-              completedAt={resultModal.completedAt}
+              onSave={async (responses) => {
+                await api(`/student/responses/${resultModal.assignmentId}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ responses }),
+                })
+                toast({ title: "Resultado actualizado" })
+                setResultModal(null)
+                refreshClient()
+              }}
             />
           )}
         </DialogContent>

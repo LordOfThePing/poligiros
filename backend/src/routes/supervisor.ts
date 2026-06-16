@@ -521,4 +521,17 @@ supervisor.post("/coaches/:userId/resend-invite", async (c) => {
   return c.json({ link })
 })
 
+/** PUT /supervisor/responses/:assignmentId — supervisor edits any result. */
+supervisor.put("/responses/:assignmentId", async (c) => {
+  const id = c.req.param("assignmentId")
+  const { responses } = await c.req.json()
+  const existing = await prisma.testResponse.findUnique({ where: { assignmentId: id } })
+  if (!existing) return c.json({ error: "Not found" }, 404)
+  const updated = await prisma.testResponse.update({
+    where: { assignmentId: id },
+    data: { responses },
+  })
+  return c.json(updated)
+})
+
 export default supervisor

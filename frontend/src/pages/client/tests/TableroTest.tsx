@@ -181,9 +181,10 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
     setLoadingIdeas(true)
     try {
       const { ideas } = await api.aiIdeas({
-        saber: saberItems.map((i) => i.text),
-        querer: quererItems.map((i) => i.text),
-        sonar: sonarItems.map((i) => i.text),
+        // The AI uses only the #1 (top-ranked) of each column.
+        saber: saberRank.slice(0, 1).map((i) => i.text),
+        querer: quererRank.slice(0, 1).map((i) => i.text),
+        sonar: sonarRank.slice(0, 1).map((i) => i.text),
         brainstormIdeas: ideaCards.map((i) => i.text),
       })
       setAiIdeas(ideas)
@@ -409,9 +410,9 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
           <div className="grid grid-cols-1 md:grid-cols-[32%_1fr] gap-6">
             <aside className="space-y-4 md:sticky md:top-4 md:self-start">
               <p className="font-serif text-lg text-foreground">Conectando datos →</p>
-              <RankedChips title="Mis apasionantes (SABER)" items={saberRank} chip="bg-brand-accent/10 text-brand-accent" />
-              <RankedChips title="Lo que quiero hacer (QUERER)" items={quererRank} chip="bg-brand-secondary/10 text-brand-secondary" />
-              <RankedChips title="Mis aspiraciones (SOÑAR)" items={sonarRank} chip="bg-indigo-100 text-indigo-700" />
+              <RankedChips title="Mis apasionantes (SABER)" items={saberRank.slice(0, 3)} chip="bg-brand-accent/10 text-brand-accent" />
+              <RankedChips title="Lo que quiero hacer (QUERER)" items={quererRank.slice(0, 3)} chip="bg-brand-secondary/10 text-brand-secondary" />
+              <RankedChips title="Mis aspiraciones (SOÑAR)" items={sonarRank.slice(0, 3)} chip="bg-indigo-100 text-indigo-700" />
             </aside>
 
             <div className="space-y-5">

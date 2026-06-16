@@ -446,4 +446,21 @@ student.put("/my-tests/:id/develop", async (c) => {
   return c.json(dev)
 })
 
+/** PUT /student/responses/:assignmentId — coach edits a coachee's result. */
+student.put("/responses/:assignmentId", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("assignmentId")
+  // Coach may edit results of clients they own (studentId) or their own self-tests.
+  const assignment = await prisma.testAssignment.findFirst({
+    where: { id, client: { OR: [{ studentId: user.id }, { userId: user.id }] } },
+  })
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  const { responses } = await c.req.json()
+  const updated = await prisma.testResponse.update({
+    where: { assignmentId: id },
+    data: { responses },
+  })
+  return c.json(updated)
+})
+
 export default student
