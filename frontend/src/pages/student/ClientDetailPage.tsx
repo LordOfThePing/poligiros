@@ -6,7 +6,14 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2, MoreHorizontal, Send, RefreshCw } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { api, apiJson, apiPost } from "@/lib/api"
@@ -180,64 +187,70 @@ export default function ClientDetailPage() {
                         Asignar
                       </Button>
                     )}
-                    {assignment && assignment.accessToken && (
-                      <Button size="sm" variant="ghost" onClick={() => copyLink(assignment.accessToken!)}>
-                        <Copy className="h-3 w-3 mr-1" /> Copiar enlace
-                      </Button>
-                    )}
-                    {assignment && !assignment.completedAt && (
-                      <Button size="sm" variant="ghost" onClick={() => handleResend(assignment.id)}>
-                        Reenviar
-                      </Button>
-                    )}
-                    {assignment?.completedAt && assignment.accessToken && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          window.open(`${window.location.origin}/t/${assignment.accessToken}`, "_blank", "noopener")
-                        }
-                      >
-                        <Eye className="h-3 w-3 mr-1" /> Ver resultado
-                      </Button>
-                    )}
-                    {assignment?.completedAt && assignment.response && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          setResultModal({
-                            assignmentId: assignment.id,
-                            title: info.title,
-                            testType: assignment.test.type,
-                            responses: assignment.response!.responses,
-                            completedAt: assignment.completedAt!,
-                          })
-                        }
-                      >
-                        <Pencil className="h-3 w-3 mr-1" /> Editar
-                      </Button>
-                    )}
-                    {assignment?.completedAt && !assignment.supervision && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSupervisionModal({ assignmentId: assignment.id, testTitle: info.title })}
-                      >
-                        Enviar a supervisión
-                      </Button>
-                    )}
-                    {assignment?.completedAt && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        disabled={resetPending}
-                        onClick={() => setResetModal({ assignmentId: assignment.id, testTitle: info.title })}
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        {resetPending ? "Pendiente de aprobación" : "Solicitar eliminación"}
-                      </Button>
+                    {assignment && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Acciones">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {assignment.accessToken && (
+                            <DropdownMenuItem onSelect={() => copyLink(assignment.accessToken!)}>
+                              <Copy className="h-4 w-4" /> Copiar enlace
+                            </DropdownMenuItem>
+                          )}
+                          {!assignment.completedAt && (
+                            <DropdownMenuItem onSelect={() => handleResend(assignment.id)}>
+                              <RefreshCw className="h-4 w-4" /> Reenviar
+                            </DropdownMenuItem>
+                          )}
+                          {assignment.completedAt && assignment.accessToken && (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                window.open(`${window.location.origin}/t/${assignment.accessToken}`, "_blank", "noopener")
+                              }
+                            >
+                              <Eye className="h-4 w-4" /> Ver resultado
+                            </DropdownMenuItem>
+                          )}
+                          {assignment.completedAt && assignment.response && (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setResultModal({
+                                  assignmentId: assignment.id,
+                                  title: info.title,
+                                  testType: assignment.test.type,
+                                  responses: assignment.response!.responses,
+                                  completedAt: assignment.completedAt!,
+                                })
+                              }
+                            >
+                              <Pencil className="h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                          )}
+                          {assignment.completedAt && !assignment.supervision && (
+                            <DropdownMenuItem
+                              onSelect={() => setSupervisionModal({ assignmentId: assignment.id, testTitle: info.title })}
+                            >
+                              <Send className="h-4 w-4" /> Enviar a supervisión
+                            </DropdownMenuItem>
+                          )}
+                          {assignment.completedAt && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                disabled={resetPending}
+                                onSelect={() => setResetModal({ assignmentId: assignment.id, testTitle: info.title })}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                {resetPending ? "Pendiente de aprobación" : "Solicitar eliminación"}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 )}
