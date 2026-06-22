@@ -235,6 +235,74 @@ supervisor.post("/supervision/:id/review", async (c) => {
 })
 
 /* ─────────────────────────────────────────
+   Test reset requests (coach asks; supervisor approves → wipes the result)
+───────────────────────────────────────── */
+
+/** GET /supervisor/reset-requests — pending requests to wipe a submitted test. */
+supervisor.get("/reset-requests", async (c) => {
+  const requests = await prisma.testResetRequest.findMany({
+    where: { status: "PENDING" },
+    include: {
+      requestedBy: true,
+      assignment: { include: { test: true, client: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+  return c.json(requests)
+})
+
+/** POST /supervisor/reset-requests/:id/approve — wipe the result + reopen the test. */
+supervisor.post("/reset-requests/:id/approve", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+
+  const request = await prisma.testResetRequest.findUnique({
+    where: { id },
+    include: { assignment: true },
+  })
+  if (!request) return c.json({ error: "Not found" }, 404)
+  if (request.status !== "PENDING") return c.json({ error: "Solicitud ya resuelta" }, 409)
+
+  const assignmentId = request.assignmentId
+  const hasWindow = Boolean(request.assignment.completeBy)
+
+  await prisma.$transaction([
+    prisma.testResponse.deleteMany({ where: { assignmentId } }),
+    prisma.supervisionRequest.deleteMany({ where: { assignmentId } }),
+    prisma.testAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        completedAt: null,
+        // Re-open the magic-link window so the coachee can retake it.
+        ...(hasWindow ? { completeBy: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } : {}),
+      },
+    }),
+    prisma.testResetRequest.update({
+      where: { id },
+      data: { status: "APPROVED", reviewedById: user.id, reviewedAt: new Date() },
+    }),
+  ])
+
+  return c.json({ ok: true })
+})
+
+/** POST /supervisor/reset-requests/:id/reject */
+supervisor.post("/reset-requests/:id/reject", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+
+  const request = await prisma.testResetRequest.findUnique({ where: { id } })
+  if (!request) return c.json({ error: "Not found" }, 404)
+  if (request.status !== "PENDING") return c.json({ error: "Solicitud ya resuelta" }, 409)
+
+  const updated = await prisma.testResetRequest.update({
+    where: { id },
+    data: { status: "REJECTED", reviewedById: user.id, reviewedAt: new Date() },
+  })
+  return c.json(updated)
+})
+
+/* ─────────────────────────────────────────
    Cohorts
 ───────────────────────────────────────── */
 

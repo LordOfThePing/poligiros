@@ -25,6 +25,12 @@ enum SupervisionStatus {
   REVIEWED
 }
 
+enum ResetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -49,6 +55,8 @@ model User {
   supervisionRequests SupervisionRequest[] @relation("StudentRequests")
   supervisionReviews  SupervisionRequest[] @relation("SupervisorReviews")
   sessionRecords      SessionRecord[]
+  resetRequestsMade   TestResetRequest[]   @relation("ResetRequestedBy")
+  resetReviews        TestResetRequest[]   @relation("ResetReviewedBy")
 }
 
 model Cohort {
@@ -142,8 +150,9 @@ model TestAssignment {
   completeBy           DateTime?
   resultsViewableUntil DateTime?
 
-  response    TestResponse?
-  supervision SupervisionRequest?
+  response      TestResponse?
+  supervision   SupervisionRequest?
+  resetRequests TestResetRequest[]
 
   @@unique([testId, clientId])
 }
@@ -170,6 +179,22 @@ model SupervisionRequest {
   status          SupervisionStatus @default(PENDING)
   reviewedAt      DateTime?
   createdAt       DateTime          @default(now())
+}
+
+// Coach asks to reset (wipe) a submitted test so it can be retaken. The reset only
+// happens once the supervisor approves it.
+model TestResetRequest {
+  id            String         @id @default(cuid())
+  assignmentId  String
+  assignment    TestAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User           @relation("ResetRequestedBy", fields: [requestedById], references: [id])
+  reason        String?
+  status        ResetStatus    @default(PENDING)
+  reviewedById  String?
+  reviewedBy    User?          @relation("ResetReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  createdAt     DateTime       @default(now())
 }
 
 model SessionRecord {

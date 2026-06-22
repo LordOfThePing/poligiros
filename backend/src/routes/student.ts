@@ -56,7 +56,12 @@ student.get("/clients/:id", async (c) => {
     where: { id, studentId: user.id },
     include: {
       assignments: {
-        include: { test: true, response: true, supervision: true },
+        include: {
+          test: true,
+          response: true,
+          supervision: true,
+          resetRequests: { orderBy: { createdAt: "desc" }, take: 1 },
+        },
         orderBy: { assignedAt: "asc" },
       },
       sessions: { orderBy: { sessionNum: "asc" } },
@@ -484,6 +489,34 @@ student.post("/my-tests/:id/ai-ideas", async (c) => {
   if (!assignment) return c.json({ error: "Not found" }, 404)
   const body = await c.req.json()
   return c.json({ ideas: await generateTableroIdeas(body) })
+})
+
+/* ─────────────────────────────────────────
+   Test reset requests (coach asks; supervisor approves)
+───────────────────────────────────────── */
+
+/** POST /student/assignments/:id/reset-request — ask to wipe a completed test. */
+student.post("/assignments/:id/reset-request", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const { reason } = await c.req.json().catch(() => ({ reason: undefined }))
+
+  // The coach may request resets for clients they own or their own self-tests.
+  const assignment = await prisma.testAssignment.findFirst({
+    where: { id, client: { OR: [{ studentId: user.id }, { userId: user.id }] } },
+  })
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  if (!assignment.completedAt) return c.json({ error: "El test no está completado" }, 400)
+
+  const pending = await prisma.testResetRequest.findFirst({
+    where: { assignmentId: id, status: "PENDING" },
+  })
+  if (pending) return c.json({ error: "Ya hay una solicitud pendiente" }, 409)
+
+  const request = await prisma.testResetRequest.create({
+    data: { assignmentId: id, requestedById: user.id, reason: reason || null },
+  })
+  return c.json(request, 201)
 })
 
 /** PUT /student/responses/:assignmentId — coach edits a coachee's result. */

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Copy, Eye, Pencil } from "lucide-react"
+import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { api, apiJson, apiPost } from "@/lib/api"
@@ -17,7 +17,7 @@ const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   TABLERO_IDEAS: { title: "Tablero de Ideas" },
   PLAN_VITAL: { title: "Plan Vital Integral®", comingSoon: true },
   PIRAMIDE_PROPOSITO: { title: "Pirámide del Propósito" },
-  MODELO_NEGOCIO: { title: "Modelo de Negocio" },
+  MODELO_NEGOCIO: { title: "Exploración" },
 }
 const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"]
 
@@ -28,6 +28,7 @@ type Assignment = {
   accessToken: string | null
   response: { responses: Record<string, unknown> } | null
   supervision: { id: string; status: string } | null
+  resetRequests?: { id: string; status: "PENDING" | "APPROVED" | "REJECTED" }[]
 }
 
 type SessionRecord = {
@@ -54,6 +55,9 @@ export default function ClientDetailPage() {
   const [supervisionModal, setSupervisionModal] = useState<{ assignmentId: string; testTitle: string } | null>(null)
   const [supervisionNotes, setSupervisionNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [resetModal, setResetModal] = useState<{ assignmentId: string; testTitle: string } | null>(null)
+  const [resetReason, setResetReason] = useState("")
+  const [resetSubmitting, setResetSubmitting] = useState(false)
   const [resultModal, setResultModal] = useState<{
     assignmentId: string
     title: string
@@ -104,6 +108,21 @@ export default function ClientDetailPage() {
     setSubmitting(false)
   }
 
+  async function handleRequestReset() {
+    if (!resetModal) return
+    setResetSubmitting(true)
+    try {
+      await apiPost(`/student/assignments/${resetModal.assignmentId}/reset-request`, { reason: resetReason })
+      await refreshClient()
+      setResetModal(null)
+      setResetReason("")
+      toast({ title: "Solicitud enviada", description: "La supervisora debe aprobar la eliminación." })
+    } catch {
+      toast({ title: "No se pudo solicitar la eliminación", variant: "destructive" })
+    }
+    setResetSubmitting(false)
+  }
+
   function copyLink(token: string) {
     const link = `${window.location.origin}/t/${token}`
     navigator.clipboard.writeText(link).then(() => {
@@ -135,6 +154,7 @@ export default function ClientDetailPage() {
             const info = TEST_INFO[type]
             const assignment = client.assignments.find((a) => a.test.type === type)
             const isComingSoon = info.comingSoon
+            const resetPending = assignment?.resetRequests?.[0]?.status === "PENDING"
 
             return (
               <div key={type} className="flex items-center justify-between py-2 border-b border-border last:border-0">
@@ -147,6 +167,9 @@ export default function ClientDetailPage() {
                     <Badge className={`text-xs ${assignment.supervision.status === "REVIEWED" ? "bg-indigo-100 text-indigo-800" : "bg-gray-100 text-gray-600"} hover:bg-current`}>
                       {assignment.supervision.status === "REVIEWED" ? "Revisado" : "En supervisión"}
                     </Badge>
+                  )}
+                  {resetPending && (
+                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">Eliminación solicitada</Badge>
                   )}
                 </div>
 
@@ -202,6 +225,18 @@ export default function ClientDetailPage() {
                         onClick={() => setSupervisionModal({ assignmentId: assignment.id, testTitle: info.title })}
                       >
                         Enviar a supervisión
+                      </Button>
+                    )}
+                    {assignment?.completedAt && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        disabled={resetPending}
+                        onClick={() => setResetModal({ assignmentId: assignment.id, testTitle: info.title })}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        {resetPending ? "Pendiente de aprobación" : "Solicitar eliminación"}
                       </Button>
                     )}
                   </div>
@@ -263,6 +298,38 @@ export default function ClientDetailPage() {
               disabled={submitting}
             >
               {submitting ? "Enviando..." : "Enviar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!resetModal} onOpenChange={(open) => !open && setResetModal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif">Solicitar eliminación del resultado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-sm text-muted-foreground">{resetModal?.testTitle}</p>
+            <p className="text-sm text-muted-foreground">
+              Esto borra el resultado enviado y vuelve a habilitar el test para rehacerlo.
+              La eliminación se aplica solo cuando la supervisora la aprueba.
+            </p>
+            <Label>Motivo (opcional)</Label>
+            <Textarea
+              value={resetReason}
+              onChange={(e) => setResetReason(e.target.value)}
+              placeholder="¿Por qué hay que rehacer este test?"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetModal(null)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleRequestReset}
+              disabled={resetSubmitting}
+            >
+              {resetSubmitting ? "Enviando..." : "Solicitar eliminación"}
             </Button>
           </DialogFooter>
         </DialogContent>
