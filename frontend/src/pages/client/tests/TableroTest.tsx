@@ -253,7 +253,7 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
         <h1 className="font-serif text-3xl text-foreground mb-1">Tablero de Ideas</h1>
         <p className="text-sm text-muted-foreground">
           {step === 1 && "Completá las tres columnas con tus ideas"}
-          {step === 2 && "Marcá lo que te apasiona y ordená tus ideas"}
+          {step === 2 && "Marcá lo que te apasiona y quedate con tu top 3 en cada columna"}
           {step === 3 && "Conectá los datos en tu brainstorming"}
           {lastSaved && step === 1 && (
             <span className="ml-2 text-xs text-green-600">· Guardado automáticamente</span>
@@ -317,7 +317,7 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
           <section className="space-y-4">
             <div>
               <h2 className="font-serif text-xl text-foreground">SABER: marcá las que te apasionan</h2>
-              <p className="text-sm text-muted-foreground">Tocá las ideas que más te entusiasman, después ordenalas por importancia.</p>
+              <p className="text-sm text-muted-foreground">Tocá las ideas que más te entusiasman; después ordenalas y quedate con tu top 3.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {saberItems.map((item) => {
@@ -347,18 +347,11 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
 
             {saberRank.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ordená tus pasiones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ordená tus pasiones — tu top 3 va primero</p>
                 <SortableList
                   items={saberRank}
                   onReorder={setSaberRank}
-                  renderItem={(item, index) => (
-                    <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-xs text-white shrink-0">
-                        {index + 1}
-                      </span>
-                      <span>{item.text}</span>
-                    </div>
-                  )}
+                  renderItem={(item, index) => <RankRow item={item} index={index} color="bg-brand-accent" />}
                 />
               </div>
             )}
@@ -366,33 +359,21 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
 
           <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <h3 className="font-serif text-lg text-foreground">QUERER: ordenalas</h3>
+              <h3 className="font-serif text-lg text-foreground">QUERER: ordená tu top 3</h3>
+              <p className="text-xs text-muted-foreground">Arrastrá para que tus 3 favoritas queden arriba.</p>
               <SortableList
                 items={quererRank}
                 onReorder={setQuererRank}
-                renderItem={(item, index) => (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-secondary text-xs text-white shrink-0">
-                      {index + 1}
-                    </span>
-                    <span>{item.text}</span>
-                  </div>
-                )}
+                renderItem={(item, index) => <RankRow item={item} index={index} color="bg-brand-secondary" />}
               />
             </div>
             <div className="space-y-2">
-              <h3 className="font-serif text-lg text-foreground">SOÑAR: ordenalas</h3>
+              <h3 className="font-serif text-lg text-foreground">SOÑAR: ordená tu top 3</h3>
+              <p className="text-xs text-muted-foreground">Arrastrá para que tus 3 favoritas queden arriba.</p>
               <SortableList
                 items={sonarRank}
                 onReorder={setSonarRank}
-                renderItem={(item, index) => (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-xs text-white shrink-0">
-                      {index + 1}
-                    </span>
-                    <span>{item.text}</span>
-                  </div>
-                )}
+                renderItem={(item, index) => <RankRow item={item} index={index} color="bg-indigo-600" />}
               />
             </div>
           </section>
@@ -537,6 +518,30 @@ function StepBar({ step, pct, children }: { step: number; pct: number; children:
         </div>
         <div className="flex gap-2 shrink-0">{children}</div>
       </div>
+    </div>
+  )
+}
+
+// A ranked row that visually emphasizes the top 3 (the focus of step 2). Items
+// past position 3 are dimmed so the "top 3 from each category" stays front-of-mind.
+function RankRow({ item, index, color }: { item: RankItem; index: number; color: string }) {
+  const inTop3 = index < 3
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition-colors",
+        inTop3 ? "border-foreground/20" : "border-border opacity-60",
+      )}
+    >
+      <span className={cn("flex h-5 w-5 items-center justify-center rounded-full text-xs text-white shrink-0", inTop3 ? color : "bg-muted-foreground/50")}>
+        {index + 1}
+      </span>
+      <span className="flex-1">{item.text}</span>
+      {index === 0 && (
+        <span className="shrink-0 rounded-full bg-foreground/5 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          Top 3
+        </span>
+      )}
     </div>
   )
 }

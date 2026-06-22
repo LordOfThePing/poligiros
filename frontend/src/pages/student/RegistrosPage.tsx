@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus } from "lucide-react"
+import { Plus, Pencil } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson } from "@/lib/api"
 
@@ -57,11 +57,18 @@ export default function RegistrosPage() {
               <h2 className="font-serif text-lg text-foreground">{clientName}</h2>
               <div className="space-y-2">
                 {sessions.map((s) => (
-                  <div key={s.id} className="bg-white rounded-lg border border-border px-4 py-3 flex items-center gap-3 text-sm">
+                  <Link
+                    key={s.id}
+                    to={`/student/registros/${s.id}/editar`}
+                    className="bg-white rounded-lg border border-border px-4 py-3 flex items-center gap-3 text-sm hover:shadow-sm hover:border-brand-accent/40 transition-all"
+                  >
                     <Badge variant="outline">Sesión #{s.sessionNum}</Badge>
                     <span className="text-foreground">{s.coacheeName}</span>
                     <span className="text-muted-foreground">{formatShortDate(s.sessionDate)}</span>
-                  </div>
+                    <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Pencil className="h-3 w-3" /> Editar
+                    </span>
+                  </Link>
                 ))}
               </div>
             </div>

@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Plus, X, ChevronUp, ChevronDown, Save } from "lucide-react"
-import { CANVAS_BLOCKS, JOB_FIELDS } from "@/components/canvas/canvasModel"
+import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
+import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 
 // Editable test result (F7 follow-up): coach + supervisor can modify fields,
 // values, and order, then save back to the stored response.
@@ -122,10 +123,32 @@ function TableroEditor({ data, setField }: { data: Data; setField: (k: string, v
 }
 
 function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
-  const kind = (data.kind as "CANVAS" | "JOB" | undefined) ?? "CANVAS"
+  const kind = (data.kind as "CANVAS" | "JOB" | "FREELANCE" | undefined) ?? "CANVAS"
   const content: Record<string, string> = data.content ?? {}
   const setContent = (key: string, value: string) => setField("content", { ...content, [key]: value })
-  const fields = kind === "JOB" ? JOB_FIELDS : CANVAS_BLOCKS
+
+  if (kind === "CANVAS") {
+    // Reuse the editable canvas so the coach can edit values, labels, and the story.
+    return (
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Idea</Label>
+          <Input value={data.selectedIdea ?? ""} onChange={(e) => setField("selectedIdea", e.target.value)} className="text-sm" />
+        </div>
+        <BusinessModelCanvas
+          idea={data.selectedIdea ?? ""}
+          content={content}
+          onChange={setContent}
+          config={(data.canvas as CanvasConfig | undefined) ?? {}}
+          onConfigChange={(cfg) => setField("canvas", cfg)}
+          story={data.story ?? ""}
+          onStoryChange={(v) => setField("story", v)}
+        />
+      </div>
+    )
+  }
+
+  const fields = kind === "JOB" ? JOB_FIELDS : FREELANCE_FIELDS
   return (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -138,6 +161,10 @@ function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: str
           <Textarea value={content[f.key] ?? ""} onChange={(e) => setContent(f.key, e.target.value)} className="text-sm min-h-[70px]" />
         </div>
       ))}
+      <div className="space-y-1">
+        <Label className="text-xs">Relato de la idea</Label>
+        <Textarea value={data.story ?? ""} onChange={(e) => setField("story", e.target.value)} className="text-sm min-h-[80px]" />
+      </div>
     </div>
   )
 }

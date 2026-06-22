@@ -126,7 +126,7 @@ supervisor.get("/students", async (c) => {
       id: s.id,
       name: s.name,
       email: s.email,
-      cohort: s.enrollments[0]?.cohort?.name ?? "Sin cohorte",
+      cohort: s.enrollments[0]?.cohort?.name ?? "Sin SIC",
       clientCount: s.clients.length,
       testsSubmitted: completedTests,
       modulesCompleted: s.moduleProgress.length,

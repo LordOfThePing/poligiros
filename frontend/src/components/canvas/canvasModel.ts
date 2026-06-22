@@ -104,6 +104,53 @@ export const JOB_FIELDS: { key: string; label: string; placeholder: string }[] =
   { key: "notas", label: "Notas", placeholder: "Requisitos, observaciones, próximos pasos..." },
 ]
 
+// "Freelance / Autónomo" mode — the third career path alongside Canvas (business)
+// and JOB (employment). Frames the idea as an independent service offering.
+export const FREELANCE_FIELDS: { key: string; label: string; placeholder: string }[] = [
+  { key: "servicio", label: "Servicio que ofrezco", placeholder: "¿Qué servicio independiente vas a ofrecer?" },
+  { key: "clientesObjetivo", label: "Clientes objetivo", placeholder: "¿A quién le vendés tu servicio?" },
+  { key: "propuestaValor", label: "Propuesta de valor", placeholder: "¿Por qué te elegirían a vos y no a otro?" },
+  { key: "tarifas", label: "Tarifas y modelo de cobro", placeholder: "Por hora, por proyecto, retainer mensual..." },
+  { key: "canales", label: "Canales para conseguir clientes", placeholder: "Referidos, redes, plataformas, networking..." },
+  { key: "herramientas", label: "Herramientas y recursos", placeholder: "Qué necesitás para entregar el servicio." },
+  { key: "tiempos", label: "Disponibilidad y tiempos", placeholder: "Horas por semana, plazos, capacidad." },
+  { key: "proximosPasos", label: "Próximos pasos", placeholder: "Acciones concretas para arrancar." },
+]
+
+// Customization config (task: add/remove/rename canvas labels). Stored in the
+// response alongside `content` so renaming/removing/adding blocks persists.
+export interface CanvasConfig {
+  /** Override a block's label by its key. */
+  labels?: Record<string, string>
+  /** Keys of default blocks the user removed. */
+  hidden?: string[]
+  /** User-added custom blocks (rendered below the standard grid). */
+  extra?: { key: string; label: string }[]
+}
+
+/** Resolve the effective canvas blocks for a given customization config. */
+export function resolveCanvasBlocks(config?: CanvasConfig): {
+  base: CanvasBlock[]
+  extra: CanvasBlock[]
+  hidden: CanvasBlock[]
+} {
+  const hiddenKeys = new Set(config?.hidden ?? [])
+  const withLabel = (b: CanvasBlock): CanvasBlock => ({
+    ...b,
+    label: config?.labels?.[b.key] ?? b.label,
+  })
+  const base = CANVAS_BLOCKS.filter((b) => !hiddenKeys.has(b.key)).map(withLabel)
+  const hidden = CANVAS_BLOCKS.filter((b) => hiddenKeys.has(b.key)).map(withLabel)
+  const extra: CanvasBlock[] = (config?.extra ?? []).map((e) => ({
+    key: e.key,
+    label: e.label,
+    question: "",
+    tint: "bg-slate-50 border-slate-200",
+    area: "",
+  }))
+  return { base, extra, hidden }
+}
+
 export const INSTRUCTIONS: string[] = [
   "Lee cada recuadro y comprende qué se espera en cada parte del modelo.",
   "Escribe tus ideas con frases cortas y concretas.",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,9 +13,26 @@ import { apiJson, apiPost } from "@/lib/api"
 
 type Client = { id: string; name: string }
 
+type SessionRecord = {
+  id: string
+  clientId: string
+  sessionNum: number
+  coacheeName: string
+  coacheeAge: string
+  coacheeSex: string
+  coacheeWorks: boolean
+  coacheePosition: string | null
+  sessionDate: string
+  mainOutputs: string
+  toolsAndResults: string
+  conclusions: string
+}
+
 export default function NuevoRegistroPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
+  const isEdit = Boolean(id)
   const [searchParams] = useSearchParams()
   const { toast } = useToast()
 
@@ -34,44 +51,83 @@ export default function NuevoRegistroPage() {
   const [toolsAndResults, setToolsAndResults] = useState("")
   const [conclusions, setConclusions] = useState("")
   const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(!isEdit)
 
   useEffect(() => {
     apiJson<Client[]>("/student/clients").then((data: Client[]) => {
       setClients(data)
-      if (preselectedClientId) {
+      if (!isEdit && preselectedClientId) {
         const found = data.find((c) => c.id === preselectedClientId)
         if (found) setCoacheeName(found.name)
       }
     }).catch(() => {})
-  }, [preselectedClientId])
+  }, [preselectedClientId, isEdit])
+
+  // Edit mode: hydrate the form from the existing record.
+  useEffect(() => {
+    if (!isEdit || !id) return
+    apiJson<SessionRecord>(`/student/sessions/${id}`)
+      .then((r) => {
+        setClientId(r.clientId)
+        setSessionNum(String(r.sessionNum))
+        setCoacheeName(r.coacheeName)
+        setCoacheeAge(r.coacheeAge)
+        setCoacheeSex(r.coacheeSex)
+        setCoacheeWorks(r.coacheeWorks)
+        setCoacheePosition(r.coacheePosition ?? "")
+        setSessionDate(r.sessionDate.slice(0, 10))
+        setMainOutputs(r.mainOutputs)
+        setToolsAndResults(r.toolsAndResults)
+        setConclusions(r.conclusions)
+        setLoaded(true)
+      })
+      .catch(() => {
+        toast({ title: "No se encontró el registro", variant: "destructive" })
+        navigate("/student/registros")
+      })
+  }, [id, isEdit, navigate, toast])
 
   useEffect(() => {
-    if (clientId) {
+    // Only auto-fill the coachee name from the client when creating a new record.
+    if (!isEdit && clientId) {
       const found = clients.find((c) => c.id === clientId)
       if (found) setCoacheeName(found.name)
     }
-  }, [clientId, clients])
+  }, [clientId, clients, isEdit])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!clientId) { toast({ title: "Seleccioná un cliente", variant: "destructive" }); return }
 
     setSaving(true)
-    await apiPost("/student/sessions", {
+    const payload = {
       clientId, sessionNum, coacheeName, coacheeAge, coacheeSex,
       coacheeWorks, coacheePosition, sessionDate, mainOutputs,
       toolsAndResults, conclusions,
-    })
+    }
+    if (isEdit) {
+      await apiJson(`/student/sessions/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+    } else {
+      await apiPost("/student/sessions", payload)
+    }
 
     setSaving(false)
-    toast({ title: "Sesión registrada" })
+    toast({ title: isEdit ? "Registro actualizado" : "Sesión registrada" })
     navigate("/student/registros")
   }
+
+  if (!loaded) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="font-serif text-3xl text-foreground mb-1">Nuevo Registro de Sesión</h1>
+        <h1 className="font-serif text-3xl text-foreground mb-1">
+          {isEdit ? "Editar Registro de Sesión" : "Nuevo Registro de Sesión"}
+        </h1>
         <p className="text-muted-foreground text-sm">Completá los datos de la sesión de coaching</p>
       </div>
 
@@ -180,7 +236,7 @@ export default function NuevoRegistroPage() {
             Cancelar
           </Button>
           <Button type="submit" className="flex-1 bg-brand-accent hover:bg-brand-accent-dark" disabled={saving}>
-            {saving ? "Guardando..." : "Guardar registro"}
+            {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar registro"}
           </Button>
         </div>
       </form>

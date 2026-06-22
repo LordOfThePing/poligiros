@@ -41,7 +41,7 @@ export default function CohortesPage() {
     setNewName("")
     setNewDate("")
     setShowCreate(false)
-    toast({ title: "Cohorte creada" })
+    toast({ title: "SIC creado" })
   }
 
   async function handleToggleActive(id: string, active: boolean) {
@@ -75,11 +75,11 @@ export default function CohortesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl text-foreground mb-1">Cohortes</h1>
-          <p className="text-muted-foreground text-sm">Gestioná las cohortes y sus alumnos</p>
+          <h1 className="font-serif text-3xl text-foreground mb-1">SIC</h1>
+          <p className="text-muted-foreground text-sm">Gestioná los SIC y sus alumnos</p>
         </div>
         <Button className="bg-brand-accent hover:bg-brand-accent-dark" onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Nueva cohorte
+          <Plus className="h-4 w-4 mr-2" /> Nuevo SIC
         </Button>
       </div>
 
@@ -117,19 +117,19 @@ export default function CohortesPage() {
           </Card>
         ))}
         {cohorts.length === 0 && (
-          <p className="text-center text-muted-foreground py-12">No hay cohortes aún.</p>
+          <p className="text-center text-muted-foreground py-12">No hay SIC aún.</p>
         )}
       </div>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-serif">Nueva cohorte</DialogTitle>
+            <DialogTitle className="font-serif">Nuevo SIC</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nombre</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej: Cohorte 2025-A" />
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej: SIC 14" />
             </div>
             <div className="space-y-2">
               <Label>Fecha de inicio</Label>

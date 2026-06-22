@@ -19,7 +19,7 @@ const links = [
   { href: "/supervisor/supervision", label: "Supervisión", icon: ClipboardCheck },
   { href: "/supervisor/registros", label: "Registros", icon: FileText },
   { href: "/supervisor/modulos", label: "Módulos", icon: BookOpen },
-  { href: "/supervisor/cohortes", label: "Cohortes", icon: GraduationCap },
+  { href: "/supervisor/cohortes", label: "SIC", icon: GraduationCap },
 ]
 
 export function SupervisorSidebar() {

@@ -37,13 +37,13 @@ async function main() {
       { type: TestType.TABLERO_IDEAS, title: "Tablero de Ideas", description: "Explorá tus saberes, deseos y aspiraciones para generar nuevas ideas profesionales.", orderIndex: 2 },
       { type: TestType.PLAN_VITAL, title: "Plan Vital Integral®", description: "Próximamente disponible.", orderIndex: 3 },
       { type: TestType.PIRAMIDE_PROPOSITO, title: "Pirámide del Propósito", description: "Construí tu propósito profesional de forma estructurada.", orderIndex: 4 },
-      { type: TestType.MODELO_NEGOCIO, title: "Modelo de Negocio", description: "Desarrollá tu idea en un Modelo de Negocios Canvas o investigá un puesto de trabajo.", orderIndex: 5 },
+      { type: TestType.MODELO_NEGOCIO, title: "Exploración", description: "Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.", orderIndex: 5 },
     ],
   })
 
-  // ── 3. Active cohort ───────────────────────────────────────────────────────
+  // ── 3. Active SIC (cohort) ───────────────────────────────────────────────────
   const cohort = await prisma.cohort.create({
-    data: { name: "Cohorte Demo", startDate: new Date("2025-01-01"), active: true },
+    data: { name: "SIC 1", startDate: new Date("2025-01-01"), active: true },
   })
 
   // ── 4. Five generic coaches, each with a coach-as-coachee Client owned by Gaby ─

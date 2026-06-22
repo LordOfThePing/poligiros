@@ -105,6 +105,7 @@ export default function App() {
             <Route path="supervision" element={<StudentSupervisionPage />} />
             <Route path="registros" element={<StudentRegistrosPage />} />
             <Route path="registros/nuevo" element={<StudentNuevoRegistroPage />} />
+            <Route path="registros/:id/editar" element={<StudentNuevoRegistroPage />} />
           </Route>
 
           {/* Root redirect */}

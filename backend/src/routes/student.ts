@@ -245,6 +245,71 @@ student.get("/sessions", async (c) => {
   return c.json(sessions)
 })
 
+/** GET /student/sessions/:id — a single record the coach owns. */
+student.get("/sessions/:id", async (c) => {
+  const user = c.get("user")
+  const record = await prisma.sessionRecord.findFirst({
+    where: { id: c.req.param("id"), studentId: user.id },
+    include: { client: true },
+  })
+  if (!record) return c.json({ error: "Not found" }, 404)
+  return c.json(record)
+})
+
+/** PUT /student/sessions/:id — the coach edits their own session record. */
+student.put("/sessions/:id", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+
+  const existing = await prisma.sessionRecord.findFirst({
+    where: { id, studentId: user.id },
+  })
+  if (!existing) return c.json({ error: "Not found" }, 404)
+
+  const body = await c.req.json()
+  const {
+    clientId,
+    sessionNum,
+    coacheeName,
+    coacheeAge,
+    coacheeSex,
+    coacheeWorks,
+    coacheePosition,
+    sessionDate,
+    mainOutputs,
+    toolsAndResults,
+    conclusions,
+  } = body
+
+  // If the client is being reassigned, verify it still belongs to this coach.
+  if (clientId && clientId !== existing.clientId) {
+    const clientRecord = await prisma.client.findFirst({
+      where: { id: clientId, studentId: user.id },
+    })
+    if (!clientRecord) return c.json({ error: "Client not found" }, 404)
+  }
+
+  const updated = await prisma.sessionRecord.update({
+    where: { id },
+    data: {
+      ...(clientId ? { clientId } : {}),
+      ...(sessionNum != null && sessionNum !== "" ? { sessionNum: parseInt(sessionNum) } : {}),
+      coacheeName,
+      coacheeAge,
+      coacheeSex,
+      coacheeWorks,
+      coacheePosition: coacheeWorks ? coacheePosition : null,
+      ...(sessionDate ? { sessionDate: new Date(sessionDate) } : {}),
+      mainOutputs,
+      toolsAndResults,
+      conclusions,
+    },
+    include: { client: true },
+  })
+
+  return c.json(updated)
+})
+
 /** POST /student/sessions */
 student.post("/sessions", async (c) => {
   const user = c.get("user")
