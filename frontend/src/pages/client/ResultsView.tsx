@@ -87,17 +87,28 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
                     <p className="text-xs mt-0.5 opacity-90">{col.subtitle}</p>
                   </div>
                   <ol className="space-y-2">
-                    {items.map((v, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center gap-2 text-sm text-foreground bg-white rounded-lg border border-border px-3 py-2"
-                      >
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground shrink-0">
-                          {i + 1}
-                        </span>
-                        <span>{v}</span>
-                      </li>
-                    ))}
+                    {items.map((v, i) => {
+                      const inTop3 = i < 3
+                      return (
+                        <li
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2 transition-colors",
+                            inTop3 ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-60",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium shrink-0",
+                              inTop3 ? "text-white " + col.header : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {i + 1}
+                          </span>
+                          <span>{v}</span>
+                        </li>
+                      )
+                    })}
                   </ol>
                 </div>
               )
