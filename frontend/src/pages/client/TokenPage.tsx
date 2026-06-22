@@ -87,8 +87,9 @@ export default function TokenPage() {
   }
 
   if (data.state === "results") {
-    // Modelo de Negocio renders a wide canvas; other results stay narrow.
-    const wide = data.testType === "MODELO_NEGOCIO"
+    // Modelo de Negocio (canvas) and Tablero (3 columns + brainstorming) render
+    // wide; other results stay narrow.
+    const wide = data.testType === "MODELO_NEGOCIO" || data.testType === "TABLERO_IDEAS"
     return (
       <div className="min-h-screen bg-brand-bg py-8">
         <div className={`${wide ? "max-w-6xl" : "max-w-2xl"} mx-auto px-4`}>

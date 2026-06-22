@@ -70,108 +70,111 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
       )}
 
       {testType === "TABLERO_IDEAS" && (
-        <div className="space-y-8">
+        <div className="space-y-4">
           <h2 className="font-serif text-2xl text-foreground">Tu Tablero de Ideas</h2>
 
-          {/* Three columns — prefer the ranked order, fall back to the raw lists */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TABLERO_COLUMNS.map((col) => {
-              const ranked = (responses[col.rankKey] as string[] | undefined)?.filter(Boolean)
-              const raw = (responses[col.key] as string[] | undefined)?.filter(Boolean)
-              const items = ranked && ranked.length > 0 ? ranked : raw ?? []
-              if (items.length === 0) return null
-              return (
-                <div key={col.key} className="space-y-3">
-                  <div className={cn("text-white rounded-lg px-4 py-3", col.header)}>
-                    <h3 className="font-serif text-lg font-medium">{col.title}</h3>
-                    <p className="text-xs mt-0.5 opacity-90">{col.subtitle}</p>
-                  </div>
-                  <ol className="space-y-2">
-                    {items.map((v, i) => {
-                      const inTop3 = i < 3
-                      return (
-                        <li
-                          key={i}
-                          className={cn(
-                            "flex items-center gap-2 text-sm bg-white rounded-lg border px-3 py-2 transition-colors",
-                            inTop3 ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-60",
-                          )}
-                        >
-                          <span
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:h-[calc(100vh-200px)]">
+            {/* Left: three columns — prefer the ranked order, fall back to raw lists */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 content-start lg:overflow-y-auto lg:pr-1">
+              {TABLERO_COLUMNS.map((col) => {
+                const ranked = (responses[col.rankKey] as string[] | undefined)?.filter(Boolean)
+                const raw = (responses[col.key] as string[] | undefined)?.filter(Boolean)
+                const items = ranked && ranked.length > 0 ? ranked : raw ?? []
+                if (items.length === 0) return null
+                return (
+                  <div key={col.key} className="space-y-2">
+                    <div className={cn("text-white rounded-lg px-3 py-2", col.header)}>
+                      <h3 className="font-serif text-base font-medium">{col.title}</h3>
+                      <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">{col.subtitle}</p>
+                    </div>
+                    <ol className="space-y-1.5">
+                      {items.map((v, i) => {
+                        const inTop3 = i < 3
+                        return (
+                          <li
+                            key={i}
                             className={cn(
-                              "flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium shrink-0",
-                              inTop3 ? "text-white " + col.header : "bg-muted text-muted-foreground",
+                              "flex items-center gap-2 text-sm bg-white rounded-lg border px-2.5 py-1.5 transition-colors",
+                              inTop3 ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-60",
                             )}
                           >
-                            {i + 1}
-                          </span>
-                          <span>{v}</span>
-                        </li>
-                      )
-                    })}
-                  </ol>
-                </div>
-              )
-            })}
-          </div>
-
-          {(() => {
-            const ideas = (responses.brainstormIdeas as string[] | undefined)?.filter(Boolean) ?? []
-            const ai = (responses.aiIdeas as string[] | undefined)?.filter(Boolean) ?? []
-            const selected = responses.selectedIdea as string | undefined
-            const legacy = responses.brainstorming as string | undefined
-
-            const Idea = ({ text, isAi }: { text: string; isAi?: boolean }) => {
-              const active = selected === text
-              return (
-                <div
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors",
-                    isAi && "border-dashed",
-                    active
-                      ? "border-brand-accent bg-brand-accent/10 text-foreground"
-                      : "border-border bg-white text-muted-foreground",
-                  )}
-                >
-                  {isAi && <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />}
-                  <span className="flex-1">{text}</span>
-                  {active && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-brand-accent shrink-0">
-                      <Check className="h-4 w-4" /> Elegida
-                    </span>
-                  )}
-                </div>
-              )
-            }
-
-            if (ideas.length === 0 && ai.length === 0 && !legacy) return null
-
-            return (
-              <div className="space-y-3">
-                <div className="bg-gray-800 text-white rounded-lg px-4 py-3">
-                  <h3 className="font-serif text-lg font-medium">Brainstorming</h3>
-                  <p className="text-xs mt-0.5 opacity-90">Ideas conectando las tres columnas — la elegida está resaltada</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {ideas.map((v, i) => (
-                    <Idea key={`b-${i}`} text={v} />
-                  ))}
-                  {ai.map((v, i) => (
-                    <Idea key={`a-${i}`} text={v} isAi />
-                  ))}
-                </div>
-                {legacy && ideas.length === 0 && (
-                  <p className="text-sm text-muted-foreground bg-white rounded-lg border border-border px-4 py-3 whitespace-pre-wrap">{legacy}</p>
-                )}
-                {selected && !ideas.includes(selected) && !ai.includes(selected) && (
-                  <div className="bg-brand-accent/5 border border-brand-accent/20 rounded-xl p-4">
-                    <p className="text-xs font-medium text-brand-accent mb-1">Idea elegida para desarrollar</p>
-                    <p className="text-sm text-foreground">{selected}</p>
+                            <span
+                              className={cn(
+                                "flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium shrink-0",
+                                inTop3 ? "text-white " + col.header : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {i + 1}
+                            </span>
+                            <span>{v}</span>
+                          </li>
+                        )
+                      })}
+                    </ol>
                   </div>
-                )}
-              </div>
-            )
-          })()}
+                )
+              })}
+            </div>
+
+            {/* Right: brainstorming */}
+            {(() => {
+              const ideas = (responses.brainstormIdeas as string[] | undefined)?.filter(Boolean) ?? []
+              const ai = (responses.aiIdeas as string[] | undefined)?.filter(Boolean) ?? []
+              const selected = responses.selectedIdea as string | undefined
+              const legacy = responses.brainstorming as string | undefined
+
+              const Idea = ({ text, isAi }: { text: string; isAi?: boolean }) => {
+                const active = selected === text
+                return (
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                      isAi && "border-dashed",
+                      active
+                        ? "border-brand-accent bg-brand-accent/10 text-foreground"
+                        : "border-border bg-white text-muted-foreground",
+                    )}
+                  >
+                    {isAi && <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />}
+                    <span className="flex-1">{text}</span>
+                    {active && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-brand-accent shrink-0">
+                        <Check className="h-4 w-4" /> Elegida
+                      </span>
+                    )}
+                  </div>
+                )
+              }
+
+              if (ideas.length === 0 && ai.length === 0 && !legacy) return <div />
+
+              return (
+                <div className="flex flex-col min-h-0">
+                  <div className="bg-gray-800 text-white rounded-lg px-4 py-2.5 shrink-0">
+                    <h3 className="font-serif text-base font-medium">Brainstorming</h3>
+                    <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">Ideas conectando las tres columnas — la elegida está resaltada</p>
+                  </div>
+                  <div className="mt-2 flex-1 space-y-2 lg:overflow-y-auto lg:pr-1">
+                    {ideas.map((v, i) => (
+                      <Idea key={`b-${i}`} text={v} />
+                    ))}
+                    {ai.map((v, i) => (
+                      <Idea key={`a-${i}`} text={v} isAi />
+                    ))}
+                    {legacy && ideas.length === 0 && (
+                      <p className="text-sm text-muted-foreground bg-white rounded-lg border border-border px-3 py-2 whitespace-pre-wrap">{legacy}</p>
+                    )}
+                    {selected && !ideas.includes(selected) && !ai.includes(selected) && (
+                      <div className="bg-brand-accent/5 border border-brand-accent/20 rounded-xl p-3">
+                        <p className="text-xs font-medium text-brand-accent mb-1">Idea elegida para desarrollar</p>
+                        <p className="text-sm text-foreground">{selected}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 

@@ -125,12 +125,36 @@ export function BusinessModelCanvas({
 
   return (
     <div className="space-y-3">
-      {/* Title band — the chosen idea is the canvas title (per reference image). */}
-      <div className="rounded-xl border border-border bg-sky-50/70 px-5 py-4">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Modelo de Negocios</p>
-        <h3 className="font-serif text-2xl text-foreground">
-          {idea?.trim() || "Tu idea"}
-        </h3>
+      {/* Title band — the chosen idea is the canvas title (per reference image).
+          The "Contá tu idea" description sits here so the client frames the idea
+          before filling the canvas diagram below. */}
+      <div className="space-y-3 rounded-xl border border-border bg-sky-50/70 px-5 py-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Modelo de Negocios</p>
+          <h3 className="font-serif text-2xl text-foreground">
+            {idea?.trim() || "Tu idea"}
+          </h3>
+        </div>
+        {(!readOnly || (story && story.trim())) && (
+          <div>
+            <p className="mb-1 text-sm font-medium text-foreground">Contá tu idea</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Describí tu modelo en un breve relato: el problema que resolvés, cómo encajan las piezas y por qué te entusiasma.
+            </p>
+            {readOnly ? (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                {story?.trim() || <span className="text-muted-foreground">—</span>}
+              </p>
+            ) : (
+              <Textarea
+                value={story ?? ""}
+                onChange={(e) => onStoryChange?.(e.target.value)}
+                placeholder="Ej: Quiero ayudar a pequeñas pymes a ordenar sus finanzas..."
+                className="min-h-[100px] bg-white text-sm"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
@@ -219,28 +243,6 @@ export function BusinessModelCanvas({
           )}
         </div>
       </div>
-
-      {/* Storytelling / description below the canvas. */}
-      {(!readOnly || (story && story.trim())) && (
-        <div className="rounded-xl border border-border bg-white p-4">
-          <p className="mb-1 text-sm font-medium text-foreground">Contá tu idea</p>
-          <p className="mb-2 text-xs text-muted-foreground">
-            Describí tu modelo en un breve relato: el problema que resolvés, cómo encajan las piezas y por qué te entusiasma.
-          </p>
-          {readOnly ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-              {story?.trim() || <span className="text-muted-foreground">—</span>}
-            </p>
-          ) : (
-            <Textarea
-              value={story ?? ""}
-              onChange={(e) => onStoryChange?.(e.target.value)}
-              placeholder="Ej: Quiero ayudar a pequeñas pymes a ordenar sus finanzas..."
-              className="min-h-[120px] text-sm"
-            />
-          )}
-        </div>
-      )}
     </div>
   )
 }

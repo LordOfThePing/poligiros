@@ -388,28 +388,23 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
       {/* ── Step 3: idea cards → AI cards → pick one to develop ── */}
       {step === 3 && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-[32%_1fr] gap-6">
-            <aside className="space-y-4 md:sticky md:top-4 md:self-start">
-              <p className="font-serif text-lg text-foreground">Conectando datos →</p>
-              <RankedChips title="Mis apasionantes (SABER)" items={saberRank.slice(0, 3)} chip="bg-brand-accent/10 text-brand-accent" />
-              <RankedChips title="Lo que quiero hacer (QUERER)" items={quererRank.slice(0, 3)} chip="bg-brand-secondary/10 text-brand-secondary" />
-              <RankedChips title="Mis aspiraciones (SOÑAR)" items={sonarRank.slice(0, 3)} chip="bg-indigo-100 text-indigo-700" />
-            </aside>
+          <div className="lg:h-[calc(100vh-260px)] flex flex-col gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[24%_1fr_1fr] gap-4 flex-1 min-h-0">
+              {/* Col 1: connecting data — top 3 of each column */}
+              <aside className="space-y-3 lg:overflow-y-auto lg:pr-1">
+                <p className="font-serif text-base text-foreground">Conectando datos →</p>
+                <RankedChips title="SABER" items={saberRank.slice(0, 3)} chip="bg-brand-accent/10 text-brand-accent" />
+                <RankedChips title="QUERER" items={quererRank.slice(0, 3)} chip="bg-brand-secondary/10 text-brand-secondary" />
+                <RankedChips title="SOÑAR" items={sonarRank.slice(0, 3)} chip="bg-indigo-100 text-indigo-700" />
+              </aside>
 
-            <div className="space-y-5">
-              <div className="bg-gray-800 text-white rounded-lg px-4 py-3">
-                <h2 className="font-serif text-lg font-medium">BRAINSTORMING: Conectando Datos</h2>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Uniendo y mezclando los datos de las tres columnas, anotá cada posibilidad como una tarjeta:
-                ideas de negocio, trabajos, ocupaciones o proyectos. Ordenalas de más a menos atractiva.
-                Después podés sumar ideas generadas por IA. Al final, elegí <strong>una</strong> para desarrollar.
-              </p>
-
-              {/* Your idea cards */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tus ideas</p>
-                <div className="flex gap-2">
+              {/* Col 2: your idea cards */}
+              <div className="flex flex-col min-h-0">
+                <div className="bg-gray-800 text-white rounded-lg px-4 py-2.5 shrink-0">
+                  <h2 className="font-serif text-base font-medium">Tus ideas</h2>
+                  <p className="text-xs opacity-90">Conectá las tres columnas: negocios, trabajos o proyectos. Ordená de más a menos atractiva.</p>
+                </div>
+                <div className="flex gap-2 mt-3 shrink-0">
                   <Input
                     value={newIdea}
                     onChange={(e) => setNewIdea(e.target.value)}
@@ -421,79 +416,87 @@ export default function TableroTest({ api, assignmentId }: TableroTestProps) {
                     <Plus className="h-3 w-3 mr-1" /> Agregar
                   </Button>
                 </div>
-                {ideaCards.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">Agregá al menos una idea para continuar.</p>
-                ) : (
-                  <SortableList
-                    items={ideaCards}
-                    onReorder={setIdeaCards}
-                    renderItem={(item, index) => (
-                      <div
-                        onClick={() => setSelectedIdea(item.text)}
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors",
-                          selectedIdea === item.text
-                            ? "border-brand-accent bg-brand-accent/10"
-                            : "border-border bg-white hover:border-brand-accent/50"
-                        )}
-                      >
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-xs text-white shrink-0">{index + 1}</span>
-                        <span className="flex-1">{item.text}</span>
-                        {selectedIdea === item.text && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeIdea(item.id, item.text) }}
-                          className="text-muted-foreground hover:text-destructive shrink-0"
-                          aria-label="Quitar"
+                <div className="mt-3 flex-1 lg:overflow-y-auto lg:pr-1">
+                  {ideaCards.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Agregá al menos una idea para continuar.</p>
+                  ) : (
+                    <SortableList
+                      items={ideaCards}
+                      onReorder={setIdeaCards}
+                      renderItem={(item, index) => (
+                        <div
+                          onClick={() => setSelectedIdea(item.text)}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors",
+                            selectedIdea === item.text
+                              ? "border-brand-accent bg-brand-accent/10"
+                              : "border-border bg-white hover:border-brand-accent/50"
+                          )}
                         >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  />
-                )}
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-xs text-white shrink-0">{index + 1}</span>
+                          <span className="flex-1">{item.text}</span>
+                          {selectedIdea === item.text && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeIdea(item.id, item.text) }}
+                            className="text-muted-foreground hover:text-destructive shrink-0"
+                            aria-label="Quitar"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    />
+                  )}
+                </div>
               </div>
 
-              {/* AI ideas — only after the user has created their own */}
-              <div className="space-y-2">
+              {/* Col 3: AI ideas — only after the user has created their own */}
+              <div className="flex flex-col min-h-0">
+                <div className="bg-brand-accent text-white rounded-lg px-4 py-2.5 shrink-0">
+                  <h2 className="font-serif text-base font-medium flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4" /> Ideas con IA
+                  </h2>
+                  <p className="text-xs opacity-90">Sumá sugerencias generadas a partir de tus datos.</p>
+                </div>
                 <Button
                   variant="outline"
                   onClick={generateAiIdeas}
                   disabled={ideaCards.length === 0 || loadingIdeas}
-                  className="w-full"
+                  className="w-full mt-3 shrink-0"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
                   {loadingIdeas ? "Generando ideas..." : ideasGenerated ? "Volver a generar con IA" : "Generar ideas con IA"}
                 </Button>
-                {ideasGenerated && aiIdeas.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ideas sugeridas por IA</p>
-                    {aiIdeas.map((idea, i) => (
-                      <div
-                        key={i}
-                        onClick={() => setSelectedIdea(idea)}
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm cursor-pointer transition-colors",
-                          selectedIdea === idea
-                            ? "border-brand-accent bg-brand-accent/10"
-                            : "border-brand-accent/40 bg-brand-accent/[0.03] hover:bg-brand-accent/10"
-                        )}
-                      >
-                        <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />
-                        <span className="flex-1">{idea}</span>
-                        {selectedIdea === idea && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="mt-3 flex-1 lg:overflow-y-auto lg:pr-1 space-y-2">
+                  {ideaCards.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Primero agregá tus propias ideas.</p>
+                  )}
+                  {ideasGenerated && aiIdeas.map((idea, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setSelectedIdea(idea)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm cursor-pointer transition-colors",
+                        selectedIdea === idea
+                          ? "border-brand-accent bg-brand-accent/10"
+                          : "border-brand-accent/40 bg-brand-accent/[0.03] hover:bg-brand-accent/10"
+                      )}
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />
+                      <span className="flex-1">{idea}</span>
+                      {selectedIdea === idea && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
+                    </div>
+                  ))}
+                </div>
               </div>
-
-              {selectedIdea && (
-                <p className="text-sm text-foreground bg-brand-accent/5 border border-brand-accent/20 rounded-lg px-3 py-2">
-                  Vas a desarrollar: <strong>{selectedIdea}</strong>
-                </p>
-              )}
             </div>
+
+            {selectedIdea && (
+              <p className="shrink-0 text-sm text-foreground bg-brand-accent/5 border border-brand-accent/20 rounded-lg px-3 py-2 truncate">
+                Vas a desarrollar: <strong>{selectedIdea}</strong>
+              </p>
+            )}
           </div>
 
           <StepBar step={step} pct={stepPct}>
