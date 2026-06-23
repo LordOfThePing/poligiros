@@ -26,7 +26,16 @@ const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   PIRAMIDE_PROPOSITO: { title: "Pirámide del Propósito" },
   MODELO_NEGOCIO: { title: "Exploración" },
 }
-const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"]
+
+// "Exploración" (MODELO_NEGOCIO) is a post-test of "Tablero de Ideas", so it
+// sits indented right below it. `order` is the label shown before the title.
+const TEST_ORDER: { type: string; order: string; indent?: boolean }[] = [
+  { type: "ANCLAS_CARRERA", order: "1" },
+  { type: "TABLERO_IDEAS", order: "2" },
+  { type: "MODELO_NEGOCIO", order: "2.1", indent: true },
+  { type: "PLAN_VITAL", order: "3" },
+  { type: "PIRAMIDE_PROPOSITO", order: "4" },
+]
 
 type Assignment = {
   id: string
@@ -157,15 +166,19 @@ export default function ClientDetailPage() {
           <CardTitle className="font-serif text-lg">Tests</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {TEST_ORDER.map((type) => {
+          {TEST_ORDER.map(({ type, order, indent }) => {
             const info = TEST_INFO[type]
             const assignment = client.assignments.find((a) => a.test.type === type)
             const isComingSoon = info.comingSoon
             const resetPending = assignment?.resetRequests?.[0]?.status === "PENDING"
 
             return (
-              <div key={type} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+              <div
+                key={type}
+                className={`flex items-center justify-between py-2 border-b border-border last:border-0 ${indent ? "pl-6 border-l-2 border-l-border ml-1" : ""}`}
+              >
                 <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm font-semibold text-muted-foreground tabular-nums">{order}.</span>
                   <span className="text-sm font-medium text-foreground">{info.title}</span>
                   {isComingSoon && <Badge variant="secondary" className="text-xs">Próximamente</Badge>}
                   {assignment?.completedAt && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Completado ✓</Badge>}
