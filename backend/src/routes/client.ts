@@ -145,4 +145,33 @@ client.post("/t/:token/ai-ideas", async (c) => {
   return c.json({ ideas })
 })
 
+/**
+ * PUT /client/t/:token/edit
+ * Update responses for an already-completed assignment (coachee self-edit).
+ * Only valid while state === "results" (completedAt is set).
+ */
+client.put("/t/:token/edit", async (c) => {
+  const token = c.req.param("token")
+
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { accessToken: token },
+  })
+
+  if (!assignment) return c.json({ error: "invalid" }, 404)
+
+  const state = getAssignmentState(assignment)
+  if (state === "expired") return c.json({ state: "expired" }, 410)
+  if (state === "form") return c.json({ error: "not_completed" }, 409)
+
+  const { responses } = await c.req.json()
+
+  const updated = await prisma.testResponse.upsert({
+    where: { assignmentId: assignment.id },
+    update: { responses },
+    create: { assignmentId: assignment.id, responses },
+  })
+
+  return c.json(updated)
+})
+
 export default client

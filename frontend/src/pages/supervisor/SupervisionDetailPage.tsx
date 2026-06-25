@@ -93,6 +93,16 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{responses.brainstorming}</p>
           </div>
         )}
+        {Array.isArray(responses.explorationTasks) && responses.explorationTasks.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-1">Tareas de exploración:</p>
+            <ul className="space-y-1">
+              {(responses.explorationTasks as string[]).map((v: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground">○ {v}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     )
   }

@@ -114,6 +114,7 @@ function TableroEditor({ data, setField }: { data: Data; setField: (k: string, v
       <ListEditor label="SOÑAR (ranking)" items={list("sonarRanking")} onChange={(v) => setField("sonarRanking", v)} />
       <ListEditor label="Ideas (brainstorming)" items={list("brainstormIdeas")} onChange={(v) => setField("brainstormIdeas", v)} />
       <ListEditor label="Ideas de IA" items={list("aiIdeas")} onChange={(v) => setField("aiIdeas", v)} />
+      <ListEditor label="Tareas de exploración" items={list("explorationTasks")} onChange={(v) => setField("explorationTasks", v)} />
       <div className="space-y-1">
         <Label className="text-xs">Idea elegida</Label>
         <Input value={data.selectedIdea ?? ""} onChange={(e) => setField("selectedIdea", e.target.value)} className="text-sm" />

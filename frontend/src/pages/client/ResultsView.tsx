@@ -175,6 +175,24 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
               )
             })()}
           </div>
+
+          {(() => {
+            const tasks = (responses.explorationTasks as string[] | undefined)?.filter(Boolean) ?? []
+            if (tasks.length === 0) return null
+            return (
+              <div className="bg-white rounded-xl border border-border p-4">
+                <p className="text-sm font-medium text-foreground mb-2">Tareas de exploración</p>
+                <ul className="space-y-1.5">
+                  {tasks.map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <span className="text-brand-accent mt-0.5">○</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })()}
         </div>
       )}
 

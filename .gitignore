@@ -43,3 +43,6 @@ prisma/migrations/
 /.agents/
 
 skills-lock.json
+
+# Notas reunion 
+*.txt
