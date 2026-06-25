@@ -74,20 +74,20 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
           <h2 className="font-serif text-2xl text-foreground">Tu Tablero de Ideas</h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:h-[calc(100vh-200px)]">
-            {/* Left: three columns — prefer the ranked order, fall back to raw lists */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 content-start lg:overflow-y-auto lg:pr-1">
+            {/* Left: three columns — each with sticky header and independent scroll */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:h-full">
               {TABLERO_COLUMNS.map((col) => {
                 const ranked = (responses[col.rankKey] as string[] | undefined)?.filter(Boolean)
                 const raw = (responses[col.key] as string[] | undefined)?.filter(Boolean)
                 const items = ranked && ranked.length > 0 ? ranked : raw ?? []
                 if (items.length === 0) return null
                 return (
-                  <div key={col.key} className="space-y-2">
-                    <div className={cn("text-white rounded-lg px-3 py-2", col.header)}>
+                  <div key={col.key} className="flex flex-col min-h-0">
+                    <div className={cn("text-white rounded-lg px-3 py-2 shrink-0", col.header)}>
                       <h3 className="font-serif text-base font-medium">{col.title}</h3>
                       <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">{col.subtitle}</p>
                     </div>
-                    <ol className="space-y-1.5">
+                    <ol className="mt-2 flex-1 lg:overflow-y-auto space-y-1.5 lg:pr-1">
                       {items.map((v, i) => {
                         const inTop3 = i < 3
                         return (
