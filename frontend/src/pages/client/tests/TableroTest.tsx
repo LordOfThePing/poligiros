@@ -867,9 +867,9 @@ function RankedChips({ title, items, chip }: { title: string; items: RankItem[];
       ) : (
         <ol className="space-y-1">
           {items.map((item, i) => (
-            <li key={item.id} className={cn("text-xs rounded-md px-2 py-1 flex items-center gap-1.5", chip)}>
-              <span className="font-semibold">{i + 1}.</span>
-              <span>{item.text}</span>
+            <li key={item.id} className={cn("text-xs rounded-md px-2 py-1 flex items-start gap-1.5", chip)}>
+              <span className="font-semibold shrink-0">{i + 1}.</span>
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.text}</span>
             </li>
           ))}
         </ol>
