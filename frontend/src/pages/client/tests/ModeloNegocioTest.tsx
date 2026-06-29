@@ -3,83 +3,97 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Briefcase, Lightbulb, UserRound, Send } from "lucide-react"
+import { Briefcase, Lightbulb, UserRound, Send, Plus, X } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
 
-// Standalone "Exploración" test (formerly "Modelo de Negocio"). The client develops
-// an idea as a Business Model Canvas, a freelance/autonomous plan, or a job-research
-// workspace. Idea pre-fills from the client's latest Tablero but is freely editable.
-
 type Kind = "CANVAS" | "FREELANCE" | "JOB"
+
+interface IdeaState {
+  idea: string
+  kind: Kind | null
+  content: Record<string, string>
+  canvasConfig: CanvasConfig
+  story: string
+}
+
+const emptyIdea = (): IdeaState => ({ idea: "", kind: null, content: {}, canvasConfig: {}, story: "" })
 
 const DRAFT_KEY = (id: string) => `modelo-negocio-draft-${id}`
 
 export function ModeloNegocioTest({
   api,
   assignmentId,
-  prefillIdea,
+  prefillIdeas = [],
 }: {
   api: TestApi
   assignmentId: string
-  prefillIdea?: string
+  prefillIdeas?: string[]
 }) {
   const { toast } = useToast()
-  const [idea, setIdea] = useState(prefillIdea ?? "")
-  const [kind, setKind] = useState<Kind | null>(null)
-  const [content, setContent] = useState<Record<string, string>>({})
-  const [canvasConfig, setCanvasConfig] = useState<CanvasConfig>({})
-  const [story, setStory] = useState("")
+  const [primary, setPrimary] = useState<IdeaState>(emptyIdea)
+  const [addSecond, setAddSecond] = useState(false)
+  const [secondary, setSecondary] = useState<IdeaState>(emptyIdea)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  // Restore draft (and only fall back to the Tablero pre-fill when no draft idea).
   useEffect(() => {
     const raw = localStorage.getItem(DRAFT_KEY(assignmentId))
     if (raw) {
       try {
         const d = JSON.parse(raw)
-        if (typeof d.idea === "string" && d.idea) setIdea(d.idea)
-        if (d.kind === "CANVAS" || d.kind === "JOB" || d.kind === "FREELANCE") setKind(d.kind)
-        if (d.content && typeof d.content === "object") setContent(d.content)
-        if (d.canvasConfig && typeof d.canvasConfig === "object") setCanvasConfig(d.canvasConfig)
-        if (typeof d.story === "string") setStory(d.story)
+        if (d.primary) setPrimary((prev) => ({ ...prev, ...d.primary }))
+        if (typeof d.addSecond === "boolean") setAddSecond(d.addSecond)
+        if (d.secondary) setSecondary((prev) => ({ ...prev, ...d.secondary }))
       } catch {}
+    } else if (prefillIdeas.length > 0) {
+      // Pre-select the first idea (the one they chose in Tablero)
+      setPrimary((p) => ({ ...p, idea: prefillIdeas[0] }))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId])
 
   const saveDraft = useCallback(() => {
     localStorage.setItem(
       DRAFT_KEY(assignmentId),
-      JSON.stringify({ idea, kind, content, canvasConfig, story }),
+      JSON.stringify({ primary, addSecond, secondary }),
     )
-  }, [assignmentId, idea, kind, content, canvasConfig, story])
+  }, [assignmentId, primary, addSecond, secondary])
 
   useEffect(() => {
-    const interval = setInterval(saveDraft, 30000)
+    const interval = setInterval(saveDraft, 30_000)
     return () => clearInterval(interval)
   }, [saveDraft])
 
-  function set(key: string, value: string) {
-    setContent((prev) => ({ ...prev, [key]: value }))
-  }
-
   async function handleSubmit() {
-    if (!kind || !idea.trim()) return
+    if (!primary.kind || !primary.idea.trim()) return
+    if (addSecond && (!secondary.kind || !secondary.idea.trim())) {
+      toast({ title: "Completá la idea y el camino de la segunda idea antes de enviar", variant: "destructive" })
+      return
+    }
     setSaving(true)
     saveDraft()
-    const res = await api.submit({
-      kind,
-      selectedIdea: idea.trim(),
-      content,
-      story: story.trim() || undefined,
-      ...(kind === "CANVAS" ? { canvas: canvasConfig } : {}),
+
+    const buildIdea = (s: IdeaState, horizon: "short" | "long") => ({
+      horizon,
+      selectedIdea: s.idea.trim(),
+      kind: s.kind,
+      content: s.content,
+      story: s.story.trim() || undefined,
+      ...(s.kind === "CANVAS" ? { canvas: s.canvasConfig } : {}),
     })
+
+    const ideas = [
+      buildIdea(primary, "short"),
+      ...(addSecond ? [buildIdea(secondary, "long")] : []),
+    ]
+
+    const res = await api.submit({ ideas })
     setSaving(false)
     if (res.ok) {
       localStorage.removeItem(DRAFT_KEY(assignmentId))
-      toast({ title: "¡Enviado!" })
       setSubmitted(true)
     } else {
       toast({ title: "Error al enviar", variant: "destructive" })
@@ -96,8 +110,11 @@ export function ModeloNegocioTest({
     )
   }
 
+  const horizonLabel = (h: "short" | "long") =>
+    h === "short" ? (addSecond ? "Corto / mediano plazo" : null) : "Largo plazo"
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Exploración</h1>
         <p className="text-sm text-muted-foreground">
@@ -105,72 +122,45 @@ export function ModeloNegocioTest({
         </p>
       </div>
 
-      <div className="space-y-2 rounded-xl border border-border bg-white p-5">
-        <label className="block text-sm text-muted-foreground">
-          Idea a desarrollar
-          <Input
-            value={idea}
-            onChange={(e) => setIdea(e.target.value)}
-            placeholder="Escribí la idea que vas a desarrollar..."
-            className="mt-1 text-foreground"
-          />
-        </label>
-        <p className="text-xs text-muted-foreground">
-          Se pre-completa con la idea elegida en tu Tablero. Podés editarla si tu coach propuso cambios.
-        </p>
+      <IdeaWorkspace
+        ideas={prefillIdeas}
+        state={primary}
+        onChange={setPrimary}
+        horizon={addSecond ? "short" : undefined}
+      />
 
-        <div className="pt-2">
-          <p className="text-sm text-muted-foreground mb-2">¿Qué camino querés explorar?</p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              variant={kind === "CANVAS" ? "default" : "outline"}
-              onClick={() => setKind("CANVAS")}
-              className="flex-1"
-            >
-              <Lightbulb className="h-4 w-4 mr-2" /> Emprendimiento — Canvas
-            </Button>
-            <Button
-              variant={kind === "FREELANCE" ? "default" : "outline"}
-              onClick={() => setKind("FREELANCE")}
-              className="flex-1"
-            >
-              <UserRound className="h-4 w-4 mr-2" /> Freelance / Autónomo
-            </Button>
-            <Button
-              variant={kind === "JOB" ? "default" : "outline"}
-              onClick={() => setKind("JOB")}
-              className="flex-1"
-            >
-              <Briefcase className="h-4 w-4 mr-2" /> Empleo — Investigación
-            </Button>
+      {/* Second idea toggle */}
+      {primary.kind && primary.idea.trim() && !addSecond && (
+        <button
+          onClick={() => setAddSecond(true)}
+          className="flex items-center gap-2 text-sm text-brand-accent hover:text-brand-accent-dark transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Agregar una segunda idea para explorar a largo plazo
+        </button>
+      )}
+
+      {addSecond && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Segunda idea — Largo plazo</p>
+            <button onClick={() => { setAddSecond(false); setSecondary(emptyIdea()) }} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
           </div>
+          <IdeaWorkspace
+            ideas={prefillIdeas}
+            state={secondary}
+            onChange={setSecondary}
+            horizon="long"
+          />
         </div>
-      </div>
-
-      {kind === "CANVAS" && (
-        <BusinessModelCanvas
-          idea={idea}
-          content={content}
-          onChange={set}
-          config={canvasConfig}
-          onConfigChange={setCanvasConfig}
-          story={story}
-          onStoryChange={setStory}
-        />
       )}
 
-      {kind === "FREELANCE" && (
-        <FieldsForm fields={FREELANCE_FIELDS} content={content} onChange={set} story={story} onStoryChange={setStory} />
-      )}
-
-      {kind === "JOB" && (
-        <FieldsForm fields={JOB_FIELDS} content={content} onChange={set} story={story} onStoryChange={setStory} />
-      )}
-
-      {kind && (
+      {primary.kind && primary.idea.trim() && (
         <Button
           onClick={handleSubmit}
-          disabled={saving || !idea.trim()}
+          disabled={saving}
           className="bg-brand-accent hover:bg-brand-accent-dark"
         >
           <Send className="h-4 w-4 mr-2" /> {saving ? "Enviando..." : "Enviar"}
@@ -179,6 +169,135 @@ export function ModeloNegocioTest({
     </div>
   )
 }
+
+// ── IdeaWorkspace ─────────────────────────────────────────────────────────────
+// One idea: pick an idea → pick a kind → fill the form.
+
+function IdeaWorkspace({
+  ideas,
+  state,
+  onChange,
+  horizon,
+}: {
+  ideas: string[]
+  state: IdeaState
+  onChange: (s: IdeaState) => void
+  horizon?: "short" | "long"
+}) {
+  const set = (patch: Partial<IdeaState>) => onChange({ ...state, ...patch })
+  const setContent = (key: string, value: string) =>
+    set({ content: { ...state.content, [key]: value } })
+
+  const horizonLabel =
+    horizon === "short" ? "Corto / mediano plazo" : horizon === "long" ? "Largo plazo" : null
+
+  return (
+    <div className="space-y-4">
+      {/* Idea picker */}
+      <div className="rounded-xl border border-border bg-white p-5 space-y-3">
+        {horizonLabel && (
+          <p className="text-xs font-medium text-brand-accent uppercase tracking-wide">{horizonLabel}</p>
+        )}
+        <p className="text-sm font-medium text-foreground">¿Qué idea vas a explorar?</p>
+
+        {ideas.length > 0 && (
+          <div className="grid gap-2">
+            {ideas.map((idea) => (
+              <button
+                key={idea}
+                onClick={() => set({ idea })}
+                className={cn(
+                  "text-left rounded-lg border px-4 py-3 text-sm transition-colors",
+                  state.idea === idea
+                    ? "border-brand-accent bg-brand-accent/10 text-foreground font-medium"
+                    : "border-border bg-white text-muted-foreground hover:border-brand-accent/50",
+                )}
+              >
+                {idea}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-1">
+          {ideas.length > 0 && (
+            <p className="text-xs text-muted-foreground">O escribí una idea diferente:</p>
+          )}
+          <Input
+            value={ideas.includes(state.idea) ? "" : state.idea}
+            onChange={(e) => set({ idea: e.target.value })}
+            onFocus={() => { if (ideas.includes(state.idea)) set({ idea: "" }) }}
+            placeholder={ideas.length > 0 ? "Otra idea..." : "Escribí la idea a explorar..."}
+            className="text-foreground"
+          />
+        </div>
+
+        {/* Kind picker — only shows once an idea is chosen */}
+        {state.idea.trim() && (
+          <div className="pt-1 space-y-2">
+            <p className="text-sm text-muted-foreground">¿Qué camino querés explorar?</p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant={state.kind === "CANVAS" ? "default" : "outline"}
+                onClick={() => set({ kind: "CANVAS" })}
+                className="flex-1"
+              >
+                <Lightbulb className="h-4 w-4 mr-2" /> Emprendimiento — Canvas
+              </Button>
+              <Button
+                variant={state.kind === "FREELANCE" ? "default" : "outline"}
+                onClick={() => set({ kind: "FREELANCE" })}
+                className="flex-1"
+              >
+                <UserRound className="h-4 w-4 mr-2" /> Freelance / Autónomo
+              </Button>
+              <Button
+                variant={state.kind === "JOB" ? "default" : "outline"}
+                onClick={() => set({ kind: "JOB" })}
+                className="flex-1"
+              >
+                <Briefcase className="h-4 w-4 mr-2" /> Empleo — Investigación
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Form — shows once kind is chosen */}
+      {state.kind === "CANVAS" && (
+        <BusinessModelCanvas
+          idea={state.idea}
+          content={state.content}
+          onChange={setContent}
+          config={state.canvasConfig}
+          onConfigChange={(cfg) => set({ canvasConfig: cfg })}
+          story={state.story}
+          onStoryChange={(v) => set({ story: v })}
+        />
+      )}
+      {state.kind === "FREELANCE" && (
+        <FieldsForm
+          fields={FREELANCE_FIELDS}
+          content={state.content}
+          onChange={setContent}
+          story={state.story}
+          onStoryChange={(v) => set({ story: v })}
+        />
+      )}
+      {state.kind === "JOB" && (
+        <FieldsForm
+          fields={JOB_FIELDS}
+          content={state.content}
+          onChange={setContent}
+          story={state.story}
+          onStoryChange={(v) => set({ story: v })}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── FieldsForm ────────────────────────────────────────────────────────────────
 
 function FieldsForm({
   fields,

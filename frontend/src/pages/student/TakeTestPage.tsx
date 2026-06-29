@@ -15,6 +15,7 @@ type Assignment = {
   test: { type: string; title: string }
   response: { responses: Record<string, unknown> } | null
   prefillIdea?: string
+  prefillIdeas?: string[]
 }
 
 export default function StudentTakeTestPage() {
@@ -67,7 +68,7 @@ export default function StudentTakeTestPage() {
       {t === "TABLERO_IDEAS" && <TableroTest api={api} assignmentId={assignment.id} />}
       {t === "PIRAMIDE_PROPOSITO" && <PiramideTest api={api} assignmentId={assignment.id} />}
       {t === "MODELO_NEGOCIO" && (
-        <ModeloNegocioTest api={api} assignmentId={assignment.id} prefillIdea={assignment.prefillIdea} />
+        <ModeloNegocioTest api={api} assignmentId={assignment.id} prefillIdeas={assignment.prefillIdeas ?? (assignment.prefillIdea ? [assignment.prefillIdea] : [])} />
       )}
       {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].includes(t) && (
         <p className="text-muted-foreground text-sm">Este tipo de test no está disponible.</p>

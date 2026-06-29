@@ -4,15 +4,35 @@ import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 
 const client = new Hono()
 
-/** The idea the client picked in their most recent completed Tablero de Ideas, if any. */
-export async function latestTableroIdea(clientId: string): Promise<string> {
+/** Tablero data for the Modelo de Negocio pre-fill: the chosen idea + top brainstorm candidates. */
+async function latestTableroData(
+  clientId: string,
+): Promise<{ selectedIdea: string; prefillIdeas: string[] }> {
   const tablero = await prisma.testAssignment.findFirst({
     where: { clientId, test: { type: "TABLERO_IDEAS" }, completedAt: { not: null } },
     orderBy: { completedAt: "desc" },
     include: { response: true },
   })
-  const responses = (tablero?.response?.responses ?? {}) as Record<string, unknown>
-  return (responses.selectedIdea ?? "") as string
+  const r = (tablero?.response?.responses ?? {}) as Record<string, unknown>
+  const selectedIdea = (r.selectedIdea ?? "") as string
+  const userIdeas = Array.isArray(r.brainstormIdeas)
+    ? (r.brainstormIdeas as string[]).filter(Boolean)
+    : []
+  const aiIdeas = Array.isArray(r.aiIdeas) ? (r.aiIdeas as string[]).filter(Boolean) : []
+  // selectedIdea first, then remaining user brainstorm ideas, then AI ideas — up to 4
+  const ordered = [
+    selectedIdea,
+    ...userIdeas.filter((x) => x !== selectedIdea),
+    ...aiIdeas.filter((x) => x !== selectedIdea),
+  ].filter(Boolean)
+  return { selectedIdea, prefillIdeas: ordered.slice(0, 4) }
+}
+
+/** The idea the client picked in their most recent completed Tablero de Ideas, if any.
+ *  Kept for backward compatibility with student.ts routes. */
+export async function latestTableroIdea(clientId: string): Promise<string> {
+  const { selectedIdea } = await latestTableroData(clientId)
+  return selectedIdea
 }
 
 /** Token state machine helper */
@@ -64,11 +84,10 @@ client.get("/t/:token", async (c) => {
       testType: assignment.test.type,
       assignmentId: assignment.id,
       title: assignment.test.title,
-      // Modelo de Negocio pre-fills the idea from the client's latest Tablero.
-      prefillIdea:
-        assignment.test.type === "MODELO_NEGOCIO"
-          ? await latestTableroIdea(assignment.clientId)
-          : undefined,
+      // Modelo de Negocio pre-fills ideas from the client's latest Tablero brainstorm.
+      ...(assignment.test.type === "MODELO_NEGOCIO"
+        ? await latestTableroData(assignment.clientId)
+        : {}),
     })
   }
 

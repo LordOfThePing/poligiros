@@ -13,7 +13,7 @@ const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
 type TokenState =
   | { state: "loading" }
-  | { state: "form"; testType: string; assignmentId: string; title: string; prefillIdea?: string }
+  | { state: "form"; testType: string; assignmentId: string; title: string; selectedIdea?: string; prefillIdeas?: string[] }
   | {
       state: "results"
       testType: string
@@ -169,7 +169,7 @@ export default function TokenPage() {
             <PiramideTest api={api} assignmentId={data.assignmentId} />
           )}
           {data.testType === "MODELO_NEGOCIO" && (
-            <ModeloNegocioTest api={api} assignmentId={data.assignmentId} prefillIdea={data.prefillIdea} />
+            <ModeloNegocioTest api={api} assignmentId={data.assignmentId} prefillIdeas={data.prefillIdeas} />
           )}
           {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].includes(data.testType) && (
             <div className="text-center py-16">

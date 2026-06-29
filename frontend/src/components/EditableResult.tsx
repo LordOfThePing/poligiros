@@ -123,27 +123,27 @@ function TableroEditor({ data, setField }: { data: Data; setField: (k: string, v
   )
 }
 
-function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+function IdeaEditor({ data, onChange }: { data: Data; onChange: (patch: Data) => void }) {
   const kind = (data.kind as "CANVAS" | "JOB" | "FREELANCE" | undefined) ?? "CANVAS"
   const content: Record<string, string> = data.content ?? {}
-  const setContent = (key: string, value: string) => setField("content", { ...content, [key]: value })
+  const setContent = (key: string, value: string) =>
+    onChange({ content: { ...content, [key]: value } })
 
   if (kind === "CANVAS") {
-    // Reuse the editable canvas so the coach can edit values, labels, and the story.
     return (
       <div className="space-y-3">
         <div className="space-y-1">
           <Label className="text-xs">Idea</Label>
-          <Input value={data.selectedIdea ?? ""} onChange={(e) => setField("selectedIdea", e.target.value)} className="text-sm" />
+          <Input value={data.selectedIdea ?? ""} onChange={(e) => onChange({ selectedIdea: e.target.value })} className="text-sm" />
         </div>
         <BusinessModelCanvas
           idea={data.selectedIdea ?? ""}
           content={content}
           onChange={setContent}
           config={(data.canvas as CanvasConfig | undefined) ?? {}}
-          onConfigChange={(cfg) => setField("canvas", cfg)}
+          onConfigChange={(cfg) => onChange({ canvas: cfg })}
           story={data.story ?? ""}
-          onStoryChange={(v) => setField("story", v)}
+          onStoryChange={(v) => onChange({ story: v })}
         />
       </div>
     )
@@ -154,7 +154,7 @@ function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: str
     <div className="space-y-3">
       <div className="space-y-1">
         <Label className="text-xs">Idea</Label>
-        <Input value={data.selectedIdea ?? ""} onChange={(e) => setField("selectedIdea", e.target.value)} className="text-sm" />
+        <Input value={data.selectedIdea ?? ""} onChange={(e) => onChange({ selectedIdea: e.target.value })} className="text-sm" />
       </div>
       {fields.map((f) => (
         <div key={f.key} className="space-y-1">
@@ -164,10 +164,38 @@ function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: str
       ))}
       <div className="space-y-1">
         <Label className="text-xs">Relato de la idea</Label>
-        <Textarea value={data.story ?? ""} onChange={(e) => setField("story", e.target.value)} className="text-sm min-h-[80px]" />
+        <Textarea value={data.story ?? ""} onChange={(e) => onChange({ story: e.target.value })} className="text-sm min-h-[80px]" />
       </div>
     </div>
   )
+}
+
+function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  // New shape: { ideas: [...] }
+  if (Array.isArray(data.ideas) && data.ideas.length > 0) {
+    const ideas = data.ideas as Data[]
+    const setIdea = (i: number, patch: Data) => {
+      const next = ideas.map((x, idx) => (idx === i ? { ...x, ...patch } : x))
+      setField("ideas", next)
+    }
+    return (
+      <div className="space-y-6">
+        {ideas.map((entry, i) => (
+          <div key={i} className="space-y-3">
+            {ideas.length > 1 && (
+              <Label className="text-xs text-brand-accent uppercase tracking-wide">
+                {entry.horizon === "long" ? "Largo plazo" : "Corto / mediano plazo"}
+              </Label>
+            )}
+            <IdeaEditor data={entry} onChange={(patch) => setIdea(i, patch)} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Old shape backward compat
+  return <IdeaEditor data={data} onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setField(k, v))} />
 }
 
 function PiramideEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
