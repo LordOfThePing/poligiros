@@ -6,6 +6,7 @@ import AnclasTest from "./tests/AnclasTest"
 import TableroTest from "./tests/TableroTest"
 import PiramideTest from "./tests/PiramideTest"
 import { ModeloNegocioTest } from "./tests/ModeloNegocioTest"
+import PlanVitalTest from "./tests/PlanVitalTest"
 import ResultsView from "./ResultsView"
 import { tokenTestApi, type TestApi } from "@/lib/testApi"
 
@@ -138,15 +139,13 @@ export default function TokenPage() {
             responses={data.responses}
             coachFeedback={data.coachFeedback}
             completedAt={data.completedAt}
-          />
-          {canEdit && (
-            <div className="mt-6 flex justify-end">
+            footer={canEdit ? (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
                 Editar mis respuestas
               </Button>
-            </div>
-          )}
+            ) : undefined}
+          />
         </div>
       </div>
     )
@@ -174,7 +173,10 @@ export default function TokenPage() {
           {data.testType === "MODELO_NEGOCIO" && (
             <ModeloNegocioTest api={api} assignmentId={data.assignmentId} prefillIdeas={data.prefillIdeas} />
           )}
-          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].includes(data.testType) && (
+          {data.testType === "PLAN_VITAL" && (
+            <PlanVitalTest api={api} assignmentId={data.assignmentId} />
+          )}
+          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL"].includes(data.testType) && (
             <div className="text-center py-16">
               <h2 className="font-serif text-2xl">{data.title}</h2>
               <p className="text-muted-foreground mt-2">Este tipo de test no está disponible en este momento.</p>

@@ -482,7 +482,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       {/* ── Write a single column ── */}
       {stage.phase === "write" && (
         <>
-          <section className="max-w-2xl space-y-3">
+          <section className="max-w-2xl mx-auto space-y-3">
             <div className={cn("text-white rounded-lg px-4 py-3", COLUMNS[stage.col].header)}>
               <h2 className="font-serif text-lg font-medium">{COLUMNS[stage.col].title}</h2>
               <p className="text-xs mt-0.5 opacity-90">{COLUMNS[stage.col].subtitle}</p>
@@ -543,7 +543,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       {/* ── Select passions (SABER only) ── */}
       {stage.phase === "select" && (
         <>
-          <section className="max-w-3xl space-y-4">
+          <section className="max-w-3xl mx-auto space-y-4">
             <div>
               <h2 className="font-serif text-xl text-foreground">SABER: marcá lo que te apasiona</h2>
               <p className="text-sm text-muted-foreground">
@@ -598,7 +598,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       {/* ── Rank a single column ── */}
       {stage.phase === "rank" && (
         <>
-          <section className="max-w-2xl space-y-4">
+          <section className="max-w-2xl mx-auto space-y-4">
             <div>
               <h2 className="font-serif text-xl text-foreground">{COLUMNS[stage.col].title}: ordená tu top 3</h2>
               <p className="text-sm text-muted-foreground">{RANK_CONSIGNA[stage.col]}</p>
@@ -807,7 +807,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       {/* ── Exploration tasks: what to investigate after the session ── */}
       {stage.phase === "explore" && (
         <>
-          <section className="max-w-2xl space-y-3">
+          <section className="max-w-2xl mx-auto space-y-3">
             <div>
               <h2 className="font-serif text-xl text-foreground">Tareas de exploración</h2>
               <p className="text-sm text-muted-foreground">

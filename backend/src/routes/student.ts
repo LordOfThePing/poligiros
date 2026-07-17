@@ -88,11 +88,8 @@ student.post("/clients/:id/assign", async (c) => {
   })
   if (!clientRecord) return c.json({ error: "Not found" }, 404)
 
-  // Don't allow PLAN_VITAL
   const test = await prisma.test.findUnique({ where: { id: testId } })
-  if (!test || test.type === "PLAN_VITAL") {
-    return c.json({ error: "Test not assignable" }, 400)
-  }
+  if (!test) return c.json({ error: "Test not assignable" }, 400)
 
   const accessToken = randomBytes(32).toString("base64url")
   const now = new Date()

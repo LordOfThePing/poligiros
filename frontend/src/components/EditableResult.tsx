@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Plus, X, ChevronUp, ChevronDown, Save } from "lucide-react"
 import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
+import { PV_SECTIONS } from "@/lib/planVital"
 
 // Editable test result (F7 follow-up): coach + supervisor can modify fields,
 // values, and order, then save back to the stored response.
@@ -47,6 +48,7 @@ export function EditableResult({
       {testType === "TABLERO_IDEAS" && <TableroEditor data={data} setField={setField} />}
       {testType === "PIRAMIDE_PROPOSITO" && <PiramideEditor data={data} setField={setField} />}
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioEditor data={data} setField={setField} />}
+      {testType === "PLAN_VITAL" && <PlanVitalEditor data={data} setField={setField} />}
       <Button onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
         <Save className="h-4 w-4 mr-2" /> {saving ? "Guardando..." : "Guardar cambios"}
       </Button>
@@ -196,6 +198,21 @@ function ModeloNegocioEditor({ data, setField }: { data: Data; setField: (k: str
 
   // Old shape backward compat
   return <IdeaEditor data={data} onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setField(k, v))} />
+}
+
+function PlanVitalEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  const list = (k: string): string[] => (Array.isArray(data[k]) ? data[k] : [])
+  return (
+    <div className="space-y-3">
+      {PV_SECTIONS.map((s) => (
+        <div key={s.key} className="space-y-1">
+          <Label className="text-xs uppercase">{s.num}. {s.title}</Label>
+          <Textarea value={data[s.key] ?? ""} onChange={(e) => setField(s.key, e.target.value)} className="text-sm min-h-[80px]" />
+        </div>
+      ))}
+      <ListEditor label="Estímulos" items={list("estimulos")} onChange={(v) => setField("estimulos", v)} />
+    </div>
+  )
 }
 
 function PiramideEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {

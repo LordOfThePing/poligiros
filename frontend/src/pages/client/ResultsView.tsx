@@ -5,12 +5,14 @@ import { formatShortDate } from "@/lib/date"
 import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
+import { PV_SECTIONS } from "@/lib/planVital"
 
 interface ResultsViewProps {
   testType: string
   responses: Record<string, unknown>
   coachFeedback: string | null
   completedAt: string
+  footer?: React.ReactNode
 }
 
 const ANCHOR_NAMES: Record<string, string> = {
@@ -25,7 +27,7 @@ const TABLERO_COLUMNS = [
   { key: "sonar", rankKey: "sonarRanking", title: "SOÑAR", subtitle: "Aspiraciones a futuro", header: "bg-indigo-600" },
 ] as const
 
-export default function ResultsView({ testType, responses, coachFeedback, completedAt }: ResultsViewProps) {
+export default function ResultsView({ testType, responses, coachFeedback, completedAt, footer }: ResultsViewProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -70,10 +72,10 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
       )}
 
       {testType === "TABLERO_IDEAS" && (
-        <div className="space-y-4">
-          <h2 className="font-serif text-2xl text-foreground">Tu Tablero de Ideas</h2>
+        <div className="flex flex-col lg:h-[calc(100vh-150px)] gap-0">
+          <h2 className="font-serif text-2xl text-foreground shrink-0 mb-3">Tu Tablero de Ideas</h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:h-[calc(100vh-200px)]">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
             {/* Left: three columns — each with sticky header and independent scroll */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:h-full">
               {TABLERO_COLUMNS.map((col) => {
@@ -176,20 +178,29 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
             })()}
           </div>
 
+          {/* Pinned footer: tasks + optional action slot (e.g. edit button) */}
           {(() => {
             const tasks = (responses.explorationTasks as string[] | undefined)?.filter(Boolean) ?? []
-            if (tasks.length === 0) return null
             return (
-              <div className="bg-white rounded-xl border border-border p-4">
-                <p className="text-sm font-medium text-foreground mb-2">Tareas de exploración</p>
-                <ul className="space-y-1.5">
-                  {tasks.map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="text-brand-accent mt-0.5">○</span>
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="shrink-0 border-t border-border mt-3 pt-3 flex flex-col sm:flex-row sm:items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                    Tareas de exploración
+                  </p>
+                  {tasks.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Sin tareas registradas.</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-x-4 gap-y-1">
+                      {tasks.map((t, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <span className="text-brand-accent shrink-0">○</span>
+                          <span>{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {footer && <div className="shrink-0 self-center sm:self-start">{footer}</div>}
               </div>
             )
           })()}
@@ -219,6 +230,40 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
 
       {/* Modelo de Negocio — read-only canvas / job research */}
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioResult responses={responses} />}
+
+      {testType === "PLAN_VITAL" && (
+        <div className="space-y-4">
+          <h2 className="font-serif text-2xl text-foreground">Plan Vital Integral</h2>
+          {PV_SECTIONS.map((s) => {
+            const val = responses[s.key] as string | undefined
+            if (!val?.trim()) return null
+            return (
+              <div key={s.key} className={cn("rounded-xl border p-4 space-y-2", s.border, s.bg)}>
+                <div className="flex items-center gap-2">
+                  <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white shrink-0", s.color)}>
+                    {s.num}
+                  </span>
+                  <p className={cn("text-sm font-semibold", s.text)}>{s.title}</p>
+                </div>
+                <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", s.text)}>{val}</p>
+              </div>
+            )
+          })}
+          {Array.isArray(responses.estimulos) && (responses.estimulos as string[]).filter(Boolean).length > 0 && (
+            <div className="rounded-xl border border-brand-accent/30 bg-brand-accent/5 p-4 space-y-2">
+              <p className="text-sm font-semibold text-brand-accent">Estímulos</p>
+              <ul className="space-y-1">
+                {(responses.estimulos as string[]).filter(Boolean).map((e, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <span className="text-brand-accent shrink-0 mt-0.5">·</span>
+                    <span>{e}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Coach feedback */}
       {coachFeedback && (

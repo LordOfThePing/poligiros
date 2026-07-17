@@ -13,6 +13,7 @@ import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
 import { EditableResult } from "@/components/EditableResult"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
+import { PV_SECTIONS } from "@/lib/planVital"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -131,6 +132,33 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
 
   if (testType === "MODELO_NEGOCIO") {
     return <ModeloNegocioResult responses={responses} />
+  }
+
+  if (testType === "PLAN_VITAL") {
+    return (
+      <div className="space-y-3">
+        {PV_SECTIONS.map((s) => {
+          const val = responses[s.key] as string | undefined
+          if (!val?.trim()) return null
+          return (
+            <div key={s.key}>
+              <p className="text-sm font-medium mb-0.5">{s.num}. {s.title}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{val}</p>
+            </div>
+          )
+        })}
+        {Array.isArray(responses.estimulos) && (responses.estimulos as string[]).filter(Boolean).length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-1">Estímulos:</p>
+            <ul className="space-y-0.5">
+              {(responses.estimulos as string[]).filter(Boolean).map((e: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground">· {e}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return <pre className="text-xs text-muted-foreground overflow-auto">{JSON.stringify(responses, null, 2)}</pre>

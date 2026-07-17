@@ -7,6 +7,7 @@ import AnclasTest from "@/pages/client/tests/AnclasTest"
 import TableroTest from "@/pages/client/tests/TableroTest"
 import PiramideTest from "@/pages/client/tests/PiramideTest"
 import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
+import PlanVitalTest from "@/pages/client/tests/PlanVitalTest"
 import ResultsView from "@/pages/client/ResultsView"
 
 type Assignment = {
@@ -72,7 +73,8 @@ export default function StudentTakeTestPage() {
       {t === "MODELO_NEGOCIO" && (
         <ModeloNegocioTest api={api} assignmentId={assignment.id} prefillIdeas={assignment.prefillIdeas ?? (assignment.prefillIdea ? [assignment.prefillIdea] : [])} />
       )}
-      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].includes(t) && (
+      {t === "PLAN_VITAL" && <PlanVitalTest api={api} assignmentId={assignment.id} />}
+      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL"].includes(t) && (
         <p className="text-muted-foreground text-sm">Este tipo de test no está disponible.</p>
       )}
     </div>

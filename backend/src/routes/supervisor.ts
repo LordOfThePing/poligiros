@@ -528,7 +528,7 @@ supervisor.post("/coaches/:userId/assign", async (c) => {
   if (!coachClient) return c.json({ error: "El coach no tiene perfil de coachee" }, 404)
 
   const test = await prisma.test.findUnique({ where: { id: testId } })
-  if (!test || test.type === "PLAN_VITAL") return c.json({ error: "Test not assignable" }, 400)
+  if (!test) return c.json({ error: "Test not assignable" }, 400)
 
   // Logged-in flow: no magic-link token; the coach takes it in their dashboard.
   const assignment = await prisma.testAssignment.upsert({
