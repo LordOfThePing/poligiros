@@ -142,7 +142,6 @@ export default function AlumnoDetailPage() {
         <Card className="bg-white">
           <CardContent className="py-4 space-y-2">
             {allTests
-              .filter((t) => t.type !== "PLAN_VITAL")
               .map((t) => {
                 const assignment = coachTests.find((a) => a.test.type === t.type)
                 return (

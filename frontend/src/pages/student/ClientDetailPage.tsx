@@ -22,7 +22,7 @@ import { EditableResult } from "@/components/EditableResult"
 const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   ANCLAS_CARRERA: { title: "Test de Anclas de Carrera" },
   TABLERO_IDEAS: { title: "Tablero de Ideas" },
-  PLAN_VITAL: { title: "Plan Vital Integral®", comingSoon: true },
+  PLAN_VITAL: { title: "Plan Vital Integral®" },
   PIRAMIDE_PROPOSITO: { title: "Pirámide del Propósito" },
   MODELO_NEGOCIO: { title: "Exploración" },
 }
