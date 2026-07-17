@@ -107,7 +107,7 @@ export default function TokenPage() {
       }
       return (
         <div className="min-h-screen bg-brand-bg py-8">
-          <div className="max-w-2xl mx-auto px-4">
+          <div className="max-w-5xl mx-auto px-4">
             <div className="mb-4">
               <button
                 onClick={() => setEditing(false)}
@@ -155,10 +155,13 @@ export default function TokenPage() {
   // state === "form"
   if (data.state === "form") {
     const api = tokenTestApi(token!)
-    const wide = data.testType === "MODELO_NEGOCIO"
+    const formWidth =
+      data.testType === "MODELO_NEGOCIO" ? "max-w-6xl" :
+      data.testType === "TABLERO_IDEAS" ? "max-w-5xl" :
+      "max-w-2xl"
     return (
       <div className="min-h-screen bg-brand-bg py-8">
-        <div className={`${wide ? "max-w-6xl" : "max-w-2xl"} mx-auto px-4`}>
+        <div className={`${formWidth} mx-auto px-4`}>
           {data.testType === "ANCLAS_CARRERA" && (
             <AnclasTest api={api} assignmentId={data.assignmentId} />
           )}

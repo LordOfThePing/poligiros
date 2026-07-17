@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/prisma.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
+import { sendTestCompletedToCoach, sendTestCompletedToClient } from "../lib/email.js"
 
 const client = new Hono()
 
@@ -110,6 +111,7 @@ client.post("/t/:token/submit", async (c) => {
 
   const assignment = await prisma.testAssignment.findUnique({
     where: { accessToken: token },
+    include: { client: { include: { student: true } }, test: true },
   })
 
   if (!assignment) return c.json({ error: "invalid" }, 404)
@@ -132,6 +134,23 @@ client.post("/t/:token/submit", async (c) => {
       data: { completedAt: new Date() },
     }),
   ])
+
+  // Fire-and-forget completion emails (fail silently so they never block submit)
+  const resultsLink = `${process.env.FRONTEND_URL || "http://localhost:5173"}/t/${token}`
+  sendTestCompletedToCoach(
+    assignment.client.student.email,
+    assignment.client.student.name,
+    assignment.client.name,
+    assignment.test.title,
+  ).catch(() => {})
+  if (assignment.client.email) {
+    sendTestCompletedToClient(
+      assignment.client.email,
+      assignment.client.name,
+      assignment.test.title,
+      resultsLink,
+    ).catch(() => {})
+  }
 
   return c.json(testResponse)
 })

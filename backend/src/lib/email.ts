@@ -56,6 +56,43 @@ export async function sendCoachInviteEmail(coachEmail: string, name: string, lin
   })
 }
 
+export async function sendTestCompletedToCoach(
+  coachEmail: string,
+  coachName: string,
+  clientName: string,
+  testName: string
+) {
+  await resend.emails.send({
+    from: FROM,
+    to: coachEmail,
+    subject: `${clientName} completó ${testName}`,
+    html: `
+      <p>Hola ${coachName || ""},</p>
+      <p>Tu coachee <strong>${clientName}</strong> acaba de completar el ejercicio <strong>${testName}</strong>.</p>
+      <p><a href="${APP_URL}/student/my-tests">Ver mis tests →</a></p>
+    `,
+  })
+}
+
+export async function sendTestCompletedToClient(
+  clientEmail: string,
+  clientName: string,
+  testName: string,
+  magicLink: string
+) {
+  await resend.emails.send({
+    from: FROM,
+    to: clientEmail,
+    subject: `Completaste ${testName}`,
+    html: `
+      <p>Hola ${clientName || ""},</p>
+      <p>¡Bien hecho! Completaste el ejercicio <strong>${testName}</strong>.</p>
+      <p>Podés ver tus resultados en cualquier momento desde este enlace:</p>
+      <p><a href="${magicLink}">${magicLink}</a></p>
+    `,
+  })
+}
+
 export async function sendSessionRecordedEmail(
   supervisorEmail: string,
   studentName: string,

@@ -40,8 +40,10 @@ export default function StudentTakeTestPage() {
   )
 
   // Modelo de Negocio renders a wide canvas; other tests stay narrow.
-  const wide = assignment.test.type === "MODELO_NEGOCIO"
-  const widthClass = wide ? "max-w-6xl" : "max-w-2xl"
+  const widthClass =
+    assignment.test.type === "MODELO_NEGOCIO" ? "max-w-6xl" :
+    assignment.test.type === "TABLERO_IDEAS" ? "max-w-5xl" :
+    "max-w-2xl"
 
   // Completed → read-only results
   if (assignment.completedAt && assignment.response) {

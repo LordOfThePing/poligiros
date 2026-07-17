@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, X, Sparkles, Check, Heart, AlertTriangle } from "lucide-react"
+import { Plus, X, Sparkles, Check, Heart, AlertTriangle, RotateCcw } from "lucide-react"
 import { SortableList, type RankItem } from "@/components/tablero/SortableList"
 import type { TestApi } from "@/lib/testApi"
 
@@ -139,7 +139,8 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   // ── Brainstorming idea cards → AI cards → pick one ──────────────────────────
   const [ideaCards, setIdeaCards] = useState<RankItem[]>([]) // user's own, ordered
   const [newIdea, setNewIdea] = useState("")
-  const [aiIdeas, setAiIdeas] = useState<string[]>([]) // AI-generated (after the user's)
+  const [aiIdeaCards, setAiIdeaCards] = useState<RankItem[]>([]) // AI-generated, sortable
+  const [aiDisabledTexts, setAiDisabledTexts] = useState<Set<string>>(new Set())
   const [ideasGenerated, setIdeasGenerated] = useState(false)
   const [loadingIdeas, setLoadingIdeas] = useState(false)
   const [selectedIdea, setSelectedIdea] = useState<string | null>(null) // the chosen one
@@ -184,9 +185,11 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     setSonarRank(rankFromTexts(asStrings(src.sonarRank ?? src.sonarRanking), nItems))
 
     setIdeaCards(toItems(asStrings(src.ideaCards ?? src.brainstormIdeas)))
-    if (Array.isArray(src.aiIdeas)) {
-      setAiIdeas(asStrings(src.aiIdeas))
-      setIdeasGenerated(asStrings(src.aiIdeas).length > 0)
+    const aiCards = toItems(asStrings(src.aiIdeas))
+    setAiIdeaCards(aiCards)
+    setIdeasGenerated(aiCards.length > 0)
+    if (Array.isArray(src.aiDisabled)) {
+      setAiDisabledTexts(new Set(asStrings(src.aiDisabled)))
     }
     if (typeof src.selectedIdea === "string") setSelectedIdea(src.selectedIdea || null)
 
@@ -219,6 +222,18 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId])
 
+  // Position #1 in ideaCards is the default "chosen idea". Fires when the
+  // user reorders cards (drag) so the selection always follows the top spot
+  // — unless an AI idea was explicitly clicked (not in ideaCards).
+  useEffect(() => {
+    if (!hydrated || done) return
+    const inUserCards = ideaCards.some((c) => c.text === selectedIdea)
+    if (!selectedIdea || inUserCards) {
+      setSelectedIdea(ideaCards[0]?.text ?? null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ideaCards, hydrated, done])
+
   function saveDraft() {
     const draft = {
       v: 2,
@@ -230,7 +245,8 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       sonarRank: sonarRank.map((i) => i.text),
       passions: saberItems.filter((i) => passionIds.has(i.id)).map((i) => i.text),
       ideaCards: ideaCards.map((i) => i.text),
-      aiIdeas,
+      aiIdeas: aiIdeaCards.map((i) => i.text),
+      aiDisabled: [...aiDisabledTexts],
       selectedIdea,
       explorationTasks,
       stageIndex,
@@ -255,7 +271,8 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     sonarRank,
     passionIds,
     ideaCards,
-    aiIdeas,
+    aiIdeaCards,
+    aiDisabledTexts,
     selectedIdea,
     explorationTasks,
     stageIndex,
@@ -380,7 +397,8 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
         sonar: sonarRank.slice(0, 3).map((i) => i.text),
         brainstormIdeas: ideaCards.map((i) => i.text),
       })
-      setAiIdeas(ideas)
+      setAiIdeaCards(ideas.map((t) => ({ id: uid(), text: t })))
+      setAiDisabledTexts(new Set())
       setIdeasGenerated(true)
       if (ideas.length === 0) {
         toast({ title: "No se pudieron generar ideas con IA — seguí con las tuyas" })
@@ -405,7 +423,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       sonar: sonarItems.map((i) => i.text),
       sonarRanking: sonarRank.map((i) => i.text),
       brainstormIdeas: ideaCards.map((i) => i.text), // user's, ordered
-      aiIdeas, // AI-generated
+      aiIdeas: aiIdeaCards.map((i) => i.text), // AI-generated
       selectedIdea, // the idea chosen to develop
       explorationTasks: explorationTasks.map((s) => s.trim()).filter(Boolean),
     }
@@ -662,9 +680,9 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                           onClick={() => setSelectedIdea(item.text)}
                           className={cn(
                             "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors",
-                            selectedIdea === item.text
-                              ? "border-brand-accent bg-brand-accent/10"
-                              : "border-border bg-white hover:border-brand-accent/50"
+                            index === 0
+                              ? "border-brand-accent bg-brand-accent/10 font-medium"
+                              : "border-border bg-white hover:border-brand-accent/50 opacity-75"
                           )}
                         >
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-xs text-white shrink-0">{index + 1}</span>
@@ -685,43 +703,87 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                 </div>
               </div>
 
-              {/* Col 3: AI ideas — only after the user has created their own */}
+              {/* Col 3: AI ideas — sortable, disableable */}
               <div className="flex flex-col min-h-0">
                 <div className="bg-brand-accent text-white rounded-lg px-4 py-2.5 shrink-0">
                   <h2 className="font-serif text-base font-medium flex items-center gap-1.5">
                     <Sparkles className="h-4 w-4" /> Ideas con IA
                   </h2>
-                  <p className="text-xs opacity-90">Sumá sugerencias generadas a partir de tus datos.</p>
+                  <p className="text-xs opacity-90">Sugerencias generadas a partir de tus datos.</p>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2 shrink-0">
+                  {ideasGenerated
+                    ? "Ordenalas por atractivo y descartá las que no apliquen."
+                    : "Generá ideas conectando tu Saber, Querer y Soñar. Podés ordenarlas y descartar las que no te representen."}
+                </p>
                 <Button
                   variant="outline"
                   onClick={generateAiIdeas}
                   disabled={ideaCards.length === 0 || loadingIdeas}
-                  className="w-full mt-3 shrink-0"
+                  className="w-full mt-2 shrink-0"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
                   {loadingIdeas ? "Generando ideas..." : ideasGenerated ? "Volver a generar con IA" : "Generar ideas con IA"}
                 </Button>
-                <div className="mt-3 flex-1 lg:overflow-y-auto lg:pr-1 space-y-2">
+                <div className="mt-3 flex-1 lg:overflow-y-auto lg:pr-1">
                   {ideaCards.length === 0 && (
                     <p className="text-xs text-muted-foreground italic">Primero agregá tus propias ideas.</p>
                   )}
-                  {ideasGenerated && aiIdeas.map((idea, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedIdea(idea)}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm cursor-pointer transition-colors",
-                        selectedIdea === idea
-                          ? "border-brand-accent bg-brand-accent/10"
-                          : "border-brand-accent/40 bg-brand-accent/[0.03] hover:bg-brand-accent/10"
-                      )}
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />
-                      <span className="flex-1">{idea}</span>
-                      {selectedIdea === idea && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
-                    </div>
-                  ))}
+                  {ideasGenerated && aiIdeaCards.length > 0 && (
+                    <SortableList
+                      items={aiIdeaCards}
+                      onReorder={setAiIdeaCards}
+                      renderItem={(item, index) => {
+                        const disabled = aiDisabledTexts.has(item.text)
+                        return (
+                          <div
+                            onClick={() => { if (!disabled) setSelectedIdea(item.text) }}
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors",
+                              disabled
+                                ? "border-border bg-muted/20 opacity-50 cursor-default"
+                                : selectedIdea === item.text
+                                  ? "border-brand-accent bg-brand-accent/10 cursor-pointer"
+                                  : "border-brand-accent/40 bg-brand-accent/[0.03] hover:bg-brand-accent/10 cursor-pointer"
+                            )}
+                          >
+                            <span className={cn(
+                              "flex h-5 w-5 items-center justify-center rounded-full text-xs text-white shrink-0",
+                              disabled ? "bg-muted-foreground/40" : "bg-brand-accent"
+                            )}>
+                              {index + 1}
+                            </span>
+                            <Sparkles className={cn("h-3.5 w-3.5 shrink-0", disabled ? "text-muted-foreground/40" : "text-brand-accent")} />
+                            <span className={cn("flex-1", disabled && "line-through text-muted-foreground")}>{item.text}</span>
+                            {!disabled && selectedIdea === item.text && <Check className="h-4 w-4 text-brand-accent shrink-0" />}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const isDisabled = aiDisabledTexts.has(item.text)
+                                setAiDisabledTexts((prev) => {
+                                  const next = new Set(prev)
+                                  if (isDisabled) next.delete(item.text)
+                                  else next.add(item.text)
+                                  return next
+                                })
+                                if (!isDisabled && selectedIdea === item.text) setSelectedIdea(null)
+                              }}
+                              className={cn(
+                                "shrink-0 transition-colors",
+                                disabled
+                                  ? "text-muted-foreground/60 hover:text-foreground"
+                                  : "text-muted-foreground hover:text-destructive"
+                              )}
+                              aria-label={disabled ? "Restaurar" : "Descartar"}
+                            >
+                              {disabled ? <RotateCcw className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        )
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
