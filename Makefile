@@ -113,6 +113,13 @@ prod-restart: ## Restart the prod api container
 prod-migrate: ## Apply Prisma migrations (also runs automatically on boot)
 	$(PROD) exec -T api npx prisma migrate deploy
 
+prod-migrate-status: ## Show which migrations applied, plus the live TestType enum
+	@$(PROD) exec -T api npx prisma migrate status || true
+	@echo "--- TestType values actually in the DB ---"
+	@$(PROD) exec -T postgres sh -c 'psql -U $${POSTGRES_USER:-poligiros} $${POSTGRES_DB:-poligiros} -Atc "SELECT unnest(enum_range(NULL::\"TestType\"))"'
+	@echo "--- _prisma_migrations ---"
+	@$(PROD) exec -T postgres sh -c 'psql -U $${POSTGRES_USER:-poligiros} $${POSTGRES_DB:-poligiros} -c "SELECT migration_name, applied_steps_count, finished_at, rolled_back_at FROM _prisma_migrations ORDER BY started_at"'
+
 prod-bootstrap: ## Set up a fresh DB: test catalog + supervisor login
 	@$(PROD) exec -T api npx tsx prisma/bootstrap.ts
 	@$(MAKE) prod-supervisor
