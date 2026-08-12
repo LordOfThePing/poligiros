@@ -37,7 +37,9 @@ yarn-error.log*
 next-env.d.ts
 
 # Prisma
-prisma/migrations/
+# NOTE: backend/prisma/migrations/ MUST stay committed — the api container runs
+# `prisma migrate deploy` on boot, so a server that pulls the repo without the
+# migration files comes up with an empty database.
 
 /.claude/
 /.agents/

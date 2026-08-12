@@ -190,8 +190,29 @@ Frontend `.env`: `VITE_API_URL` (default `http://localhost:3001`).
 
 ## Deploy
 
+Live URLs: frontend `https://apppoligiros.flynnpedroa.engineer`, API
+`https://apipoligiros.flynnpedroa.engineer`.
+
 - **Frontend** → Cloudflare Pages: build `npm run build` in `frontend/`, output
-  `dist`, env `VITE_API_URL=https://api.poligiros.com`. Auto-deploys on push.
-- **Backend** → Hetzner Docker: `docker-compose.prod.yml` (api + postgres + nginx).
-  `./deploy.sh` SSHes in and runs `docker compose -f docker-compose.prod.yml build && up -d`.
-  TLS via a Cloudflare Origin Certificate in `nginx/`.
+  `dist`, env `VITE_API_URL=https://apipoligiros.flynnpedroa.engineer`.
+  Auto-deploys on push.
+- **Backend** → Hetzner Docker, `docker-compose.prod.yml` = **postgres + api +
+  cloudflared**. There is no nginx and no published port: the Cloudflare Tunnel
+  dials out, and its ingress (set in the Zero Trust dashboard) maps the API
+  hostname to `http://api:3001` on the compose network. TLS terminates at
+  Cloudflare, so no origin certificate is involved.
+- **Deploying is `git pull` + `make` on the server** (there is no `deploy.sh`;
+  the repo is checked out at `/opt/poligiros`):
+
+  ```bash
+  make prod-deploy      # git pull → rebuild → restart → prune → health check
+  make prod-bootstrap   # fresh DB only: test catalog + supervisor login
+  make prod-supervisor EMAIL=... PASSWORD=...   # create/reset Gaby's login
+  make prod-logs-tunnel # "Registered tunnel connection" = tunnel is up
+  ```
+
+> `prisma migrate deploy` runs automatically in the container's `CMD` on every
+> boot, so `backend/prisma/migrations/` **must stay committed**.
+>
+> `npm run db:seed` (`make prod-seed-danger`) **wipes every table** — it is demo
+> data only. On a live DB use `db:bootstrap` / `db:set-supervisor`, which upsert.

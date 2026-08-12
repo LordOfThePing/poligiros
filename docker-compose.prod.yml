@@ -1,4 +1,18 @@
-version: "3.9"
+# Production stack for the Poligiros API (Hetzner).
+#
+#   [ Cloudflare Pages frontend ]  ──https──►  [ cloudflared ]
+#                                                   │  (same docker network)
+#                                              [ api : 3001 ]  ──►  [ postgres : 5432 ]
+#
+# The tunnel maps apipoligiros.flynnpedroa.engineer → http://api:3001 (ingress is
+# configured in the Cloudflare Zero Trust dashboard, since this is a token-run
+# tunnel). No nginx and no published ports: the only thing reaching in is the
+# outbound tunnel. The host is shared with other stacks, so nothing here binds a
+# host port — postgres stays on the compose network only.
+#
+# Usage (on the server, from /opt/poligiros):
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Reads variables from /opt/poligiros/.env (see .env.example → "ROOT" section).
 
 services:
   postgres:
@@ -25,46 +39,31 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      # host is `postgres` (the service name) on the compose network
       DATABASE_URL: postgresql://${POSTGRES_USER:-poligiros}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-poligiros}
       JWT_SECRET: ${JWT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      CLOUDFLARE_R2_ACCOUNT_ID: ${CLOUDFLARE_R2_ACCOUNT_ID}
-      CLOUDFLARE_R2_ACCESS_KEY_ID: ${CLOUDFLARE_R2_ACCESS_KEY_ID}
-      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY}
-      CLOUDFLARE_R2_BUCKET_NAME: ${CLOUDFLARE_R2_BUCKET_NAME}
-      CLOUDFLARE_R2_PUBLIC_URL: ${CLOUDFLARE_R2_PUBLIC_URL}
-      NODE_ENV: production
+      FRONTEND_URL: ${FRONTEND_URL}      # must match the Pages origin EXACTLY (CORS allowlist)
+      NODE_ENV: production               # REQUIRED so the auth cookie gets the Secure flag
       PORT: 3001
+      SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL:-gaby@poligiros.com}   # used by `make prod-supervisor`
+      SUPERVISOR_PASSWORD: ${SUPERVISOR_PASSWORD:-}
+      SUPERVISOR_NAME: ${SUPERVISOR_NAME:-Gabriela Kyriazis}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      CLOUDFLARE_R2_ACCOUNT_ID: ${CLOUDFLARE_R2_ACCOUNT_ID:-}
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${CLOUDFLARE_R2_ACCESS_KEY_ID:-}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}
+      CLOUDFLARE_R2_BUCKET_NAME: ${CLOUDFLARE_R2_BUCKET_NAME:-}
+      CLOUDFLARE_R2_PUBLIC_URL: ${CLOUDFLARE_R2_PUBLIC_URL:-}
     expose:
-      - "3001"
-
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    depends_on:
-      - api
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
-    healthcheck:
-      test: ["CMD", "nginx", "-t"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - "3001"                          # internal only; the tunnel reaches it, not the host
 
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      - nginx
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+      - api
 
 volumes:
   postgres_data:

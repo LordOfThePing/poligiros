@@ -75,13 +75,21 @@ cd frontend && npm test      # lógica de scoring de Anclas
 
 ## Deploy
 
+En producción: frontend en `https://apppoligiros.flynnpedroa.engineer`, API en
+`https://apipoligiros.flynnpedroa.engineer`.
+
 - **Frontend → Cloudflare Pages**: build `npm run build` en `frontend/`, output
-  `dist`, variable `VITE_API_URL=https://api.poligiros.com`. Auto-deploy en cada push.
-- **Backend → Hetzner (Docker)**: `docker-compose.prod.yml` (api + postgres + nginx),
-  TLS con un Cloudflare Origin Certificate en `nginx/`. Para desplegar:
+  `dist`, variable `VITE_API_URL=https://apipoligiros.flynnpedroa.engineer`.
+  Auto-deploy en cada push.
+- **Backend → Hetzner (Docker)**: `docker-compose.prod.yml` = postgres + api +
+  cloudflared. Sin nginx y sin puertos publicados — el Cloudflare Tunnel sale
+  hacia afuera y su ingress apunta a `http://api:3001`. El TLS lo termina
+  Cloudflare.
+- **Deploy**: `git pull` + `make` en el servidor (ver `SETUP.md` → Parte 6):
 
   ```bash
-  ./deploy.sh
+  make prod-deploy                              # pull + build + up + health
+  make prod-supervisor EMAIL=... PASSWORD=...   # crear/resetear el login de Gaby
   ```
 
 ## Estructura del proyecto

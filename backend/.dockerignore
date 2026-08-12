@@ -1,0 +1,17 @@
+# Keep the build context small — it is uploaded to the daemon on every build,
+# and the server only has ~4 GB of RAM.
+node_modules
+dist
+tests
+*.tsbuildinfo
+
+# Never bake secrets into an image layer
+.env
+.env.*
+!.env.example
+
+# Local noise
+.git
+.gitignore
+npm-debug.log*
+coverage
