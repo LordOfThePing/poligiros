@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/prisma.js"
+import { ModuleItemKind } from "@prisma/client"
 import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/r2.js"
 import { checkUpload, buildObjectKey, ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES } from "../lib/uploads.js"
 import {
@@ -516,8 +517,14 @@ supervisor.delete("/modules/:id", async (c) => {
 
 /* ── Cards inside a module ─────────────────────────────────────────────────── */
 
-const ITEM_KINDS = ["TAREA", "BIBLIOGRAFIA", "PRESENTACION", "LINK", "RECURSO", "TEST"] as const
-type ItemKind = (typeof ITEM_KINDS)[number]
+/**
+ * Derived from the Prisma enum on purpose: this used to be a hand-written list
+ * and it silently drifted when ENTREGA was added to the schema — `asKind` then
+ * returned undefined, so creating fell back to RECURSO and editing ignored the
+ * change, both without an error.
+ */
+const ITEM_KINDS = Object.values(ModuleItemKind)
+type ItemKind = ModuleItemKind
 
 /**
  * PLAN_VITAL is a permanent placeholder with no form, so it can never be the
@@ -547,7 +554,9 @@ supervisor.post("/modules/:id/items", async (c) => {
     _max: { orderIndex: true },
   })
 
-  const resolvedKind = asKind(kind) ?? "RECURSO"
+  // Absent kind defaults; a kind that was sent but is not valid is an error.
+  const resolvedKind = kind === undefined ? ModuleItemKind.RECURSO : asKind(kind)
+  if (!resolvedKind) return c.json({ error: `Tipo de ítem inválido: ${kind}` }, 400)
   const linkedTestId = resolvedKind === "TEST" ? await validTestId(testId) : null
   if (resolvedKind === "TEST" && !linkedTestId) {
     return c.json({ error: "Elegí un test válido para este ítem" }, 400)
@@ -574,7 +583,10 @@ supervisor.post("/modules/:id/items", async (c) => {
 supervisor.put("/module-items/:itemId", async (c) => {
   const id = c.req.param("itemId")
   const { title, description, kind, orderIndex, testId } = await c.req.json()
-  const parsedKind = asKind(kind)
+  const parsedKind = kind === undefined ? undefined : asKind(kind)
+  if (kind !== undefined && !parsedKind) {
+    return c.json({ error: `Tipo de ítem inválido: ${kind}` }, 400)
+  }
 
   // Keep kind and testId consistent: a TEST card must point at a test, and a
   // card that stops being a TEST drops the link.

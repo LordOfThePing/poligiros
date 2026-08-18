@@ -60,6 +60,16 @@ export function Markdown({ children, className = "" }: { children: string; class
             <pre className="bg-muted rounded-lg p-3 overflow-x-auto text-xs">{children}</pre>
           ),
           hr: () => <hr className="border-border" />,
+          // Images embed inline with ![texto](url). Lazy so a class page full of
+          // scans does not block on them.
+          img: ({ src, alt }) => (
+            <img
+              src={typeof src === "string" ? src : undefined}
+              alt={alt ?? ""}
+              loading="lazy"
+              className="max-w-full h-auto rounded-lg border border-border"
+            />
+          ),
           // Wide tables scroll inside their own box instead of stretching the card.
           table: ({ children }) => (
             <div className="overflow-x-auto">

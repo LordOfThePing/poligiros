@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import {
   GripVertical, Plus, Edit2, Trash2, ExternalLink, ChevronDown, ChevronRight, Link2,
-  Upload, FileText, Loader2,
+  Upload, FileText, Loader2, Copy,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
@@ -217,6 +217,16 @@ function ModuleContentEditor({
     toast({ title: "Archivo subido" })
   }
 
+  /** Lets the supervisor paste a file into the consigna as ![](url) or [](url). */
+  async function copyLinkUrl(url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({ title: "URL copiada" })
+    } catch {
+      window.prompt("Copiá la URL:", url)
+    }
+  }
+
   async function deleteLink(itemId: string, linkId: string) {
     await apiRaw(`/supervisor/module-links/${linkId}`, { method: "DELETE" })
     onModuleChange({
@@ -304,6 +314,14 @@ function ModuleContentEditor({
               {link.sizeBytes != null && (
                 <span className="text-muted-foreground shrink-0">{formatBytes(link.sizeBytes)}</span>
               )}
+              <button
+                onClick={() => copyLinkUrl(link.url)}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+                aria-label="Copiar URL"
+                title="Copiar URL (para embeberla en la consigna)"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
               <button
                 onClick={() => deleteLink(item.id, link.id)}
                 className="text-muted-foreground hover:text-destructive shrink-0"
