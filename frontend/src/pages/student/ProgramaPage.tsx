@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
+  ClipboardCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
+import { MarkdownEditor } from "@/components/MarkdownEditor"
 import {
   KIND_BADGE, KIND_LABEL, formatBytes,
   type StudentModule, type StudentModuleItem,
@@ -23,6 +26,9 @@ export default function ProgramaPage() {
   const [openModules, setOpenModules] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Selection | null>(null)
   const [saving, setSaving] = useState(false)
+  const navigate = useNavigate()
+  // Draft text for the ENTREGA card currently open.
+  const [entrega, setEntrega] = useState("")
 
   useEffect(() => {
     apiJson<StudentModule[]>("/student/modules")
@@ -51,6 +57,28 @@ export default function ProgramaPage() {
     const item = mod?.items.find((i) => i.id === selected.itemId)
     return mod && item ? { module: mod, item } : null
   }, [selected, modules])
+
+  // Reset the draft to whatever is stored when a different card opens, so
+  // switching cards never carries someone else text over.
+  useEffect(() => {
+    if (!selected) return
+    const mod = modules.find((m) => m.id === selected.moduleId)
+    const item = mod?.items.find((i) => i.id === selected.itemId)
+    setEntrega(item?.submission?.text ?? "")
+  }, [selected, modules])
+
+  async function submitEntrega(item: StudentModuleItem) {
+    if (!entrega.trim()) return
+    setSaving(true)
+    const res = await apiTry(`/student/module-items/${item.id}/submission`, {
+      method: "PUT",
+      body: JSON.stringify({ text: entrega }),
+    })
+    setSaving(false)
+    if (!res.ok) return
+    // The card completion and module progress are derived server-side.
+    apiJson<StudentModule[]>("/student/modules").then(setModules).catch(() => {})
+  }
 
   function toggleModule(id: string) {
     setOpenModules((prev) => {
@@ -91,6 +119,23 @@ export default function ProgramaPage() {
 
     // The module-level flag is derived server-side; refetch to pick it up.
     apiJson<StudentModule[]>("/student/modules").then(setModules).catch(() => {})
+  }
+
+  /**
+   * TEST cards do not get a manual checkbox: the assignment is created on first
+   * open and the card counts as done once the test is submitted.
+   */
+  async function openTest(item: StudentModuleItem) {
+    if (item.assignmentId) {
+      navigate(`/student/my-tests/${item.assignmentId}`)
+      return
+    }
+    setSaving(true)
+    const res = await apiTry(`/student/module-items/${item.id}/start`, { method: "POST" })
+    setSaving(false)
+    if (!res.ok) return
+    const { assignmentId } = await res.json()
+    navigate(`/student/my-tests/${assignmentId}`)
   }
 
   const circumference = 2 * Math.PI * 40
@@ -285,7 +330,73 @@ export default function ProgramaPage() {
                 )}
 
                 <div className="border-t border-border pt-4">
-                  {current.item.completed ? (
+                  {current.item.kind === "ENTREGA" ? (
+                    <div className="space-y-3">
+                      {current.item.submission?.reviewedAt ? (
+                        <>
+                          <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                            <CheckCircle2 className="h-4 w-4" /> Entregado y revisado
+                          </div>
+                          <div className="bg-muted/40 rounded-lg p-3">
+                            <p className="text-xs text-muted-foreground mb-1">Tu entrega</p>
+                            <Markdown>{current.item.submission.text}</Markdown>
+                          </div>
+                          {current.item.submission.feedback && (
+                            <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
+                              <p className="text-xs text-muted-foreground mb-1">Devolución de Gaby</p>
+                              <Markdown>{current.item.submission.feedback}</Markdown>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-foreground">Tu entrega</p>
+                            {current.item.submission && (
+                              <span className="text-xs text-muted-foreground">
+                                Entregado · podés editarlo hasta que Gaby lo revise
+                              </span>
+                            )}
+                          </div>
+                          <MarkdownEditor
+                            value={entrega}
+                            onChange={setEntrega}
+                            rows={10}
+                            placeholder="Escribí acá tu reflexión..."
+                          />
+                          <Button
+                            className="bg-brand-accent hover:bg-brand-accent-dark"
+                            disabled={saving || !entrega.trim()}
+                            onClick={() => submitEntrega(current.item)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            {current.item.submission ? "Guardar cambios" : "Enviar entrega"}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ) : current.item.kind === "TEST" ? (
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      {current.item.submitted ? (
+                        <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                          <CheckCircle2 className="h-4 w-4" /> Enviado
+                        </span>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Al enviarlo le llega a Gaby para su devolución.
+                        </p>
+                      )}
+                      <Button
+                        className={current.item.submitted ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
+                        variant={current.item.submitted ? "outline" : "default"}
+                        disabled={saving}
+                        onClick={() => openTest(current.item)}
+                      >
+                        <ClipboardCheck className="h-4 w-4 mr-2" />
+                        {current.item.submitted ? "Ver mi resultado" : "Realizar test"}
+                      </Button>
+                    </div>
+                  ) : current.item.completed ? (
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
                         <CheckCircle2 className="h-4 w-4" /> Completado

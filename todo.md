@@ -45,6 +45,8 @@ Ninguna corrió todavía en prod. Las tres ya se aplicaron **local** con
 - [ ] `20260813140000_settings_and_signup_links`
 - [ ] `20260813170000_module_link_files`
 - [ ] `20260813190000_module_item_progress`
+- [ ] `20260813210000_module_item_test`
+- [ ] `20260813230000_module_item_submission`
 - [ ] Resolver primero 1.1, después `make prod-deploy`
 
 > El bloque de migración de datos `Material → ModuleItem + ModuleLink` **no está

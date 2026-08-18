@@ -31,6 +31,10 @@ enum ModuleItemKind {
   PRESENTACION
   LINK
   RECURSO
+  /// The card IS a test the coach has to take (see ModuleItem.testId).
+  TEST
+  /// The card asks the coach to hand something in (see ModuleItemSubmission).
+  ENTREGA
 }
 
 enum SignupStatus {
@@ -63,16 +67,18 @@ model User {
   bio          String?
 
   clients             Client[]
-  coacheeProfile      Client?              @relation("CoachAsCoachee")
+  coacheeProfile      Client?                @relation("CoachAsCoachee")
   enrollments         Enrollment[]
   moduleProgress      ModuleProgress[]
   moduleItemProgress  ModuleItemProgress[]
-  supervisionRequests SupervisionRequest[] @relation("StudentRequests")
-  supervisionReviews  SupervisionRequest[] @relation("SupervisorReviews")
+  submissions         ModuleItemSubmission[] @relation("SubmissionAuthor")
+  submissionReviews   ModuleItemSubmission[] @relation("SubmissionReviewedBy")
+  supervisionRequests SupervisionRequest[]   @relation("StudentRequests")
+  supervisionReviews  SupervisionRequest[]   @relation("SupervisorReviews")
   sessionRecords      SessionRecord[]
-  resetRequestsMade   TestResetRequest[]   @relation("ResetRequestedBy")
-  resetReviews        TestResetRequest[]   @relation("ResetReviewedBy")
-  signupReviews       SignupRequest[]      @relation("SignupReviewedBy")
+  resetRequestsMade   TestResetRequest[]     @relation("ResetRequestedBy")
+  resetReviews        TestResetRequest[]     @relation("ResetReviewedBy")
+  signupReviews       SignupRequest[]        @relation("SignupReviewedBy")
 }
 
 model Cohort {
@@ -149,10 +155,17 @@ model ModuleItem {
   description String?
   kind        ModuleItemKind @default(RECURSO)
   orderIndex  Int            @default(0)
-  createdAt   DateTime       @default(now())
 
-  links    ModuleLink[]
-  progress ModuleItemProgress[]
+  /// Only for kind = TEST: which test the coach has to complete. Releasing the
+  /// module to a cohort is what makes it available — there is no separate
+  /// per-test release.
+  testId    String?
+  test      Test?    @relation(fields: [testId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  links       ModuleLink[]
+  progress    ModuleItemProgress[]
+  submissions ModuleItemSubmission[]
 }
 
 /// A link hanging off a card. Nothing is ever uploaded or stored by this app —
@@ -225,6 +238,7 @@ model Test {
   description String
   orderIndex  Int
   assignments TestAssignment[]
+  moduleItems ModuleItem[]
 }
 
 model TestAssignment {
@@ -375,4 +389,29 @@ model SignupLink {
   createdAt DateTime @default(now())
 
   requests SignupRequest[]
+}
+
+/// What a coach hands in for a kind = ENTREGA card. One per coach per card; the
+/// row existing IS the submission (there are no drafts), which is also what
+/// marks the card as completed.
+model ModuleItemSubmission {
+  id     String     @id @default(cuid())
+  userId String
+  itemId String
+  user   User       @relation("SubmissionAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  item   ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Markdown, same as the consigna above it.
+  text        String
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  /// Supervisor review. The coach may keep editing until this is set.
+  feedback     String?
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("SubmissionReviewedBy", fields: [reviewedById], references: [id])
+
+  @@unique([userId, itemId])
+  @@index([reviewedAt])
 }

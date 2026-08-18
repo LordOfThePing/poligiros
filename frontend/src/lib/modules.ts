@@ -1,7 +1,14 @@
 /** Shared shapes for module content (cards + links). Nothing is ever uploaded:
  *  every resource is a link to Drive / Docs / Zoom / an article. */
 
-export type ModuleItemKind = "TAREA" | "BIBLIOGRAFIA" | "PRESENTACION" | "LINK" | "RECURSO"
+export type ModuleItemKind =
+  | "TAREA"
+  | "BIBLIOGRAFIA"
+  | "PRESENTACION"
+  | "LINK"
+  | "RECURSO"
+  | "TEST"
+  | "ENTREGA"
 
 export type ModuleLink = {
   id: string
@@ -21,6 +28,9 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`
 }
 
+/** The catalog test behind a kind = TEST card. */
+export type LinkedTest = { id: string; type: string; title: string }
+
 export type ModuleItem = {
   id: string
   title: string
@@ -28,6 +38,9 @@ export type ModuleItem = {
   kind: ModuleItemKind
   orderIndex: number
   links: ModuleLink[]
+  /** Only for kind = TEST. */
+  testId: string | null
+  test: LinkedTest | null
 }
 
 export type Module = {
@@ -41,7 +54,22 @@ export type Module = {
 }
 
 /** Student view adds their own progress, per item and derived per module. */
-export type StudentModuleItem = ModuleItem & { completed: boolean }
+/** kind = ENTREGA only: what this coach handed in, if anything. */
+export type OwnSubmission = {
+  id: string
+  text: string
+  submittedAt: string
+  feedback: string | null
+  reviewedAt: string | null
+}
+
+export type StudentModuleItem = ModuleItem & {
+  completed: boolean
+  /** kind = TEST only: the coach own assignment, created on first open. */
+  assignmentId: string | null
+  submitted: boolean
+  submission: OwnSubmission | null
+}
 
 export type StudentModule = Omit<Module, "items"> & {
   items: StudentModuleItem[]
@@ -55,6 +83,8 @@ export const ITEM_KINDS: ModuleItemKind[] = [
   "PRESENTACION",
   "LINK",
   "RECURSO",
+  "TEST",
+  "ENTREGA",
 ]
 
 export const KIND_LABEL: Record<ModuleItemKind, string> = {
@@ -63,6 +93,8 @@ export const KIND_LABEL: Record<ModuleItemKind, string> = {
   PRESENTACION: "Presentación",
   LINK: "Link",
   RECURSO: "Recurso",
+  TEST: "Test",
+  ENTREGA: "Entrega",
 }
 
 /** Tailwind classes per kind, so a class page is scannable at a glance. */
@@ -72,6 +104,8 @@ export const KIND_BADGE: Record<ModuleItemKind, string> = {
   PRESENTACION: "bg-violet-100 text-violet-800",
   LINK: "bg-emerald-100 text-emerald-800",
   RECURSO: "bg-slate-100 text-slate-700",
+  TEST: "bg-rose-100 text-rose-800",
+  ENTREGA: "bg-indigo-100 text-indigo-800",
 }
 
 /**

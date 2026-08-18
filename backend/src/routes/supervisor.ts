@@ -6,6 +6,7 @@ import {
   sendSupervisionReviewedEmail,
   sendCoachInviteEmail,
   sendSignupApprovedEmail,
+  sendSubmissionReviewedEmail,
 } from "../lib/email.js"
 import { randomBytes } from "node:crypto"
 import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
@@ -432,7 +433,10 @@ supervisor.post("/cohorts/:id/enroll", async (c) => {
 const moduleItemsInclude = {
   items: {
     orderBy: { orderIndex: "asc" as const },
-    include: { links: { orderBy: { orderIndex: "asc" as const } } },
+    include: {
+      links: { orderBy: { orderIndex: "asc" as const } },
+      test: { select: { id: true, type: true, title: true } },
+    },
   },
 }
 
@@ -512,8 +516,19 @@ supervisor.delete("/modules/:id", async (c) => {
 
 /* ── Cards inside a module ─────────────────────────────────────────────────── */
 
-const ITEM_KINDS = ["TAREA", "BIBLIOGRAFIA", "PRESENTACION", "LINK", "RECURSO"] as const
+const ITEM_KINDS = ["TAREA", "BIBLIOGRAFIA", "PRESENTACION", "LINK", "RECURSO", "TEST"] as const
 type ItemKind = (typeof ITEM_KINDS)[number]
+
+/**
+ * PLAN_VITAL is a permanent placeholder with no form, so it can never be the
+ * test behind a card.
+ */
+async function validTestId(raw: unknown): Promise<string | null> {
+  if (typeof raw !== "string" || !raw) return null
+  const test = await prisma.test.findUnique({ where: { id: raw }, select: { id: true, type: true } })
+  if (!test || test.type === "PLAN_VITAL") return null
+  return test.id
+}
 
 function asKind(value: unknown): ItemKind | undefined {
   return ITEM_KINDS.includes(value as ItemKind) ? (value as ItemKind) : undefined
@@ -522,7 +537,7 @@ function asKind(value: unknown): ItemKind | undefined {
 /** POST /supervisor/modules/:id/items */
 supervisor.post("/modules/:id/items", async (c) => {
   const moduleId = c.req.param("id")
-  const { title, description, kind } = await c.req.json()
+  const { title, description, kind, testId } = await c.req.json()
 
   const trimmed = String(title ?? "").trim()
   if (!trimmed) return c.json({ error: "El titulo no puede estar vacio" }, 400)
@@ -532,15 +547,25 @@ supervisor.post("/modules/:id/items", async (c) => {
     _max: { orderIndex: true },
   })
 
+  const resolvedKind = asKind(kind) ?? "RECURSO"
+  const linkedTestId = resolvedKind === "TEST" ? await validTestId(testId) : null
+  if (resolvedKind === "TEST" && !linkedTestId) {
+    return c.json({ error: "Elegí un test válido para este ítem" }, 400)
+  }
+
   const item = await prisma.moduleItem.create({
     data: {
       moduleId,
       title: trimmed,
       description: description ?? null,
-      kind: asKind(kind) ?? "RECURSO",
+      kind: resolvedKind,
+      testId: linkedTestId,
       orderIndex: (maxOrder._max.orderIndex ?? -1) + 1,
     },
-    include: { links: { orderBy: { orderIndex: "asc" } } },
+    include: {
+      links: { orderBy: { orderIndex: "asc" } },
+      test: { select: { id: true, type: true, title: true } },
+    },
   })
   return c.json(item, 201)
 })
@@ -548,8 +573,19 @@ supervisor.post("/modules/:id/items", async (c) => {
 /** PUT /supervisor/module-items/:itemId */
 supervisor.put("/module-items/:itemId", async (c) => {
   const id = c.req.param("itemId")
-  const { title, description, kind, orderIndex } = await c.req.json()
+  const { title, description, kind, orderIndex, testId } = await c.req.json()
   const parsedKind = asKind(kind)
+
+  // Keep kind and testId consistent: a TEST card must point at a test, and a
+  // card that stops being a TEST drops the link.
+  let testPatch: { testId?: string | null } = {}
+  if (parsedKind === "TEST") {
+    const linked = await validTestId(testId)
+    if (!linked) return c.json({ error: "Elegí un test válido para este ítem" }, 400)
+    testPatch = { testId: linked }
+  } else if (parsedKind) {
+    testPatch = { testId: null }
+  }
 
   const item = await prisma.moduleItem.update({
     where: { id },
@@ -558,8 +594,12 @@ supervisor.put("/module-items/:itemId", async (c) => {
       ...(description !== undefined ? { description } : {}),
       ...(parsedKind ? { kind: parsedKind } : {}),
       ...(orderIndex !== undefined ? { orderIndex } : {}),
+      ...testPatch,
     },
-    include: { links: { orderBy: { orderIndex: "asc" } } },
+    include: {
+      links: { orderBy: { orderIndex: "asc" } },
+      test: { select: { id: true, type: true, title: true } },
+    },
   })
   return c.json(item)
 })
@@ -595,7 +635,10 @@ supervisor.put("/modules/:id/items/reorder", async (c) => {
   const items = await prisma.moduleItem.findMany({
     where: { moduleId },
     orderBy: { orderIndex: "asc" },
-    include: { links: { orderBy: { orderIndex: "asc" } } },
+    include: {
+      links: { orderBy: { orderIndex: "asc" } },
+      test: { select: { id: true, type: true, title: true } },
+    },
   })
   return c.json(items)
 })
@@ -1198,6 +1241,74 @@ supervisor.post("/signup-links/:id/disable", async (c) => {
 /** DELETE /supervisor/signup-links/:id */
 supervisor.delete("/signup-links/:id", async (c) => {
   await prisma.signupLink.delete({ where: { id: c.req.param("id") } })
+  return c.json({ ok: true })
+})
+
+/* ─────────────────────────────────────────
+   Entregas — what coaches hand in on ENTREGA cards
+───────────────────────────────────────── */
+
+/** GET /supervisor/submissions?status=pending|reviewed|all */
+supervisor.get("/submissions", async (c) => {
+  const status = c.req.query("status") ?? "pending"
+  const where =
+    status === "pending"
+      ? { reviewedAt: null }
+      : status === "reviewed"
+        ? { reviewedAt: { not: null } }
+        : {}
+
+  const submissions = await prisma.moduleItemSubmission.findMany({
+    where,
+    orderBy: { submittedAt: "desc" },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          enrollments: { include: { cohort: { select: { id: true, name: true } } } },
+        },
+      },
+      item: {
+        select: { id: true, title: true, module: { select: { id: true, title: true } } },
+      },
+    },
+  })
+
+  return c.json(
+    submissions.map((s) => ({
+      id: s.id,
+      text: s.text,
+      submittedAt: s.submittedAt,
+      feedback: s.feedback,
+      reviewedAt: s.reviewedAt,
+      coach: { id: s.user.id, name: s.user.name, email: s.user.email },
+      // A coach can be in more than one CIC; show them all rather than guessing.
+      cohorts: s.user.enrollments.map((e) => e.cohort.name),
+      item: { id: s.item.id, title: s.item.title },
+      module: { id: s.item.module.id, title: s.item.module.title },
+    }))
+  )
+})
+
+/** POST /supervisor/submissions/:id/review — body: { feedback } */
+supervisor.post("/submissions/:id/review", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const { feedback } = await c.req.json().catch(() => ({}))
+
+  const clean = String(feedback ?? "").trim()
+  if (!clean) return c.json({ error: "Escribí la devolución" }, 400)
+
+  const submission = await prisma.moduleItemSubmission.update({
+    where: { id },
+    data: { feedback: clean, reviewedAt: new Date(), reviewedById: user.id },
+    include: { user: { select: { email: true } }, item: { select: { title: true } } },
+  })
+
+  sendSubmissionReviewedEmail(submission.user.email, submission.item.title, clean).catch(() => {})
+
   return c.json({ ok: true })
 })
 

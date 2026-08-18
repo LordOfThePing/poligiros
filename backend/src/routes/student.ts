@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js"
 import {
   sendSupervisionSubmittedEmail,
   sendSessionRecordedEmail,
+  sendSubmissionReceivedEmail,
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { latestTableroIdea } from "./client.js"
@@ -467,10 +468,28 @@ student.get("/modules", async (c) => {
     include: {
       items: {
         orderBy: { orderIndex: "asc" },
-        include: { links: { orderBy: { orderIndex: "asc" } } },
+        include: {
+          links: { orderBy: { orderIndex: "asc" } },
+          test: { select: { id: true, type: true, title: true } },
+        },
       },
     },
   })
+
+  // The coach takes tests against their own coach-as-coachee Client.
+  const mySubmissions = await prisma.moduleItemSubmission.findMany({
+    where: { userId: user.id, item: { moduleId: { in: moduleIds } } },
+  })
+  const submissionByItem = new Map(mySubmissions.map((s) => [s.itemId, s]))
+
+  const myClient = await prisma.client.findUnique({ where: { userId: user.id } })
+  const myAssignments = myClient
+    ? await prisma.testAssignment.findMany({
+        where: { clientId: myClient.id },
+        select: { id: true, testId: true, completedAt: true },
+      })
+    : []
+  const assignmentByTest = new Map(myAssignments.map((a) => [a.testId, a]))
 
   const allItemIds = modules.flatMap((m) => m.items.map((i) => i.id))
   const progress = allItemIds.length
@@ -484,7 +503,27 @@ student.get("/modules", async (c) => {
 
   return c.json(
     modules.map((m) => {
-      const items = m.items.map((i) => ({ ...i, completed: doneItems.has(i.id) }))
+      const items = m.items.map((i) => {
+        const assignment = i.testId ? assignmentByTest.get(i.testId) : undefined
+        const submission = submissionByItem.get(i.id)
+        return {
+          ...i,
+          completed: doneItems.has(i.id),
+          // Only meaningful for kind = TEST: where the coach stands on it.
+          assignmentId: assignment?.id ?? null,
+          submitted: Boolean(assignment?.completedAt),
+          // Only meaningful for kind = ENTREGA.
+          submission: submission
+            ? {
+                id: submission.id,
+                text: submission.text,
+                submittedAt: submission.submittedAt,
+                feedback: submission.feedback,
+                reviewedAt: submission.reviewedAt,
+              }
+            : null,
+        }
+      })
       return {
         ...m,
         items,
@@ -499,7 +538,7 @@ student.get("/modules", async (c) => {
 async function findReleasedItem(userId: string, itemId: string) {
   const item = await prisma.moduleItem.findUnique({
     where: { id: itemId },
-    select: { id: true, moduleId: true, module: { select: { published: true } } },
+    select: { id: true, moduleId: true, kind: true, module: { select: { published: true } } },
   })
   if (!item || !item.module.published) return null
 
@@ -514,6 +553,9 @@ student.post("/module-items/:itemId/complete", async (c) => {
 
   const item = await findReleasedItem(user.id, itemId)
   if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+  if (item.kind === "TEST" || item.kind === "ENTREGA") {
+    return c.json({ error: "Este ítem se completa enviándolo, no a mano" }, 400)
+  }
 
   await prisma.moduleItemProgress.upsert({
     where: { userId_itemId: { userId: user.id, itemId } },
@@ -525,6 +567,109 @@ student.post("/module-items/:itemId/complete", async (c) => {
   return c.json({ ok: true, completed: true })
 })
 
+/**
+ * POST /student/module-items/:itemId/start
+ * Opens the test behind a TEST card: makes sure the coach has an assignment on
+ * their own coach-as-coachee Client and hands back its id, so the front can go
+ * straight to the existing take-test screen.
+ *
+ * The assignment is created lazily here rather than fanned out to everybody at
+ * release time: a cohort of 30 coaches would otherwise get 30 rows per test the
+ * moment Gaby ticks a module, most of them never opened.
+ */
+student.post("/module-items/:itemId/start", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("itemId")
+
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  const full = await prisma.moduleItem.findUnique({
+    where: { id: itemId },
+    select: { kind: true, testId: true },
+  })
+  if (!full || full.kind !== "TEST" || !full.testId) {
+    return c.json({ error: "Este ítem no es un test" }, 400)
+  }
+
+  // The coach-as-coachee Client normally exists (seed / invite / signup), but a
+  // coach enrolled by hand may not have one yet.
+  let myClient = await prisma.client.findUnique({ where: { userId: user.id } })
+  if (!myClient) {
+    const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
+    if (!supervisor) return c.json({ error: "No hay supervisora configurada" }, 503)
+    myClient = await prisma.client.create({
+      data: { studentId: supervisor.id, userId: user.id, name: user.name, email: user.email },
+    })
+  }
+
+  const assignment = await prisma.testAssignment.upsert({
+    where: { testId_clientId: { testId: full.testId, clientId: myClient.id } },
+    update: {},
+    // No accessToken/completeBy: the coach takes it logged in, not by magic link.
+    create: { testId: full.testId, clientId: myClient.id, assignedBy: myClient.studentId },
+  })
+
+  return c.json({ assignmentId: assignment.id, completed: Boolean(assignment.completedAt) })
+})
+
+/**
+ * PUT /student/module-items/:itemId/submission — body: { text }
+ *
+ * Hand in (or correct) an ENTREGA card. The row existing IS the submission, and
+ * it is what marks the card complete. The coach may keep editing until the
+ * supervisor reviews it; after that it is frozen so the feedback keeps matching
+ * the text it was written about.
+ */
+student.put("/module-items/:itemId/submission", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("itemId")
+
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+  if (item.kind !== "ENTREGA") return c.json({ error: "Este ítem no pide entrega" }, 400)
+
+  const { text } = await c.req.json().catch(() => ({}))
+  const clean = String(text ?? "").trim()
+  if (!clean) return c.json({ error: "Escribí tu entrega antes de enviarla" }, 400)
+
+  const existing = await prisma.moduleItemSubmission.findUnique({
+    where: { userId_itemId: { userId: user.id, itemId } },
+  })
+  if (existing?.reviewedAt) {
+    return c.json({ error: "Gaby ya devolvió esta entrega, no se puede editar" }, 409)
+  }
+
+  const submission = await prisma.moduleItemSubmission.upsert({
+    where: { userId_itemId: { userId: user.id, itemId } },
+    update: { text: clean },
+    create: { userId: user.id, itemId, text: clean },
+  })
+
+  await prisma.moduleItemProgress.upsert({
+    where: { userId_itemId: { userId: user.id, itemId } },
+    update: {},
+    create: { userId: user.id, itemId },
+  })
+  await syncModuleProgress(user.id, item.moduleId)
+
+  // Only tell the supervisor the first time; edits before review are not news.
+  if (!existing) {
+    const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
+    const card = await prisma.moduleItem.findUnique({
+      where: { id: itemId },
+      select: { title: true, module: { select: { title: true } } },
+    })
+    if (supervisor && card) {
+      sendSubmissionReceivedEmail(supervisor.email, user.name, card.module.title, card.title).catch(
+        () => {}
+      )
+    }
+  }
+
+  return c.json(submission)
+})
+
 /** DELETE /student/module-items/:itemId/complete — untick it. */
 student.delete("/module-items/:itemId/complete", async (c) => {
   const user = c.get("user")
@@ -532,6 +677,10 @@ student.delete("/module-items/:itemId/complete", async (c) => {
 
   const item = await findReleasedItem(user.id, itemId)
   if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  if (item.kind === "TEST" || item.kind === "ENTREGA") {
+    return c.json({ error: "Este ítem se completa enviándolo, no a mano" }, 400)
+  }
 
   await prisma.moduleItemProgress
     .delete({ where: { userId_itemId: { userId: user.id, itemId } } })
@@ -597,8 +746,67 @@ student.post("/my-tests/:id/submit", async (c) => {
     }),
     prisma.testAssignment.update({ where: { id }, data: { completedAt: new Date() } }),
   ])
+
+  await markTestItemsDone(user.id, assignment.testId)
+  await openSupervisionForOwnTest(user.id, id)
+
   return c.json(testResponse)
 })
+
+/**
+ * A TEST card is completed by submitting it, so mirror that into the item
+ * progress the Programa screen counts.
+ */
+async function markTestItemsDone(userId: string, testId: string) {
+  const released = await releasedModuleIds(userId)
+  if (released.length === 0) return
+
+  const items = await prisma.moduleItem.findMany({
+    where: { testId, kind: "TEST", moduleId: { in: released } },
+    select: { id: true, moduleId: true },
+  })
+
+  for (const item of items) {
+    await prisma.moduleItemProgress.upsert({
+      where: { userId_itemId: { userId, itemId: item.id } },
+      update: {},
+      create: { userId, itemId: item.id },
+    })
+    await syncModuleProgress(userId, item.moduleId)
+  }
+}
+
+/**
+ * The coach taking their own test is the same flow as a coachee taking one, so
+ * it lands in the supervisor queue automatically — the coach has nobody to
+ * "send it to supervision" on their behalf.
+ */
+async function openSupervisionForOwnTest(userId: string, assignmentId: string) {
+  const existing = await prisma.supervisionRequest.findUnique({ where: { assignmentId } })
+  if (existing) return
+
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { id: assignmentId },
+    include: { test: true, client: true },
+  })
+  // Only for the coach-as-coachee case; a real coachee is sent by their coach.
+  if (!assignment || assignment.client.userId !== userId) return
+
+  await prisma.supervisionRequest.create({
+    data: { assignmentId, studentId: userId },
+  })
+
+  const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
+  const coach = await prisma.user.findUnique({ where: { id: userId } })
+  if (supervisor && coach) {
+    sendSupervisionSubmittedEmail(
+      supervisor.email,
+      coach.name,
+      assignment.client.name,
+      assignment.test.title
+    ).catch(() => {})
+  }
+}
 
 /** POST /student/my-tests/:id/ai-insight */
 student.post("/my-tests/:id/ai-insight", async (c) => {

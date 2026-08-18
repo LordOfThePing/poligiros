@@ -144,3 +144,41 @@ export async function sendSignupReceivedEmail(
     `,
   })
 }
+
+/** Sent to the supervisor when a coach hands in an ENTREGA card. */
+export async function sendSubmissionReceivedEmail(
+  supervisorEmail: string,
+  coachName: string,
+  moduleTitle: string,
+  itemTitle: string
+) {
+  await resend.emails.send({
+    from: FROM,
+    to: supervisorEmail,
+    subject: `Nueva entrega de ${coachName}`,
+    html: `
+      <p>Hola Gaby,</p>
+      <p><strong>${coachName}</strong> entregó <strong>${itemTitle}</strong> de ${moduleTitle}.</p>
+      <p><a href="${APP_URL}/supervisor/entregas">Ver entregas →</a></p>
+    `,
+  })
+}
+
+/** Sent to the coach when the supervisor reviews their submission. */
+export async function sendSubmissionReviewedEmail(
+  coachEmail: string,
+  itemTitle: string,
+  feedback: string
+) {
+  await resend.emails.send({
+    from: FROM,
+    to: coachEmail,
+    subject: `Gaby devolvió tu entrega: ${itemTitle}`,
+    html: `
+      <p>Hola,</p>
+      <p>Gaby revisó tu entrega de <strong>${itemTitle}</strong>.</p>
+      ${feedback ? `<p><strong>Devolución:</strong> ${feedback}</p>` : ""}
+      <p><a href="${APP_URL}/student/programa">Ver en Mi Programa →</a></p>
+    `,
+  })
+}

@@ -10,6 +10,7 @@ import {
   GraduationCap,
   LogOut,
   UserPlus,
+  Inbox,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProfileBanner } from "@/components/ProfileBanner"
@@ -20,6 +21,7 @@ const links = [
   { href: "/supervisor/supervision", label: "Supervisión", icon: ClipboardCheck },
   { href: "/supervisor/registros", label: "Registros", icon: FileText },
   { href: "/supervisor/modulos", label: "Módulos", icon: BookOpen },
+  { href: "/supervisor/entregas", label: "Entregas", icon: Inbox },
   { href: "/supervisor/cohortes", label: "CIC", icon: GraduationCap },
   { href: "/supervisor/inscripciones", label: "Inscripciones", icon: UserPlus },
 ]

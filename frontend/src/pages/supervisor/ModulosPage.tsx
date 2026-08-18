@@ -32,7 +32,7 @@ import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import {
   ITEM_KINDS, KIND_BADGE, KIND_LABEL, stripMarkdown, formatBytes,
-  type Module, type ModuleItem, type ModuleItemKind, type ModuleLink,
+  type Module, type ModuleItem, type ModuleItemKind, type ModuleLink, type LinkedTest,
 } from "@/lib/modules"
 
 function getEmbedUrl(url: string): string | null {
@@ -48,7 +48,13 @@ function getEmbedUrl(url: string): string | null {
    Content editor: cards and the links inside them
 ───────────────────────────────────────── */
 
-type ItemDraft = { id?: string; title: string; description: string; kind: ModuleItemKind }
+type ItemDraft = {
+  id?: string
+  title: string
+  description: string
+  kind: ModuleItemKind
+  testId: string
+}
 
 /**
  * One draggable card row. The grip is the only drag handle — the row is full of
@@ -93,6 +99,14 @@ function ModuleContentEditor({
   const [linkTitle, setLinkTitle] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
   const [uploadingFor, setUploadingFor] = useState<string | null>(null)
+  const [tests, setTests] = useState<LinkedTest[]>([])
+
+  useEffect(() => {
+    // PLAN_VITAL is a permanent placeholder with no form — never offer it.
+    apiJson<LinkedTest[]>("/tests")
+      .then((all) => setTests(all.filter((t) => t.type !== "PLAN_VITAL")))
+      .catch(() => {})
+  }, [])
 
   const itemSensors = useSensors(
     useSensor(PointerSensor),
@@ -140,6 +154,7 @@ function ModuleContentEditor({
           title: draft.title,
           description: draft.description || null,
           kind: draft.kind,
+          testId: draft.kind === "TEST" ? draft.testId : null,
         }),
       }
     )
@@ -233,6 +248,9 @@ function ModuleContentEditor({
                 <span className={`text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[item.kind]}`}>
                   {KIND_LABEL[item.kind]}
                 </span>
+                {item.test && (
+                  <span className="text-xs text-muted-foreground">{item.test.title}</span>
+                )}
               </div>
               {item.description && (
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -251,6 +269,7 @@ function ModuleContentEditor({
                     title: item.title,
                     description: item.description ?? "",
                     kind: item.kind,
+                    testId: item.testId ?? "",
                   })
                 }
               >
@@ -358,7 +377,7 @@ function ModuleContentEditor({
       <Button
         size="sm"
         variant="outline"
-        onClick={() => setDraft({ title: "", description: "", kind: "RECURSO" })}
+        onClick={() => setDraft({ title: "", description: "", kind: "RECURSO", testId: "" })}
       >
         <Plus className="h-3.5 w-3.5 mr-1" /> Agregar ítem
       </Button>
@@ -393,6 +412,27 @@ function ModuleContentEditor({
                 </SelectContent>
               </Select>
             </div>
+            {draft?.kind === "TEST" && (
+              <div className="space-y-2">
+                <Label>Test *</Label>
+                <Select
+                  value={draft?.testId ?? ""}
+                  onValueChange={(v) => setDraft((p) => (p ? { ...p, testId: v } : p))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Elegí el test" /></SelectTrigger>
+                  <SelectContent>
+                    {tests.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Los coaches del CIC lo hacen cuando liberás esta clase, y al enviarlo te llega a
+                  Supervisión.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Consigna / descripción</Label>
               <MarkdownEditor

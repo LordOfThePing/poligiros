@@ -255,6 +255,16 @@ Module (CLASE 1)  ──<  ModuleItem ("TAREA 1", kind + consigna)  ──<  Mod
    └──<  ModuleRelease (moduleId + cohortId, released, availableFrom?)
 ```
 
+A card of kind **`TEST`** carries `ModuleItem.testId`: the class itself contains
+the test the coach has to take. There is no separate per-test release — releasing
+the module to a cohort is what enables it. The coach takes it against their own
+coach-as-coachee `Client`; the `TestAssignment` is created lazily on first open
+(`POST /student/module-items/:itemId/start`) rather than fanned out to the whole
+cohort at release time. Submitting it ticks the card automatically (a TEST card
+has no manual checkbox — the API rejects ticking one) **and opens a
+`SupervisionRequest` on its own**, since a coach has nobody to send it to
+supervision on their behalf.
+
 A coach sees a module when it is `published` (not a draft) **and** a
 `ModuleRelease` for one of their cohorts has `released = true` and no future
 `availableFrom`. There is no sequential lock any more — the supervisor releasing
