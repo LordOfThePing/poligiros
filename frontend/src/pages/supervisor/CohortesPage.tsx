@@ -8,11 +8,12 @@ import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Plus, UserPlus, Pencil, Copy, Check, ChevronDown, ChevronRight, Video,
+  Plus, UserPlus, Pencil, Copy, Check, ChevronDown, ChevronRight, Video, Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost, apiRaw, apiTry } from "@/lib/api"
+import { copyToClipboard, isSignupLinkActive, signupUrl, type SignupLink } from "@/lib/signup"
 
 type Enrollment = { id: string; user: { id: string; name: string; email: string } }
 type Cohort = {
@@ -180,11 +181,63 @@ export default function CohortesPage() {
   >(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Public signup link for the CIC whose Inscribir dialog is open.
+  const [inviteLink, setInviteLink] = useState<SignupLink | null>(null)
+  const [loadingInvite, setLoadingInvite] = useState(false)
+  const [copiedInvite, setCopiedInvite] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
   }, [])
+
+  // When the Inscribir dialog opens, look for a usable public signup link bound
+  // to that CIC so Gaby can just copy it instead of going to Inscripciones.
+  useEffect(() => {
+    if (!enrollingCohortId) {
+      setInviteLink(null)
+      setCopiedInvite(false)
+      return
+    }
+    let cancelled = false
+    setLoadingInvite(true)
+    apiJson<SignupLink[]>("/supervisor/signup-links")
+      .then((links) => {
+        if (cancelled) return
+        const usable = links.find(
+          (l) => l.cohort?.id === enrollingCohortId && isSignupLinkActive(l)
+        )
+        setInviteLink(usable ?? null)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingInvite(false) })
+    return () => { cancelled = true }
+  }, [enrollingCohortId])
+
+  async function generateInviteLink() {
+    if (!enrollingCohortId) return
+    setLoadingInvite(true)
+    const res = await apiTry("/supervisor/signup-links", {
+      method: "POST",
+      body: JSON.stringify({ cohortId: enrollingCohortId }),
+    })
+    setLoadingInvite(false)
+    if (!res.ok) {
+      toast({ title: "No se pudo generar el link", variant: "destructive" })
+      return
+    }
+    setInviteLink(await res.json())
+    toast({ title: "Link generado" })
+  }
+
+  async function copyInviteLink() {
+    if (!inviteLink) return
+    if (await copyToClipboard(signupUrl(inviteLink), "Copiá el link de inscripción:")) {
+      setCopiedInvite(true)
+      setTimeout(() => setCopiedInvite(false), 2000)
+      toast({ title: "Link copiado" })
+    }
+  }
 
   async function handleCreate() {
     if (!newName || !newDate) return
@@ -477,15 +530,51 @@ export default function CohortesPage() {
           <DialogHeader>
             <DialogTitle className="font-serif">Inscribir alumno</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label>Email del alumno</Label>
-            <Input
-              type="email"
-              value={enrollEmail}
-              onChange={(e) => setEnrollEmail(e.target.value)}
-              placeholder="alumno@email.com"
-              onKeyDown={(e) => e.key === "Enter" && handleEnroll()}
-            />
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Email del alumno</Label>
+              <Input
+                type="email"
+                value={enrollEmail}
+                onChange={(e) => setEnrollEmail(e.target.value)}
+                placeholder="alumno@email.com"
+                onKeyDown={(e) => e.key === "Enter" && handleEnroll()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Inscribe a alguien que ya tiene cuenta.
+              </p>
+            </div>
+
+            <div className="border-t border-border pt-4 space-y-2">
+              <Label>Link de inscripción</Label>
+              {loadingInvite ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Buscando...
+                </p>
+              ) : inviteLink ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Input readOnly value={signupUrl(inviteLink)} className="text-xs" />
+                    <Button variant="outline" size="icon" className="shrink-0" onClick={copyInviteLink}>
+                      {copiedInvite ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Para quien todavía no tiene cuenta: se anota solo y queda pendiente de tu
+                    aprobación. Vence el {formatShortDate(inviteLink.expiresAt)}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={generateInviteLink}>
+                    <Plus className="h-3 w-3 mr-1" /> Generar link de inscripción
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Este CIC no tiene un link vigente. El nuevo queda atado a esta camada.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEnrollingCohortId(null)}>Cancelar</Button>

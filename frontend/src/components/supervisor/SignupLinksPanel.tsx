@@ -9,18 +9,9 @@ import { Copy, Check, Ban, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
+import { copyToClipboard, signupUrl, type SignupLink } from "@/lib/signup"
 
 type Cohort = { id: string; name: string }
-
-type SignupLink = {
-  id: string
-  token: string
-  expiresAt: string
-  disabled: boolean
-  createdAt: string
-  cohort: Cohort | null
-  _count: { requests: number }
-}
 
 type Settings = {
   testCompleteDays: number
@@ -49,19 +40,11 @@ export function SignupLinksPanel() {
       .catch(() => {})
   }, [])
 
-  function urlFor(link: SignupLink) {
-    return `${window.location.origin}/inscripcion/${link.token}`
-  }
-
   async function copy(link: SignupLink) {
-    try {
-      await navigator.clipboard.writeText(urlFor(link))
+    if (await copyToClipboard(signupUrl(link), "Copiá el link:")) {
       setCopiedId(link.id)
       setTimeout(() => setCopiedId(null), 2000)
       toast({ title: "Link copiado" })
-    } catch {
-      // Clipboard needs a secure context; fall back to a selectable prompt.
-      window.prompt("Copiá el link:", urlFor(link))
     }
   }
 
@@ -225,7 +208,7 @@ export function SignupLinksPanel() {
                   >
                     <Badge className={`${st.className} hover:${st.className}`}>{st.label}</Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-foreground truncate">{urlFor(link)}</p>
+                      <p className="text-xs text-foreground truncate">{signupUrl(link)}</p>
                       <p className="text-xs text-muted-foreground">
                         {link.cohort ? link.cohort.name : "Sin CIC fijo"} · vence{" "}
                         {formatShortDate(link.expiresAt)} · {link._count.requests}{" "}
