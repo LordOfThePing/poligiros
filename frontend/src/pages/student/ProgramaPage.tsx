@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, ChevronRight, Video } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson } from "@/lib/api"
-import type { StudentModule } from "@/lib/modules"
+import { stripMarkdown, type StudentModule } from "@/lib/modules"
 import type { CoachAccess } from "@/lib/access"
 
 export default function ProgramaPage() {
@@ -108,7 +108,9 @@ export default function ProgramaPage() {
                     )}
                   </div>
                   {mod.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{mod.description}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
+                      {stripMarkdown(mod.description)}
+                    </p>
                   )}
                   {mod.items.length > 0 && (
                     <p className="text-xs text-muted-foreground mt-1">

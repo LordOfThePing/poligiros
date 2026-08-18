@@ -94,3 +94,17 @@ export async function apiTry(path: string, init?: RequestInit): Promise<Response
     },
   })
 }
+
+/**
+ * Multipart upload. Deliberately sets NO `Content-Type`: the browser has to add
+ * it together with the multipart boundary, and forcing `application/json` (as
+ * the other helpers do) makes the server unable to parse the form. Like
+ * `apiTry`, it never throws — the caller reads `res.ok`.
+ */
+export async function apiUpload(path: string, form: FormData): Promise<Response> {
+  return fetch(`${API_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  })
+}

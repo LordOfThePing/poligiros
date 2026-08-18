@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw } from "@/lib/api"
 import { ModuleItemList } from "@/components/modules/ModuleItemList"
+import { Markdown } from "@/components/Markdown"
 import type { StudentModule } from "@/lib/modules"
 
 function getEmbedUrl(url: string): string | null {
@@ -74,9 +75,7 @@ export default function ModuleDetailPage() {
         </div>
       )}
 
-      {module.description && (
-        <p className="text-foreground leading-relaxed">{module.description}</p>
-      )}
+      {module.description && <Markdown>{module.description}</Markdown>}
 
       <div className="space-y-2">
         <h2 className="font-serif text-lg">Contenido de la clase</h2>

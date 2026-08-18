@@ -1,5 +1,6 @@
-import { ExternalLink } from "lucide-react"
-import { KIND_BADGE, KIND_LABEL, type ModuleItem } from "@/lib/modules"
+import { ExternalLink, FileText } from "lucide-react"
+import { KIND_BADGE, KIND_LABEL, formatBytes, type ModuleItem } from "@/lib/modules"
+import { Markdown } from "@/components/Markdown"
 
 /**
  * Read-only render of a module's cards. Used on the student's class page and as
@@ -23,13 +24,7 @@ export function ModuleItemList({ items }: { items: ModuleItem[] }) {
             </span>
           </div>
 
-          {item.description && (
-            // whitespace-pre-line keeps the consigna's line breaks without
-            // needing a markdown renderer.
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-              {item.description}
-            </p>
-          )}
+          {item.description && <Markdown>{item.description}</Markdown>}
 
           {item.links.length > 0 && (
             <div className="space-y-1.5">
@@ -41,8 +36,17 @@ export function ModuleItemList({ items }: { items: ModuleItem[] }) {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-brand-accent hover:underline break-all"
                 >
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  {link.storageKey ? (
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  )}
                   {link.title}
+                  {link.sizeBytes != null && (
+                    <span className="text-muted-foreground text-xs shrink-0">
+                      {formatBytes(link.sizeBytes)}
+                    </span>
+                  )}
                 </a>
               ))}
             </div>

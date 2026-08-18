@@ -8,6 +8,17 @@ export type ModuleLink = {
   title: string
   url: string
   orderIndex: number
+  /** Set when the file was uploaded to R2 through the app; null for plain links. */
+  storageKey: string | null
+  mimeType: string | null
+  sizeBytes: number | null
+}
+
+/** "1,4 MB" — for the file chips next to an uploaded document. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`
 }
 
 export type ModuleItem = {
@@ -55,4 +66,18 @@ export const KIND_BADGE: Record<ModuleItemKind, string> = {
   PRESENTACION: "bg-violet-100 text-violet-800",
   LINK: "bg-emerald-100 text-emerald-800",
   RECURSO: "bg-slate-100 text-slate-700",
+}
+
+/**
+ * Flatten markdown to plain text for compact one-line previews, where rendering
+ * real markdown would either break the layout or show raw `**` noise.
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "")           // headings
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")  // links -> their text
+    .replace(/[*_~`>]/g, "")               // emphasis / code / quote markers
+    .replace(/^\s*[-+]\s+/gm, "")          // bullets
+    .replace(/\s+/g, " ")
+    .trim()
 }

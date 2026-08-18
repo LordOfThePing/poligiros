@@ -1,5 +1,7 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/prisma.js"
+import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/r2.js"
+import { checkUpload, buildObjectKey, ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES } from "../lib/uploads.js"
 import {
   sendSupervisionReviewedEmail,
   sendCoachInviteEmail,
@@ -493,9 +495,18 @@ supervisor.put("/modules/:id", async (c) => {
   return c.json(updated)
 })
 
-/** DELETE /supervisor/modules/:id — cascades to its cards, links and releases. */
+/** DELETE /supervisor/modules/:id — cascades to its cards, links, files and releases. */
 supervisor.delete("/modules/:id", async (c) => {
-  await prisma.module.delete({ where: { id: c.req.param("id") } })
+  const id = c.req.param("id")
+
+  const stored = await prisma.moduleLink.findMany({
+    where: { item: { moduleId: id }, storageKey: { not: null } },
+    select: { storageKey: true },
+  })
+
+  await prisma.module.delete({ where: { id } })
+  await Promise.all(stored.map((l) => deleteFromR2(l.storageKey!).catch(() => {})))
+
   return c.json({ ok: true })
 })
 
@@ -553,9 +564,19 @@ supervisor.put("/module-items/:itemId", async (c) => {
   return c.json(item)
 })
 
-/** DELETE /supervisor/module-items/:itemId — cascades to its links. */
+/** DELETE /supervisor/module-items/:itemId — cascades to its links (and their files). */
 supervisor.delete("/module-items/:itemId", async (c) => {
-  await prisma.moduleItem.delete({ where: { id: c.req.param("itemId") } })
+  const itemId = c.req.param("itemId")
+
+  // The DB cascade would drop the rows and leave the R2 objects orphaned.
+  const stored = await prisma.moduleLink.findMany({
+    where: { itemId, storageKey: { not: null } },
+    select: { storageKey: true },
+  })
+
+  await prisma.moduleItem.delete({ where: { id: itemId } })
+  await Promise.all(stored.map((l) => deleteFromR2(l.storageKey!).catch(() => {})))
+
   return c.json({ ok: true })
 })
 
@@ -625,11 +646,81 @@ supervisor.put("/module-links/:linkId", async (c) => {
   return c.json(link)
 })
 
-/** DELETE /supervisor/module-links/:linkId */
+/** DELETE /supervisor/module-links/:linkId — also removes the R2 object it owns. */
 supervisor.delete("/module-links/:linkId", async (c) => {
-  await prisma.moduleLink.delete({ where: { id: c.req.param("linkId") } })
+  const id = c.req.param("linkId")
+  const link = await prisma.moduleLink.findUnique({ where: { id } })
+  if (!link) return c.json({ ok: true })
+
+  await prisma.moduleLink.delete({ where: { id } })
+  // Best effort: a leftover blob is harmless, a failed request is not.
+  if (link.storageKey) await deleteFromR2(link.storageKey).catch(() => {})
+
   return c.json({ ok: true })
 })
+
+/**
+ * POST /supervisor/module-items/:itemId/files
+ * Upload a document as material. Multipart, field `file` (+ optional `title`).
+ */
+supervisor.post("/module-items/:itemId/files", async (c) => {
+  const itemId = c.req.param("itemId")
+
+  if (!isR2Configured()) {
+    return c.json({ error: "La subida de archivos no está configurada (falta CLOUDFLARE_R2_*)." }, 503)
+  }
+
+  const item = await prisma.moduleItem.findUnique({ where: { id: itemId } })
+  if (!item) return c.json({ error: "Ítem no encontrado" }, 404)
+
+  const form = await c.req.formData()
+  const file = form.get("file")
+  if (!(file instanceof File)) return c.json({ error: "No se recibió ningún archivo" }, 400)
+
+  const check = checkUpload(file.name, file.size)
+  if (!check.ok) return c.json({ error: check.error }, 400)
+
+  const key = buildObjectKey(itemId, file.name, check.extension)
+  const buffer = Buffer.from(await file.arrayBuffer())
+
+  let url: string
+  try {
+    // Store the MIME we derived from the extension, never the one the browser
+    // claimed, so the bucket cannot be made to serve active content.
+    url = await uploadToR2(key, buffer, check.mimeType)
+  } catch {
+    return c.json({ error: "No se pudo subir el archivo. Revisá la configuración de R2." }, 502)
+  }
+
+  const maxOrder = await prisma.moduleLink.aggregate({
+    where: { itemId },
+    _max: { orderIndex: true },
+  })
+
+  const title = String(form.get("title") ?? "").trim() || file.name
+
+  const link = await prisma.moduleLink.create({
+    data: {
+      itemId,
+      title,
+      url,
+      orderIndex: (maxOrder._max.orderIndex ?? -1) + 1,
+      storageKey: key,
+      mimeType: check.mimeType,
+      sizeBytes: file.size,
+    },
+  })
+  return c.json(link, 201)
+})
+
+/** GET /supervisor/upload-limits — so the UI can state what it accepts. */
+supervisor.get("/upload-limits", (c) =>
+  c.json({
+    enabled: isR2Configured(),
+    extensions: ALLOWED_EXTENSIONS,
+    maxBytes: MAX_UPLOAD_BYTES,
+  })
+)
 
 /* ─────────────────────────────────────────
    Module releases — per-cohort visibility

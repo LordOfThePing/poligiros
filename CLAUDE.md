@@ -167,7 +167,8 @@ supervisor can edit a submitted Modelo via `ModeloNegocioEditor` in
 |------|---------|
 | `backend/src/lib/prisma.ts` | Prisma singleton |
 | `backend/src/lib/auth.ts` | `signJWT`/`verifyJWT`/`authMiddleware`/`requireRole`/`loginUser` |
-| `backend/src/lib/r2.ts` | Cloudflare R2 upload helpers (no longer used by modules — content is links only) |
+| `backend/src/lib/r2.ts` | Cloudflare R2 helpers + `isR2Configured()` |
+| `backend/src/lib/uploads.ts` | Upload allowlist, size cap, object-key builder |
 | `backend/src/lib/cohort.ts` | `getCoachAccess` — per-cohort permissions for a coach |
 | `backend/src/lib/settings.ts` | `getSettings` — configurable link lifetimes (singleton row) |
 | `backend/src/lib/email.ts` | Resend helpers (fire-and-forget) |
@@ -229,9 +230,24 @@ keep the old name). The term "SIC" is gone.
 
 **Module content is shared; visibility is per cohort.** A `Module` (a CLASE)
 holds `ModuleItem` cards — mirroring the Trello board it replaces — and each card
-holds `ModuleLink`s. **Nothing is uploaded**: every resource is a link to Drive /
-Docs / Zoom / an article. The old flat `Material` model and the R2 upload route
-for modules were removed.
+holds `ModuleLink`s. A `ModuleLink` is either a plain external link (Drive, Zoom,
+an article) or an **uploaded document living in R2**, told apart by `storageKey`:
+when it is set, the row owns a blob and deleting the link/card/module also
+deletes the object (`deleteFromR2`), otherwise the URL just points somewhere we
+do not own. The old flat `Material` model was replaced by these two tables.
+
+Uploads go through `POST /supervisor/module-items/:itemId/files` and are limited
+by `backend/src/lib/uploads.ts`: an **extension allowlist** (documents + images;
+video and audio are rejected on purpose) and a 25 MB cap. The stored MIME is
+derived from the extension, never taken from the browser, so the bucket cannot be
+made to serve active content. R2 is optional — `isR2Configured()` makes the route
+answer 503 with a clear message instead of an SDK stack trace when the
+`CLOUDFLARE_R2_*` vars are blank.
+
+Card consignas and module descriptions are **markdown**, rendered by
+`frontend/src/components/Markdown.tsx` (react-markdown + remark-gfm, raw HTML NOT
+enabled). `MarkdownEditor.tsx` gives the supervisor a toolbar and a preview tab,
+and `stripMarkdown()` flattens the text for one-line list previews.
 
 ```
 Module (CLASE 1)  ──<  ModuleItem ("TAREA 1", kind + consigna)  ──<  ModuleLink (título + url)
@@ -269,4 +285,5 @@ links minted afterwards; already-issued links keep their dates.
 
 > `frontend/src/lib/api.ts` — `api`/`apiRaw` **throw** on a non-2xx response, so
 > an `if (!res.ok)` after them is dead code. Use **`apiTry`** whenever you want to
-> show the API's error message to the user.
+> show the API's error message to the user, and **`apiUpload`** for multipart
+> (it sets no `Content-Type`, so the browser can add the multipart boundary).

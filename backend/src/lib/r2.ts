@@ -17,6 +17,20 @@ const s3 = new S3Client({
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET_NAME!
 const PUBLIC_URL = process.env.CLOUDFLARE_R2_PUBLIC_URL!
 
+/**
+ * R2 is optional: the rest of the app works without it, so upload routes check
+ * this and answer with a clear message instead of a stack trace from the SDK.
+ */
+export function isR2Configured(): boolean {
+  return Boolean(
+    process.env.CLOUDFLARE_R2_ACCOUNT_ID &&
+      process.env.CLOUDFLARE_R2_ACCESS_KEY_ID &&
+      process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY &&
+      process.env.CLOUDFLARE_R2_BUCKET_NAME &&
+      process.env.CLOUDFLARE_R2_PUBLIC_URL
+  )
+}
+
 export async function uploadToR2(
   key: string,
   body: Buffer,

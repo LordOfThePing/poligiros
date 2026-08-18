@@ -149,6 +149,13 @@ model ModuleLink {
   url        String
   orderIndex Int        @default(0)
   createdAt  DateTime   @default(now())
+
+  /// Set when the file was uploaded through the app and lives in R2 — it is the
+  /// object key, needed to delete the blob when the link goes away. Null means a
+  /// plain external link (Drive, an article, Zoom) that we do not own.
+  storageKey String?
+  mimeType   String?
+  sizeBytes  Int?
 }
 
 /// Per-cohort visibility of a shared module. Absent row = never released.

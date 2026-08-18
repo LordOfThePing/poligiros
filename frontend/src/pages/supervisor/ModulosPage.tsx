@@ -19,18 +19,19 @@ import { CSS } from "@dnd-kit/utilities"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import {
   GripVertical, Plus, Edit2, Trash2, ExternalLink, ChevronDown, ChevronRight, Link2,
+  Upload, FileText, Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { apiJson, apiRaw, apiTry } from "@/lib/api"
+import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
+import { MarkdownEditor } from "@/components/MarkdownEditor"
 import {
-  ITEM_KINDS, KIND_BADGE, KIND_LABEL,
+  ITEM_KINDS, KIND_BADGE, KIND_LABEL, stripMarkdown, formatBytes,
   type Module, type ModuleItem, type ModuleItemKind, type ModuleLink,
 } from "@/lib/modules"
 
@@ -62,6 +63,7 @@ function ModuleContentEditor({
   const [linkFor, setLinkFor] = useState<string | null>(null)
   const [linkTitle, setLinkTitle] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null)
 
   function replaceItem(item: ModuleItem) {
     onModuleChange({
@@ -125,6 +127,27 @@ function ModuleContentEditor({
     setLinkFor(null)
   }
 
+  async function uploadFile(itemId: string, file: File) {
+    setUploadingFor(itemId)
+    const form = new FormData()
+    form.append("file", file)
+
+    const res = await apiUpload(`/supervisor/module-items/${itemId}/files`, form)
+    setUploadingFor(null)
+
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "Error" }))
+      toast({ title: j.error || "No se pudo subir el archivo", variant: "destructive" })
+      return
+    }
+    const link: ModuleLink = await res.json()
+    onModuleChange({
+      ...mod,
+      items: mod.items.map((i) => (i.id === itemId ? { ...i, links: [...i.links, link] } : i)),
+    })
+    toast({ title: "Archivo subido" })
+  }
+
   async function deleteLink(itemId: string, linkId: string) {
     await apiRaw(`/supervisor/module-links/${linkId}`, { method: "DELETE" })
     onModuleChange({
@@ -152,8 +175,8 @@ function ModuleContentEditor({
                 </span>
               </div>
               {item.description && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-line">
-                  {item.description}
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {stripMarkdown(item.description)}
                 </p>
               )}
             </div>
@@ -186,7 +209,11 @@ function ModuleContentEditor({
 
           {item.links.map((link) => (
             <div key={link.id} className="flex items-center gap-2 text-xs">
-              <ExternalLink className="h-3 w-3 text-brand-accent shrink-0" />
+              {link.storageKey ? (
+                <FileText className="h-3 w-3 text-brand-accent shrink-0" />
+              ) : (
+                <ExternalLink className="h-3 w-3 text-brand-accent shrink-0" />
+              )}
               <a
                 href={link.url}
                 target="_blank"
@@ -195,6 +222,9 @@ function ModuleContentEditor({
               >
                 {link.title}
               </a>
+              {link.sizeBytes != null && (
+                <span className="text-muted-foreground shrink-0">{formatBytes(link.sizeBytes)}</span>
+              )}
               <button
                 onClick={() => deleteLink(item.id, link.id)}
                 className="text-muted-foreground hover:text-destructive shrink-0"
@@ -232,12 +262,33 @@ function ModuleContentEditor({
               </Button>
             </div>
           ) : (
-            <button
-              onClick={() => { setLinkFor(item.id); setLinkTitle(""); setLinkUrl("") }}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              <Link2 className="h-3 w-3" /> Agregar link
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setLinkFor(item.id); setLinkTitle(""); setLinkUrl("") }}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <Link2 className="h-3 w-3" /> Agregar link
+              </button>
+              <label className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer">
+                {uploadingFor === item.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Upload className="h-3 w-3" />
+                )}
+                {uploadingFor === item.id ? "Subiendo..." : "Subir archivo"}
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={uploadingFor === item.id}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.txt,.csv,.rtf,.png,.jpg,.jpeg,.webp,.gif"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) uploadFile(item.id, file)
+                    e.target.value = ""
+                  }}
+                />
+              </label>
+            </div>
           )}
         </div>
       ))}
@@ -282,11 +333,11 @@ function ModuleContentEditor({
             </div>
             <div className="space-y-2">
               <Label>Consigna / descripción</Label>
-              <Textarea
+              <MarkdownEditor
                 value={draft?.description ?? ""}
-                onChange={(e) => setDraft((p) => (p ? { ...p, description: e.target.value } : p))}
-                rows={6}
-                placeholder="CONSIGNA: Leer las Competencias y el Código de Ética..."
+                onChange={(v) => setDraft((p) => (p ? { ...p, description: v } : p))}
+                rows={10}
+                placeholder={"## Tareas para la clase 1\n\n**a) Competencias del coaching**\n\nCONSIGNA: Leer las competencias..."}
               />
             </div>
           </div>
@@ -343,7 +394,9 @@ function SortableModule({ mod, onEdit, onDelete, onTogglePublish, onModuleChange
             </Badge>
           </div>
           {mod.description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mod.description}</p>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+              {stripMarkdown(mod.description)}
+            </p>
           )}
           <button
             onClick={() => setExpanded((v) => !v)}
@@ -532,10 +585,10 @@ export default function ModulosPage() {
             </div>
             <div className="space-y-2">
               <Label>Descripción</Label>
-              <Textarea
+              <MarkdownEditor
                 value={editingModule?.description ?? ""}
-                onChange={(e) => setEditingModule((prev) => ({ ...prev, description: e.target.value }))}
-                rows={3}
+                onChange={(v) => setEditingModule((prev) => ({ ...prev, description: v }))}
+                rows={4}
                 placeholder="Descripción del módulo..."
               />
             </div>
