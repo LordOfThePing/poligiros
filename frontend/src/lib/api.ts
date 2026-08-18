@@ -16,10 +16,17 @@ export async function api(path: string, init?: RequestInit): Promise<Response> {
 
   if (res.status === 401) {
     const currentPath = window.location.pathname
-    const isLoginPage = currentPath === "/login"
-    const isTokenRoute = currentPath.startsWith("/t/")
+    // Public routes that must not bounce to /login on a 401. The /auth/me
+    // hydration call in AuthProvider returns 401 when there is no session, so
+    // any public page (register/invite, client token, self-signup) would get
+    // eagerly redirected to login before it can render.
+    const isPublicPage =
+      currentPath === "/login" ||
+      currentPath.startsWith("/invite/") ||
+      currentPath.startsWith("/t/") ||
+      currentPath.startsWith("/inscripcion/")
 
-    if (!isLoginPage && !isTokenRoute) {
+    if (!isPublicPage) {
       toast({ title: "Sesión expirada", variant: "destructive" })
       window.location.href = "/login"
     }

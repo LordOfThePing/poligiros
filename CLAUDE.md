@@ -270,9 +270,10 @@ A coach sees a module when it is `published` (not a draft) **and** a
 `availableFrom`. There is no sequential lock any more — the supervisor releasing
 a class *is* the gate.
 
-**Per-cohort permissions** live on `Cohort`: `clientsEnabled` (may load coachees)
-and `testsEnabled` (may assign tests), both defaulting to **false** — a coach
-first takes the course. `getCoachAccess` (`backend/src/lib/cohort.ts`) returns the
+**Per-cohort permissions** live on `Cohort` as a single `practiceEnabled` flag,
+defaulting to **false** — a coach first takes the course, and only later gets to
+practise. Loading a coachee and testing them are deliberately ONE permission:
+split in two, they allowed a coach to add a coachee and then hit a 403. `getCoachAccess` (`backend/src/lib/cohort.ts`) returns the
 union across a coach's enrollments and is enforced on `POST /student/clients`,
 `POST /student/clients/:id/assign` and `.../resend`. The frontend mirrors it via
 `GET /student/access` + `useCoachAccess()`, but the backend is the authority.

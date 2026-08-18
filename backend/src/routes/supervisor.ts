@@ -358,8 +358,7 @@ supervisor.put("/cohorts/:id", async (c) => {
     startDate?: Date
     active?: boolean
     zoomUrl?: string | null
-    clientsEnabled?: boolean
-    testsEnabled?: boolean
+    practiceEnabled?: boolean
   } = {}
 
   if (body.name !== undefined) {
@@ -373,8 +372,7 @@ supervisor.put("/cohorts/:id", async (c) => {
     data.startDate = startDate
   }
   if (body.active !== undefined) data.active = Boolean(body.active)
-  if (body.clientsEnabled !== undefined) data.clientsEnabled = Boolean(body.clientsEnabled)
-  if (body.testsEnabled !== undefined) data.testsEnabled = Boolean(body.testsEnabled)
+  if (body.practiceEnabled !== undefined) data.practiceEnabled = Boolean(body.practiceEnabled)
   if (body.zoomUrl !== undefined) {
     const raw = String(body.zoomUrl ?? "").trim()
     if (raw === "") {

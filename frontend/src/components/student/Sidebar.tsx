@@ -9,10 +9,10 @@ import { useCoachAccess } from "@/lib/useCoachAccess"
 const links = [
   { href: "/student/programa", label: "Mi Programa", icon: BookOpen },
   { href: "/student/my-tests", label: "Mis Tests", icon: ListChecks },
-  // Only once the supervisor opens coachee loading for the cohort.
-  { href: "/student/clientes", label: "Mis Clientes", icon: Users, needsClients: true },
-  { href: "/student/supervision", label: "Supervisión", icon: ClipboardCheck, needsClients: true },
-  { href: "/student/registros", label: "Mis Registros", icon: FileText, needsClients: true },
+  // Only once the supervisor opens practice with coachees for the cohort.
+  { href: "/student/clientes", label: "Mis Clientes", icon: Users, needsPractice: true },
+  { href: "/student/supervision", label: "Supervisión", icon: ClipboardCheck, needsPractice: true },
+  { href: "/student/registros", label: "Mis Registros", icon: FileText, needsPractice: true },
 ]
 
 export function StudentSidebar() {
@@ -22,7 +22,7 @@ export function StudentSidebar() {
 
   // While loading, show everything rather than flashing items away.
   const visibleLinks = links.filter(
-    (l) => !l.needsClients || loading || access?.clientsEnabled !== false
+    (l) => !l.needsPractice || loading || access?.practiceEnabled !== false
   )
 
   return (

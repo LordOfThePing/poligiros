@@ -41,8 +41,8 @@ student.post("/clients", async (c) => {
   const { name, email } = await c.req.json()
 
   const access = await getCoachAccess(user.id)
-  if (!access.clientsEnabled) {
-    return c.json({ error: "Todavia no tenes habilitada la carga de coachees en tu CIC" }, 403)
+  if (!access.practiceEnabled) {
+    return c.json({ error: "Todavia no tenes habilitada la practica con coachees en tu CIC" }, 403)
   }
 
   const clientRecord = await prisma.client.create({
@@ -92,8 +92,8 @@ student.post("/clients/:id/assign", async (c) => {
 
   // Verify client belongs to this student
   const access = await getCoachAccess(user.id)
-  if (!access.testsEnabled) {
-    return c.json({ error: "Todavia no tenes habilitados los tests en tu CIC" }, 403)
+  if (!access.practiceEnabled) {
+    return c.json({ error: "Todavia no tenes habilitada la practica con coachees en tu CIC" }, 403)
   }
 
   const clientRecord = await prisma.client.findFirst({
@@ -145,8 +145,8 @@ student.post("/assignments/:id/resend", async (c) => {
   const id = c.req.param("id")
 
   const access = await getCoachAccess(user.id)
-  if (!access.testsEnabled) {
-    return c.json({ error: "Todavia no tenes habilitados los tests en tu CIC" }, 403)
+  if (!access.practiceEnabled) {
+    return c.json({ error: "Todavia no tenes habilitada la practica con coachees en tu CIC" }, 403)
   }
 
   // Verify assignment belongs to one of this student's clients

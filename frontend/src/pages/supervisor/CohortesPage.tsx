@@ -22,8 +22,7 @@ type Cohort = {
   startDate: string
   active: boolean
   zoomUrl: string | null
-  clientsEnabled: boolean
-  testsEnabled: boolean
+  practiceEnabled: boolean
   enrollments: Enrollment[]
   _count: { enrollments: number }
 }
@@ -249,7 +248,7 @@ export default function CohortesPage() {
     toast({ title: "CIC creado" })
   }
 
-  /** Patch one field of a cohort (active / clientsEnabled / testsEnabled). */
+  /** Patch one field of a cohort (active / practiceEnabled). */
   async function patch(id: string, body: Record<string, unknown>) {
     const updated = await apiJson<Cohort>(`/supervisor/cohorts/${id}`, {
       method: "PUT",
@@ -402,22 +401,18 @@ export default function CohortesPage() {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch
-                    checked={cohort.clientsEnabled}
-                    onCheckedChange={(v) => patch(cohort.id, { clientsEnabled: v })}
-                  />
-                  <span className="text-foreground">Pueden cargar coachees</span>
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch
-                    checked={cohort.testsEnabled}
-                    onCheckedChange={(v) => patch(cohort.id, { testsEnabled: v })}
-                  />
-                  <span className="text-foreground">Pueden tomar tests</span>
-                </label>
-              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <Switch
+                  checked={cohort.practiceEnabled}
+                  onCheckedChange={(v) => patch(cohort.id, { practiceEnabled: v })}
+                />
+                <span>
+                  <span className="text-foreground">Práctica con coachees habilitada</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Pueden cargar sus coachees y tomarles tests
+                  </span>
+                </span>
+              </label>
 
               {cohort.enrollments.length > 0 && (
                 <div className="flex flex-wrap gap-2">

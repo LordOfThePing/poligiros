@@ -91,10 +91,11 @@ model Cohort {
   // Zoom link for the whole camada (shown to enrolled coaches).
   zoomUrl String?
 
-  // The supervisor opens these per cohort: first they take the course, later
-  // they get to load coachees and run tests on them.
-  clientsEnabled Boolean @default(false)
-  testsEnabled   Boolean @default(false)
+  /// The supervisor opens this per cohort: first they take the course, later
+  /// they get to practise. Loading a coachee and running tests on them are one
+  /// permission, not two — a coachee exists in order to be tested, so splitting
+  /// them only allowed the useless "can add, cannot test" state.
+  practiceEnabled Boolean @default(false)
 
   enrollments    Enrollment[]
   moduleReleases ModuleRelease[]
