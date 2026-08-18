@@ -4,6 +4,7 @@ import { serve } from "@hono/node-server"
 import { authMiddleware, requireRole } from "./lib/auth.js"
 import authRoutes from "./routes/auth.js"
 import clientRoutes from "./routes/client.js"
+import publicRoutes from "./routes/public.js"
 import studentRoutes from "./routes/student.js"
 import supervisorRoutes from "./routes/supervisor.js"
 import type { AppVariables } from "./lib/types.js"
@@ -39,6 +40,11 @@ app.route("/auth", authRoutes)
    Client token routes (NO auth middleware — token is the credential)
 ───────────────────────────────────────── */
 app.route("/client", clientRoutes)
+
+/* ─────────────────────────────────────────
+   Public routes (NO auth — self-signup form)
+───────────────────────────────────────── */
+app.route("/public", publicRoutes)
 
 /* ─────────────────────────────────────────
    Student routes (cookie auth + role guard)

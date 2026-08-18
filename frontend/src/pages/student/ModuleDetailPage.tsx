@@ -2,19 +2,11 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Download, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw } from "@/lib/api"
-
-type Module = {
-  id: string
-  title: string
-  description: string | null
-  videoUrl: string | null
-  completed: boolean
-  locked: boolean
-  materials: { id: string; title: string; fileUrl: string; fileType: string }[]
-}
+import { ModuleItemList } from "@/components/modules/ModuleItemList"
+import type { StudentModule } from "@/lib/modules"
 
 function getEmbedUrl(url: string): string | null {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
@@ -28,14 +20,14 @@ export default function ModuleDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const [module, setModule] = useState<Module | null>(null)
+  const [module, setModule] = useState<StudentModule | null>(null)
   const [completing, setCompleting] = useState(false)
 
   useEffect(() => {
-    apiJson<Module[]>("/student/modules")
-      .then((modules: Module[]) => {
+    apiJson<StudentModule[]>("/student/modules")
+      .then((modules: StudentModule[]) => {
         const found = modules.find((m) => m.id === id)
-        if (!found || found.locked) {
+        if (!found) {
           navigate("/student/programa", { replace: true })
         } else {
           setModule(found)
@@ -86,25 +78,10 @@ export default function ModuleDetailPage() {
         <p className="text-foreground leading-relaxed">{module.description}</p>
       )}
 
-      {module.materials.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="font-serif text-lg">Materiales</h2>
-          <div className="space-y-2">
-            {module.materials.map((m) => (
-              <a
-                key={m.id}
-                href={m.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 bg-white rounded-lg border border-border px-4 py-3 hover:shadow-sm transition-shadow"
-              >
-                <Download className="h-4 w-4 text-brand-accent" />
-                <span className="text-sm text-foreground">{m.title}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="space-y-2">
+        <h2 className="font-serif text-lg">Contenido de la clase</h2>
+        <ModuleItemList items={module.items} />
+      </div>
 
       {!module.completed ? (
         <Button

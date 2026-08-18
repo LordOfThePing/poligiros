@@ -199,13 +199,19 @@ the connector is up but the ingress URL is wrong.
 Safe to run any time — it upserts one row and never touches anything else:
 
 ```bash
-make prod-supervisor                                        # uses SUPERVISOR_* from .env
-make prod-supervisor EMAIL=gaby@poligiros.com PASSWORD=unaClaveLarga
-make prod-supervisor EMAIL=gaby@poligiros.com PASSWORD=x NAME="Gabriela Kyriazis"
+make prod-supervisor                                  # uses SUPERVISOR_* from .env
+make prod-supervisor EMAIL='<email>' PASSWORD='<contraseña>'
+make prod-supervisor EMAIL='<email>' PASSWORD='<contraseña>' NAME='<nombre y apellido>'
 ```
 
 If the email already exists it just resets the password (and promotes the account
 to `SUPERVISOR`); otherwise it creates the user. Password must be ≥8 characters.
+
+> Prefer the first form: putting a real password on the command line leaves it in
+> your shell history (`~/.bash_history`) and in the process list. Keeping it in
+> `.env` — which is gitignored and never leaves the server — avoids both. Never
+> paste a real password into a doc or a commit; secret scanners flag an email and
+> a password sitting next to each other, and they are right to.
 
 ### 6d. Day to day
 

@@ -77,3 +77,20 @@ export async function apiRaw(path: string, init?: RequestInit): Promise<Response
 
   return res
 }
+
+/**
+ * Like `apiRaw`, but NEVER throws on a non-2xx response — the caller inspects
+ * `res.ok` and reads the error body. Use this whenever the API returns a
+ * validation message meant to be shown to the user; `api`/`apiRaw` throw first,
+ * which makes those `else` branches unreachable.
+ */
+export async function apiTry(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${API_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  })
+}

@@ -15,7 +15,8 @@ backend/    Hono API on Node 20 + Prisma          → Hetzner (Docker, port 3001
 ```
 
 The frontend calls the backend over HTTP with `credentials: "include"`. They
-deploy independently. `nginx/` reverse-proxies TLS to the API in prod.
+deploy independently. In prod a Cloudflare Tunnel reaches the API directly —
+there is no nginx and no published port.
 
 ## Commands
 
@@ -60,8 +61,9 @@ npm test                             # vitest run (Anclas tier-logic tests)
    - `loginUser` lazy-imports prisma so the JWT path stays DB-free and testable.
 
 2. **Client — magic link, no session** (the A1 model):
-   - A `TestAssignment` carries `accessToken` (random), `completeBy` (~14d),
-     `resultsViewableUntil` (~365d). The coach's assign route mints these and
+   - A `TestAssignment` carries `accessToken` (random), `completeBy`,
+     `resultsViewableUntil` — both driven by `AppSettings` (14/365 days by
+     default, editable in the UI). The coach's assign route mints these and
      returns `${FRONTEND_URL}/t/<token>`.
    - `/client/t/:token` routes are NOT behind auth — the token IS the credential.
    - Token **state machine** (`backend/src/routes/client.ts` → `getAssignmentState`):
@@ -165,7 +167,9 @@ supervisor can edit a submitted Modelo via `ModeloNegocioEditor` in
 |------|---------|
 | `backend/src/lib/prisma.ts` | Prisma singleton |
 | `backend/src/lib/auth.ts` | `signJWT`/`verifyJWT`/`authMiddleware`/`requireRole`/`loginUser` |
-| `backend/src/lib/r2.ts` | Cloudflare R2 upload helpers |
+| `backend/src/lib/r2.ts` | Cloudflare R2 upload helpers (no longer used by modules — content is links only) |
+| `backend/src/lib/cohort.ts` | `getCoachAccess` — per-cohort permissions for a coach |
+| `backend/src/lib/settings.ts` | `getSettings` — configurable link lifetimes (singleton row) |
 | `backend/src/lib/email.ts` | Resend helpers (fire-and-forget) |
 | `frontend/src/lib/api.ts` | fetch wrapper: `credentials: include`, 401 → `/login` (skips `/login` & `/t/`) |
 | `frontend/src/lib/auth.tsx` | `AuthContext` + `useAuth()` |
@@ -216,3 +220,53 @@ Live URLs: frontend `https://apppoligiros.flynnpedroa.engineer`, API
 >
 > `npm run db:seed` (`make prod-seed-danger`) **wipes every table** — it is demo
 > data only. On a live DB use `db:bootstrap` / `db:set-supervisor`, which upsert.
+
+## CIC (cohorts), module release and signup
+
+"CIC" = Certificación en Coaching de Carrera y Bienestar Laboral. It is the
+user-facing name for a `Cohort` (the model and the `/supervisor/cohortes` route
+keep the old name). The term "SIC" is gone.
+
+**Module content is shared; visibility is per cohort.** A `Module` (a CLASE)
+holds `ModuleItem` cards — mirroring the Trello board it replaces — and each card
+holds `ModuleLink`s. **Nothing is uploaded**: every resource is a link to Drive /
+Docs / Zoom / an article. The old flat `Material` model and the R2 upload route
+for modules were removed.
+
+```
+Module (CLASE 1)  ──<  ModuleItem ("TAREA 1", kind + consigna)  ──<  ModuleLink (título + url)
+   │
+   └──<  ModuleRelease (moduleId + cohortId, released, availableFrom?)
+```
+
+A coach sees a module when it is `published` (not a draft) **and** a
+`ModuleRelease` for one of their cohorts has `released = true` and no future
+`availableFrom`. There is no sequential lock any more — the supervisor releasing
+a class *is* the gate.
+
+**Per-cohort permissions** live on `Cohort`: `clientsEnabled` (may load coachees)
+and `testsEnabled` (may assign tests), both defaulting to **false** — a coach
+first takes the course. `getCoachAccess` (`backend/src/lib/cohort.ts`) returns the
+union across a coach's enrollments and is enforced on `POST /student/clients`,
+`POST /student/clients/:id/assign` and `.../resend`. The frontend mirrors it via
+`GET /student/access` + `useCoachAccess()`, but the backend is the authority.
+`Cohort.zoomUrl` is shown to enrolled coaches on Mi Programa, and
+`GET /supervisor/cohorts/:id/emails` returns the roster ready to paste into a
+Zoom invite.
+
+**Self-signup is link-gated and expiring.** The supervisor generates a
+`SignupLink` (optionally bound to a CIC) that has an `expiresAt` and can be
+revoked. `/inscripcion/:token` accepts an application into `SignupRequest`
+(status `PENDING`); **no `User` row exists until approval**, so the chosen
+password is stored hashed on the request and copied over when the supervisor
+approves. The public form deliberately returns the same success message for an
+email that already exists, so it cannot be used to enumerate coaches.
+
+**Link lifetimes are configurable**, not hardcoded: `AppSettings` is a single row
+(`id = "singleton"`) with `testCompleteDays` (14), `testResultsDays` (365) and
+`signupLinkDays` (30), edited from the Inscripciones page. Changing them affects
+links minted afterwards; already-issued links keep their dates.
+
+> `frontend/src/lib/api.ts` — `api`/`apiRaw` **throw** on a non-2xx response, so
+> an `if (!res.ok)` after them is dead code. Use **`apiTry`** whenever you want to
+> show the API's error message to the user.

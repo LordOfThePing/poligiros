@@ -4,18 +4,26 @@ import { cn } from "@/lib/utils"
 import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProfileBanner } from "@/components/ProfileBanner"
+import { useCoachAccess } from "@/lib/useCoachAccess"
 
 const links = [
   { href: "/student/programa", label: "Mi Programa", icon: BookOpen },
   { href: "/student/my-tests", label: "Mis Tests", icon: ListChecks },
-  { href: "/student/clientes", label: "Mis Clientes", icon: Users },
-  { href: "/student/supervision", label: "Supervisión", icon: ClipboardCheck },
-  { href: "/student/registros", label: "Mis Registros", icon: FileText },
+  // Only once the supervisor opens coachee loading for the cohort.
+  { href: "/student/clientes", label: "Mis Clientes", icon: Users, needsClients: true },
+  { href: "/student/supervision", label: "Supervisión", icon: ClipboardCheck, needsClients: true },
+  { href: "/student/registros", label: "Mis Registros", icon: FileText, needsClients: true },
 ]
 
 export function StudentSidebar() {
   const location = useLocation()
   const { logout } = useAuth()
+  const { access, loading } = useCoachAccess()
+
+  // While loading, show everything rather than flashing items away.
+  const visibleLinks = links.filter(
+    (l) => !l.needsClients || loading || access?.clientsEnabled !== false
+  )
 
   return (
     <aside className="w-64 shrink-0 bg-white border-r border-border flex flex-col h-full">
@@ -25,7 +33,7 @@ export function StudentSidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {links.map(({ href, label, icon: Icon }) => (
+        {visibleLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             to={href}

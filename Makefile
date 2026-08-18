@@ -125,7 +125,7 @@ prod-bootstrap: ## Set up a fresh DB: test catalog + supervisor login
 	@$(MAKE) prod-supervisor
 
 # Reads SUPERVISOR_EMAIL / SUPERVISOR_PASSWORD from .env unless EMAIL=/PASSWORD= are given.
-prod-supervisor: ## Create/update Gaby's login. Usage: make prod-supervisor EMAIL=x@y.com PASSWORD=secret
+prod-supervisor: ## Create/update the supervisor login. Usage: make prod-supervisor EMAIL='<email>' PASSWORD='<contraseña>'
 	@$(PROD) exec -T api npx tsx prisma/setSupervisor.ts \
 	  $(if $(EMAIL),--email "$(EMAIL)") \
 	  $(if $(PASSWORD),--password "$(PASSWORD)") \

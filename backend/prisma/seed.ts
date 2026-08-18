@@ -10,7 +10,10 @@ async function main() {
   await prisma.testAssignment.deleteMany()
   await prisma.sessionRecord.deleteMany()
   await prisma.moduleProgress.deleteMany()
-  await prisma.material.deleteMany()
+  await prisma.moduleLink.deleteMany()
+  await prisma.moduleItem.deleteMany()
+  await prisma.moduleRelease.deleteMany()
+  await prisma.signupRequest.deleteMany()
   await prisma.enrollment.deleteMany()
   await prisma.client.deleteMany()
   await prisma.module.deleteMany()
@@ -41,9 +44,9 @@ async function main() {
     ],
   })
 
-  // ── 3. Active SIC (cohort) ───────────────────────────────────────────────────
+  // ── 3. Active CIC (cohort) ───────────────────────────────────────────────────
   const cohort = await prisma.cohort.create({
-    data: { name: "SIC 1", startDate: new Date("2025-01-01"), active: true },
+    data: { name: "CIC 1", startDate: new Date("2025-01-01"), active: true },
   })
 
   // ── 4. Five generic coaches, each with a coach-as-coachee Client owned by Gaby ─

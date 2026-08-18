@@ -7,6 +7,8 @@ import {
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { latestTableroIdea } from "./client.js"
+import { getCoachAccess } from "../lib/cohort.js"
+import { getSettings, daysFromNow } from "../lib/settings.js"
 import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
@@ -36,6 +38,11 @@ student.get("/clients", async (c) => {
 student.post("/clients", async (c) => {
   const user = c.get("user")
   const { name, email } = await c.req.json()
+
+  const access = await getCoachAccess(user.id)
+  if (!access.clientsEnabled) {
+    return c.json({ error: "Todavia no tenes habilitada la carga de coachees en tu CIC" }, 403)
+  }
 
   const clientRecord = await prisma.client.create({
     data: { studentId: user.id, name, email },
@@ -83,6 +90,11 @@ student.post("/clients/:id/assign", async (c) => {
   const { testId } = await c.req.json()
 
   // Verify client belongs to this student
+  const access = await getCoachAccess(user.id)
+  if (!access.testsEnabled) {
+    return c.json({ error: "Todavia no tenes habilitados los tests en tu CIC" }, 403)
+  }
+
   const clientRecord = await prisma.client.findFirst({
     where: { id, studentId: user.id },
   })
@@ -93,8 +105,9 @@ student.post("/clients/:id/assign", async (c) => {
 
   const accessToken = randomBytes(32).toString("base64url")
   const now = new Date()
-  const completeBy = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
-  const resultsViewableUntil = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
+  const settings = await getSettings()
+  const completeBy = daysFromNow(settings.testCompleteDays, now)
+  const resultsViewableUntil = daysFromNow(settings.testResultsDays, now)
 
   const assignment = await prisma.testAssignment.upsert({
     where: { testId_clientId: { testId, clientId: id } },
@@ -130,6 +143,11 @@ student.post("/assignments/:id/resend", async (c) => {
   const user = c.get("user")
   const id = c.req.param("id")
 
+  const access = await getCoachAccess(user.id)
+  if (!access.testsEnabled) {
+    return c.json({ error: "Todavia no tenes habilitados los tests en tu CIC" }, 403)
+  }
+
   // Verify assignment belongs to one of this student's clients
   const assignment = await prisma.testAssignment.findFirst({
     where: { id, client: { studentId: user.id } },
@@ -137,7 +155,8 @@ student.post("/assignments/:id/resend", async (c) => {
   if (!assignment) return c.json({ error: "Not found" }, 404)
 
   const accessToken = randomBytes(32).toString("base64url")
-  const completeBy = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+  const { testCompleteDays } = await getSettings()
+  const completeBy = daysFromNow(testCompleteDays)
 
   const updated = await prisma.testAssignment.update({
     where: { id },
@@ -370,38 +389,70 @@ student.post("/sessions", async (c) => {
 
 /* ─────────────────────────────────────────
    Modules (student view)
+
+   A module is visible when it is published (not a draft) AND released to one
+   of the cohorts the coach belongs to. There is no sequential lock any more:
+   the supervisor releasing a class IS the gate.
 ───────────────────────────────────────── */
+
+/** GET /student/access — what this coach is allowed to do, plus Zoom links. */
+student.get("/access", async (c) => {
+  const user = c.get("user")
+  return c.json(await getCoachAccess(user.id))
+})
+
+/** Module ids released to this coach right now. */
+async function releasedModuleIds(userId: string): Promise<string[]> {
+  const access = await getCoachAccess(userId)
+  if (access.cohortIds.length === 0) return []
+
+  const releases = await prisma.moduleRelease.findMany({
+    where: {
+      cohortId: { in: access.cohortIds },
+      released: true,
+      // A scheduled opening in the future keeps the module hidden.
+      OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
+    },
+    select: { moduleId: true },
+  })
+
+  return [...new Set(releases.map((r) => r.moduleId))]
+}
 
 /** GET /student/modules */
 student.get("/modules", async (c) => {
   const user = c.get("user")
 
+  const moduleIds = await releasedModuleIds(user.id)
+  if (moduleIds.length === 0) return c.json([])
+
   const [modules, progress] = await Promise.all([
     prisma.module.findMany({
-      where: { published: true },
+      where: { id: { in: moduleIds }, published: true },
       orderBy: { orderIndex: "asc" },
-      include: { materials: true },
+      include: {
+        items: {
+          orderBy: { orderIndex: "asc" },
+          include: { links: { orderBy: { orderIndex: "asc" } } },
+        },
+      },
     }),
-    prisma.moduleProgress.findMany({
-      where: { userId: user.id },
-    }),
+    prisma.moduleProgress.findMany({ where: { userId: user.id } }),
   ])
 
   const completedIds = new Set(progress.map((p) => p.moduleId))
 
-  const result = modules.map((m, idx) => ({
-    ...m,
-    completed: completedIds.has(m.id),
-    locked: idx > 0 && !completedIds.has(modules[idx - 1].id),
-  }))
-
-  return c.json(result)
+  return c.json(modules.map((m) => ({ ...m, completed: completedIds.has(m.id) })))
 })
 
 /** POST /student/modules/:id/complete */
 student.post("/modules/:id/complete", async (c) => {
   const user = c.get("user")
   const id = c.req.param("id")
+
+  // Do not let a coach tick off a module that was never released to them.
+  const moduleIds = await releasedModuleIds(user.id)
+  if (!moduleIds.includes(id)) return c.json({ error: "Modulo no disponible" }, 403)
 
   await prisma.moduleProgress.upsert({
     where: { userId_moduleId: { userId: user.id, moduleId: id } },
@@ -411,6 +462,7 @@ student.post("/modules/:id/complete", async (c) => {
 
   return c.json({ ok: true })
 })
+
 
 /* ─────────────────────────────────────────
    Coach self-tests — the coach takes tests logged-in. Their assignments live on

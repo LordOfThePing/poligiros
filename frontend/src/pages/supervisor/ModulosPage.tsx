@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import {
   DndContext,
   closestCenter,
@@ -22,21 +22,17 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { GripVertical, Plus, Edit2, Trash2, Upload, ExternalLink } from "lucide-react"
+import {
+  GripVertical, Plus, Edit2, Trash2, ExternalLink, ChevronDown, ChevronRight, Link2,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { apiJson, apiRaw } from "@/lib/api"
-
-type Material = { id: string; title: string; fileUrl: string; fileType: string }
-type Module = {
-  id: string
-  title: string
-  description: string | null
-  videoUrl: string | null
-  orderIndex: number
-  published: boolean
-  materials: Material[]
-}
+import { apiJson, apiRaw, apiTry } from "@/lib/api"
+import {
+  ITEM_KINDS, KIND_BADGE, KIND_LABEL,
+  type Module, type ModuleItem, type ModuleItemKind, type ModuleLink,
+} from "@/lib/modules"
 
 function getEmbedUrl(url: string): string | null {
   if (!url) return null
@@ -47,15 +43,278 @@ function getEmbedUrl(url: string): string | null {
   return null
 }
 
-function SortableModule({ mod, onEdit, onDelete, onTogglePublish, onUpload }: {
+/* ─────────────────────────────────────────
+   Content editor: cards and the links inside them
+───────────────────────────────────────── */
+
+type ItemDraft = { id?: string; title: string; description: string; kind: ModuleItemKind }
+
+function ModuleContentEditor({
+  mod,
+  onModuleChange,
+}: {
+  mod: Module
+  onModuleChange: (m: Module) => void
+}) {
+  const { toast } = useToast()
+  const [draft, setDraft] = useState<ItemDraft | null>(null)
+  // Which card is currently having a link added, plus that link fields.
+  const [linkFor, setLinkFor] = useState<string | null>(null)
+  const [linkTitle, setLinkTitle] = useState("")
+  const [linkUrl, setLinkUrl] = useState("")
+
+  function replaceItem(item: ModuleItem) {
+    onModuleChange({
+      ...mod,
+      items: mod.items.some((i) => i.id === item.id)
+        ? mod.items.map((i) => (i.id === item.id ? item : i))
+        : [...mod.items, item],
+    })
+  }
+
+  async function saveItem() {
+    if (!draft?.title.trim()) return
+    const isNew = !draft.id
+    const res = await apiTry(
+      isNew ? `/supervisor/modules/${mod.id}/items` : `/supervisor/module-items/${draft.id}`,
+      {
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: draft.title,
+          description: draft.description || null,
+          kind: draft.kind,
+        }),
+      }
+    )
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "Error" }))
+      toast({ title: j.error || "Error al guardar", variant: "destructive" })
+      return
+    }
+    replaceItem(await res.json())
+    setDraft(null)
+    toast({ title: isNew ? "Ítem agregado" : "Ítem actualizado" })
+  }
+
+  async function deleteItem(itemId: string) {
+    if (!confirm("¿Eliminar este ítem y sus links?")) return
+    await apiRaw(`/supervisor/module-items/${itemId}`, { method: "DELETE" })
+    onModuleChange({ ...mod, items: mod.items.filter((i) => i.id !== itemId) })
+  }
+
+  async function addLink(itemId: string) {
+    if (!linkUrl.trim()) return
+    const res = await apiTry(`/supervisor/module-items/${itemId}/links`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: linkTitle, url: linkUrl }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "Error" }))
+      toast({ title: j.error || "Link inválido", variant: "destructive" })
+      return
+    }
+    const link: ModuleLink = await res.json()
+    onModuleChange({
+      ...mod,
+      items: mod.items.map((i) => (i.id === itemId ? { ...i, links: [...i.links, link] } : i)),
+    })
+    setLinkTitle("")
+    setLinkUrl("")
+    setLinkFor(null)
+  }
+
+  async function deleteLink(itemId: string, linkId: string) {
+    await apiRaw(`/supervisor/module-links/${linkId}`, { method: "DELETE" })
+    onModuleChange({
+      ...mod,
+      items: mod.items.map((i) =>
+        i.id === itemId ? { ...i, links: i.links.filter((l) => l.id !== linkId) } : i
+      ),
+    })
+  }
+
+  return (
+    <div className="border-t border-border pt-3 space-y-3">
+      {mod.items.length === 0 && (
+        <p className="text-sm text-muted-foreground">Sin contenido todavía.</p>
+      )}
+
+      {mod.items.map((item) => (
+        <div key={item.id} className="bg-muted/40 rounded-lg p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm text-foreground">{item.title}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[item.kind]}`}>
+                  {KIND_LABEL[item.kind]}
+                </span>
+              </div>
+              {item.description && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-line">
+                  {item.description}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={() =>
+                  setDraft({
+                    id: item.id,
+                    title: item.title,
+                    description: item.description ?? "",
+                    kind: item.kind,
+                  })
+                }
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={() => deleteItem(item.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {item.links.map((link) => (
+            <div key={link.id} className="flex items-center gap-2 text-xs">
+              <ExternalLink className="h-3 w-3 text-brand-accent shrink-0" />
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-accent hover:underline truncate"
+              >
+                {link.title}
+              </a>
+              <button
+                onClick={() => deleteLink(item.id, link.id)}
+                className="text-muted-foreground hover:text-destructive shrink-0"
+                aria-label="Eliminar link"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+
+          {linkFor === item.id ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={linkTitle}
+                onChange={(e) => setLinkTitle(e.target.value)}
+                placeholder="Nombre (opcional)"
+                className="h-8 text-xs w-40"
+              />
+              <Input
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://drive.google.com/..."
+                className="h-8 text-xs flex-1 min-w-[200px]"
+                onKeyDown={(e) => e.key === "Enter" && addLink(item.id)}
+              />
+              <Button
+                size="sm"
+                className="h-8 bg-brand-accent hover:bg-brand-accent-dark"
+                onClick={() => addLink(item.id)}
+              >
+                Agregar
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => setLinkFor(null)}>
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setLinkFor(item.id); setLinkTitle(""); setLinkUrl("") }}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              <Link2 className="h-3 w-3" /> Agregar link
+            </button>
+          )}
+        </div>
+      ))}
+
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setDraft({ title: "", description: "", kind: "RECURSO" })}
+      >
+        <Plus className="h-3.5 w-3.5 mr-1" /> Agregar ítem
+      </Button>
+
+      <Dialog open={!!draft} onOpenChange={(open) => !open && setDraft(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif">
+              {draft?.id ? "Editar ítem" : "Nuevo ítem"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Título *</Label>
+              <Input
+                value={draft?.title ?? ""}
+                onChange={(e) => setDraft((p) => (p ? { ...p, title: e.target.value } : p))}
+                placeholder="Ej: TAREA 1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={draft?.kind ?? "RECURSO"}
+                onValueChange={(v) => setDraft((p) => (p ? { ...p, kind: v as ModuleItemKind } : p))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ITEM_KINDS.map((k) => (
+                    <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Consigna / descripción</Label>
+              <Textarea
+                value={draft?.description ?? ""}
+                onChange={(e) => setDraft((p) => (p ? { ...p, description: e.target.value } : p))}
+                rows={6}
+                placeholder="CONSIGNA: Leer las Competencias y el Código de Ética..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDraft(null)}>Cancelar</Button>
+            <Button className="bg-brand-accent hover:bg-brand-accent-dark" onClick={saveItem}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────
+   Module row
+───────────────────────────────────────── */
+
+function SortableModule({ mod, onEdit, onDelete, onTogglePublish, onModuleChange }: {
   mod: Module
   onEdit: (m: Module) => void
   onDelete: (id: string) => void
   onTogglePublish: (id: string, published: boolean) => void
-  onUpload: (id: string, file: File, title: string) => void
+  onModuleChange: (m: Module) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: mod.id })
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [expanded, setExpanded] = useState(false)
   const embedUrl = mod.videoUrl ? getEmbedUrl(mod.videoUrl) : null
 
   const style = {
@@ -66,53 +325,50 @@ function SortableModule({ mod, onEdit, onDelete, onTogglePublish, onUpload }: {
   return (
     <div ref={setNodeRef} style={style} className="bg-white rounded-lg border border-border p-4 space-y-3">
       <div className="flex items-start gap-3">
-        <button {...attributes} {...listeners} className="mt-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing">
+        <button
+          {...attributes}
+          {...listeners}
+          className="mt-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+        >
           <GripVertical className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-medium text-foreground">{mod.title}</h3>
-            <Badge variant={mod.published ? "default" : "secondary"} className={mod.published ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
+            <Badge
+              variant={mod.published ? "default" : "secondary"}
+              className={mod.published ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+            >
               {mod.published ? "Publicado" : "Borrador"}
             </Badge>
           </div>
           {mod.description && (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mod.description}</p>
           )}
-          {mod.materials.length > 0 && (
-            <div className="flex gap-2 flex-wrap mt-2">
-              {mod.materials.map((m) => (
-                <a key={m.id} href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-brand-accent hover:underline">
-                  <ExternalLink className="h-3 w-3" /> {m.title}
-                </a>
-              ))}
-            </div>
-          )}
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mt-2"
+          >
+            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            Contenido ({mod.items.length})
+          </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Switch checked={mod.published} onCheckedChange={(v) => onTogglePublish(mod.id, v)} />
           <Button size="icon" variant="ghost" onClick={() => onEdit(mod)}>
             <Edit2 className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => onDelete(mod.id)}>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => onDelete(mod.id)}
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".pdf,.ppt,.pptx,.doc,.docx"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) onUpload(mod.id, file, file.name)
-              e.target.value = ""
-            }}
-          />
         </div>
       </div>
+
       {embedUrl && (
         <div className="relative w-full pt-[30%]">
           <iframe
@@ -123,9 +379,15 @@ function SortableModule({ mod, onEdit, onDelete, onTogglePublish, onUpload }: {
           />
         </div>
       )}
+
+      {expanded && <ModuleContentEditor mod={mod} onModuleChange={onModuleChange} />}
     </div>
   )
 }
+
+/* ─────────────────────────────────────────
+   Page
+───────────────────────────────────────── */
 
 export default function ModulosPage() {
   const [modules, setModules] = useState<Module[]>([])
@@ -152,12 +414,14 @@ export default function ModulosPage() {
 
     setModules(reordered.map((m, i) => ({ ...m, orderIndex: i + 1 })))
 
+    // Only the order changed, so send just that — the module PUT treats every
+    // field as optional.
     await Promise.all(
       reordered.map((m, i) =>
         apiRaw(`/supervisor/modules/${m.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...m, orderIndex: i + 1 }),
+          body: JSON.stringify({ orderIndex: i + 1 }),
         })
       )
     )
@@ -172,7 +436,11 @@ export default function ModulosPage() {
       {
         method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingModule),
+        body: JSON.stringify({
+          title: editingModule.title,
+          description: editingModule.description ?? null,
+          videoUrl: editingModule.videoUrl ?? null,
+        }),
       }
     )
 
@@ -188,55 +456,37 @@ export default function ModulosPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar este módulo?")) return
+    if (!confirm("¿Eliminar este módulo? Se borra su contenido y su liberación en todos los CIC.")) return
     await apiRaw(`/supervisor/modules/${id}`, { method: "DELETE" })
     setModules((prev) => prev.filter((m) => m.id !== id))
     toast({ title: "Módulo eliminado" })
   }
 
   async function handleTogglePublish(id: string, published: boolean) {
-    const mod = modules.find((m) => m.id === id)!
     const updated = await apiJson<Module>(`/supervisor/modules/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...mod, published }),
+      body: JSON.stringify({ published }),
     })
     setModules((prev) => prev.map((m) => (m.id === id ? updated : m)))
   }
 
-  async function handleUpload(moduleId: string, file: File, title: string) {
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("title", title)
-
-    toast({ title: "Subiendo archivo..." })
-    const res = await apiRaw(`/supervisor/modules/${moduleId}/materials`, {
-      method: "POST",
-      body: formData,
-    })
-
-    if (res.ok) {
-      const material = await res.json()
-      setModules((prev) =>
-        prev.map((m) =>
-          m.id === moduleId ? { ...m, materials: [...m.materials, material] } : m
-        )
-      )
-      toast({ title: "Archivo subido" })
-    } else {
-      toast({ title: "Error al subir el archivo", variant: "destructive" })
-    }
+  function handleModuleChange(updated: Module) {
+    setModules((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl text-foreground mb-1">Módulos</h1>
-          <p className="text-muted-foreground text-sm">Arrastrá para reordenar</p>
+          <p className="text-muted-foreground text-sm">
+            El contenido es el mismo para todos los CIC. Cuándo lo ve cada camada se define en
+            la pantalla de CIC.
+          </p>
         </div>
         <Button
-          className="bg-brand-accent hover:bg-brand-accent-dark"
+          className="bg-brand-accent hover:bg-brand-accent-dark shrink-0"
           onClick={() => { setEditingModule({}); setIsCreating(true) }}
         >
           <Plus className="h-4 w-4 mr-2" /> Nuevo módulo
@@ -253,7 +503,7 @@ export default function ModulosPage() {
                 onEdit={(m) => { setEditingModule(m); setIsCreating(false) }}
                 onDelete={handleDelete}
                 onTogglePublish={handleTogglePublish}
-                onUpload={handleUpload}
+                onModuleChange={handleModuleChange}
               />
             ))}
           </div>
@@ -277,7 +527,7 @@ export default function ModulosPage() {
               <Input
                 value={editingModule?.title ?? ""}
                 onChange={(e) => setEditingModule((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Ej: Introducción al coaching de carrera"
+                placeholder="Ej: CLASE 1"
               />
             </div>
             <div className="space-y-2">

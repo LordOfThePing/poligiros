@@ -1,8 +1,12 @@
 import { Hono } from "hono"
 import { prisma } from "../lib/prisma.js"
-import { uploadToR2 } from "../lib/r2.js"
-import { sendSupervisionReviewedEmail, sendCoachInviteEmail } from "../lib/email.js"
+import {
+  sendSupervisionReviewedEmail,
+  sendCoachInviteEmail,
+  sendSignupApprovedEmail,
+} from "../lib/email.js"
 import { randomBytes } from "node:crypto"
+import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
 import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
@@ -126,7 +130,7 @@ supervisor.get("/students", async (c) => {
       id: s.id,
       name: s.name,
       email: s.email,
-      cohort: s.enrollments[0]?.cohort?.name ?? "Sin SIC",
+      cohort: s.enrollments[0]?.cohort?.name ?? "Sin CIC",
       clientCount: s.clients.length,
       testsSubmitted: completedTests,
       modulesCompleted: s.moduleProgress.length,
@@ -274,7 +278,7 @@ supervisor.post("/reset-requests/:id/approve", async (c) => {
       data: {
         completedAt: null,
         // Re-open the magic-link window so the coachee can retake it.
-        ...(hasWindow ? { completeBy: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } : {}),
+        ...(hasWindow ? { completeBy: daysFromNow((await getSettings()).testCompleteDays) } : {}),
       },
     }),
     prisma.testResetRequest.update({
@@ -322,8 +326,13 @@ supervisor.get("/cohorts", async (c) => {
 supervisor.post("/cohorts", async (c) => {
   const { name, startDate } = await c.req.json()
 
+  const trimmed = String(name ?? "").trim()
+  if (!trimmed) return c.json({ error: "El nombre no puede estar vacío" }, 400)
+  const start = new Date(startDate)
+  if (Number.isNaN(start.getTime())) return c.json({ error: "Fecha de inicio inválida" }, 400)
+
   const cohort = await prisma.cohort.create({
-    data: { name, startDate: new Date(startDate), active: true },
+    data: { name: trimmed, startDate: start, active: true },
     include: {
       enrollments: { include: { user: true } },
       _count: { select: { enrollments: true } },
@@ -332,14 +341,52 @@ supervisor.post("/cohorts", async (c) => {
   return c.json(cohort, 201)
 })
 
-/** PUT /supervisor/cohorts/:id */
+/** PUT /supervisor/cohorts/:id — name, start date, active, Zoom link, permissions. */
 supervisor.put("/cohorts/:id", async (c) => {
   const id = c.req.param("id")
   const body = await c.req.json()
 
+  // Whitelist: never hand the request body straight to Prisma (it would let a
+  // caller rewrite `id`). Each field is optional so the active-toggle can send
+  // just `{ active }` and the edit dialog just `{ name, startDate }`.
+  const data: {
+    name?: string
+    startDate?: Date
+    active?: boolean
+    zoomUrl?: string | null
+    clientsEnabled?: boolean
+    testsEnabled?: boolean
+  } = {}
+
+  if (body.name !== undefined) {
+    const name = String(body.name).trim()
+    if (!name) return c.json({ error: "El nombre no puede estar vacío" }, 400)
+    data.name = name
+  }
+  if (body.startDate !== undefined) {
+    const startDate = new Date(body.startDate)
+    if (Number.isNaN(startDate.getTime())) return c.json({ error: "Fecha de inicio inválida" }, 400)
+    data.startDate = startDate
+  }
+  if (body.active !== undefined) data.active = Boolean(body.active)
+  if (body.clientsEnabled !== undefined) data.clientsEnabled = Boolean(body.clientsEnabled)
+  if (body.testsEnabled !== undefined) data.testsEnabled = Boolean(body.testsEnabled)
+  if (body.zoomUrl !== undefined) {
+    const raw = String(body.zoomUrl ?? "").trim()
+    if (raw === "") {
+      data.zoomUrl = null
+    } else if (!isSafeUrl(raw)) {
+      return c.json({ error: "El link de Zoom debe empezar con http:// o https://" }, 400)
+    } else {
+      data.zoomUrl = raw
+    }
+  }
+
+  if (Object.keys(data).length === 0) return c.json({ error: "Nada para actualizar" }, 400)
+
   const cohort = await prisma.cohort.update({
     where: { id },
-    data: body,
+    data,
     include: {
       enrollments: { include: { user: true } },
       _count: { select: { enrollments: true } },
@@ -372,78 +419,319 @@ supervisor.post("/cohorts/:id/enroll", async (c) => {
 })
 
 /* ─────────────────────────────────────────
-   Modules
+   Modules — shared content (cards + links)
+
+   The content of a module is the same for every cohort; what varies is WHEN
+   each cohort gets to see it (see "Module releases" below). Nothing is
+   uploaded: every resource is a link to Drive / Docs / Zoom / an article.
 ───────────────────────────────────────── */
+
+/** Cards and their links always come back in display order. */
+const moduleItemsInclude = {
+  items: {
+    orderBy: { orderIndex: "asc" as const },
+    include: { links: { orderBy: { orderIndex: "asc" as const } } },
+  },
+}
+
+/**
+ * Only http(s) links are accepted. Without this a `javascript:` URL would be
+ * rendered straight into an anchor href on the student page.
+ */
+function isSafeUrl(raw: unknown): raw is string {
+  if (typeof raw !== "string") return false
+  try {
+    const u = new URL(raw.trim())
+    return u.protocol === "http:" || u.protocol === "https:"
+  } catch {
+    return false
+  }
+}
 
 /** GET /supervisor/modules */
 supervisor.get("/modules", async (c) => {
   const modules = await prisma.module.findMany({
     orderBy: { orderIndex: "asc" },
-    include: { materials: true },
+    include: moduleItemsInclude,
   })
   return c.json(modules)
 })
 
 /** POST /supervisor/modules */
 supervisor.post("/modules", async (c) => {
-  const body = await c.req.json()
-  const { title, description, videoUrl, orderIndex } = body
+  const { title, description, videoUrl, orderIndex } = await c.req.json()
+
+  const trimmed = String(title ?? "").trim()
+  if (!trimmed) return c.json({ error: "El titulo no puede estar vacio" }, 400)
 
   const maxOrder = await prisma.module.aggregate({ _max: { orderIndex: true } })
   const nextOrder = orderIndex ?? (maxOrder._max.orderIndex ?? 0) + 1
 
-  const module = await prisma.module.create({
-    data: { title, description, videoUrl, orderIndex: nextOrder, published: false },
-    include: { materials: true },
+  const created = await prisma.module.create({
+    data: { title: trimmed, description, videoUrl, orderIndex: nextOrder, published: false },
+    include: moduleItemsInclude,
   })
-  return c.json(module, 201)
+  return c.json(created, 201)
 })
 
 /** PUT /supervisor/modules/:id */
 supervisor.put("/modules/:id", async (c) => {
   const id = c.req.param("id")
-  const body = await c.req.json()
-  const { title, description, videoUrl, orderIndex, published } = body
+  const { title, description, videoUrl, orderIndex, published } = await c.req.json()
 
-  const module = await prisma.module.update({
+  const updated = await prisma.module.update({
     where: { id },
-    data: { title, description, videoUrl, orderIndex, published },
-    include: { materials: true },
+    data: {
+      ...(title !== undefined ? { title: String(title).trim() } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(videoUrl !== undefined ? { videoUrl } : {}),
+      ...(orderIndex !== undefined ? { orderIndex } : {}),
+      ...(published !== undefined ? { published: Boolean(published) } : {}),
+    },
+    include: moduleItemsInclude,
   })
-  return c.json(module)
+  return c.json(updated)
 })
 
-/** DELETE /supervisor/modules/:id */
+/** DELETE /supervisor/modules/:id — cascades to its cards, links and releases. */
 supervisor.delete("/modules/:id", async (c) => {
-  const id = c.req.param("id")
-  await prisma.module.delete({ where: { id } })
+  await prisma.module.delete({ where: { id: c.req.param("id") } })
   return c.json({ ok: true })
 })
 
-/** POST /supervisor/modules/:id/materials */
-supervisor.post("/modules/:id/materials", async (c) => {
-  const id = c.req.param("id")
-  const formData = await c.req.formData()
-  const file = formData.get("file") as File
-  const title = formData.get("title") as string
+/* ── Cards inside a module ─────────────────────────────────────────────────── */
 
-  if (!file) return c.json({ error: "No file" }, 400)
+const ITEM_KINDS = ["TAREA", "BIBLIOGRAFIA", "PRESENTACION", "LINK", "RECURSO"] as const
+type ItemKind = (typeof ITEM_KINDS)[number]
 
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
-  const key = `modules/${id}/${Date.now()}-${file.name}`
-  const fileUrl = await uploadToR2(key, buffer, file.type)
+function asKind(value: unknown): ItemKind | undefined {
+  return ITEM_KINDS.includes(value as ItemKind) ? (value as ItemKind) : undefined
+}
 
-  const material = await prisma.material.create({
+/** POST /supervisor/modules/:id/items */
+supervisor.post("/modules/:id/items", async (c) => {
+  const moduleId = c.req.param("id")
+  const { title, description, kind } = await c.req.json()
+
+  const trimmed = String(title ?? "").trim()
+  if (!trimmed) return c.json({ error: "El titulo no puede estar vacio" }, 400)
+
+  const maxOrder = await prisma.moduleItem.aggregate({
+    where: { moduleId },
+    _max: { orderIndex: true },
+  })
+
+  const item = await prisma.moduleItem.create({
     data: {
-      moduleId: id,
-      title: title || file.name,
-      fileUrl,
-      fileType: file.type,
+      moduleId,
+      title: trimmed,
+      description: description ?? null,
+      kind: asKind(kind) ?? "RECURSO",
+      orderIndex: (maxOrder._max.orderIndex ?? -1) + 1,
+    },
+    include: { links: { orderBy: { orderIndex: "asc" } } },
+  })
+  return c.json(item, 201)
+})
+
+/** PUT /supervisor/module-items/:itemId */
+supervisor.put("/module-items/:itemId", async (c) => {
+  const id = c.req.param("itemId")
+  const { title, description, kind, orderIndex } = await c.req.json()
+  const parsedKind = asKind(kind)
+
+  const item = await prisma.moduleItem.update({
+    where: { id },
+    data: {
+      ...(title !== undefined ? { title: String(title).trim() } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(parsedKind ? { kind: parsedKind } : {}),
+      ...(orderIndex !== undefined ? { orderIndex } : {}),
+    },
+    include: { links: { orderBy: { orderIndex: "asc" } } },
+  })
+  return c.json(item)
+})
+
+/** DELETE /supervisor/module-items/:itemId — cascades to its links. */
+supervisor.delete("/module-items/:itemId", async (c) => {
+  await prisma.moduleItem.delete({ where: { id: c.req.param("itemId") } })
+  return c.json({ ok: true })
+})
+
+/** PUT /supervisor/modules/:id/items/reorder — body: { ids: string[] } */
+supervisor.put("/modules/:id/items/reorder", async (c) => {
+  const moduleId = c.req.param("id")
+  const { ids } = await c.req.json()
+  if (!Array.isArray(ids)) return c.json({ error: "ids debe ser un array" }, 400)
+
+  await prisma.$transaction(
+    ids.map((id: string, i: number) =>
+      prisma.moduleItem.updateMany({ where: { id, moduleId }, data: { orderIndex: i } })
+    )
+  )
+
+  const items = await prisma.moduleItem.findMany({
+    where: { moduleId },
+    orderBy: { orderIndex: "asc" },
+    include: { links: { orderBy: { orderIndex: "asc" } } },
+  })
+  return c.json(items)
+})
+
+/* ── Links hanging off a card ──────────────────────────────────────────────── */
+
+/** POST /supervisor/module-items/:itemId/links */
+supervisor.post("/module-items/:itemId/links", async (c) => {
+  const itemId = c.req.param("itemId")
+  const { title, url } = await c.req.json()
+
+  if (!isSafeUrl(url)) return c.json({ error: "El link debe empezar con http:// o https://" }, 400)
+  const trimmedTitle = String(title ?? "").trim()
+
+  const maxOrder = await prisma.moduleLink.aggregate({
+    where: { itemId },
+    _max: { orderIndex: true },
+  })
+
+  const link = await prisma.moduleLink.create({
+    data: {
+      itemId,
+      title: trimmedTitle || url.trim(),
+      url: url.trim(),
+      orderIndex: (maxOrder._max.orderIndex ?? -1) + 1,
     },
   })
-  return c.json(material, 201)
+  return c.json(link, 201)
 })
+
+/** PUT /supervisor/module-links/:linkId */
+supervisor.put("/module-links/:linkId", async (c) => {
+  const id = c.req.param("linkId")
+  const { title, url, orderIndex } = await c.req.json()
+
+  if (url !== undefined && !isSafeUrl(url)) {
+    return c.json({ error: "El link debe empezar con http:// o https://" }, 400)
+  }
+
+  const link = await prisma.moduleLink.update({
+    where: { id },
+    data: {
+      ...(title !== undefined ? { title: String(title).trim() } : {}),
+      ...(url !== undefined ? { url: String(url).trim() } : {}),
+      ...(orderIndex !== undefined ? { orderIndex } : {}),
+    },
+  })
+  return c.json(link)
+})
+
+/** DELETE /supervisor/module-links/:linkId */
+supervisor.delete("/module-links/:linkId", async (c) => {
+  await prisma.moduleLink.delete({ where: { id: c.req.param("linkId") } })
+  return c.json({ ok: true })
+})
+
+/* ─────────────────────────────────────────
+   Module releases — per-cohort visibility
+───────────────────────────────────────── */
+
+/**
+ * GET /supervisor/cohorts/:id/releases
+ * Every module with its release state for this cohort. A module with no row
+ * yet comes back as released:false, so the UI can render the full grid.
+ */
+supervisor.get("/cohorts/:id/releases", async (c) => {
+  const cohortId = c.req.param("id")
+
+  const [modules, releases] = await Promise.all([
+    prisma.module.findMany({
+      orderBy: { orderIndex: "asc" },
+      include: { _count: { select: { items: true } } },
+    }),
+    prisma.moduleRelease.findMany({ where: { cohortId } }),
+  ])
+
+  const byModule = new Map(releases.map((r) => [r.moduleId, r]))
+
+  return c.json(
+    modules.map((m) => ({
+      moduleId: m.id,
+      title: m.title,
+      orderIndex: m.orderIndex,
+      published: m.published,
+      itemCount: m._count.items,
+      released: byModule.get(m.id)?.released ?? false,
+      availableFrom: byModule.get(m.id)?.availableFrom ?? null,
+    }))
+  )
+})
+
+/** PUT /supervisor/cohorts/:id/releases/:moduleId — body: { released?, availableFrom? } */
+supervisor.put("/cohorts/:id/releases/:moduleId", async (c) => {
+  const cohortId = c.req.param("id")
+  const moduleId = c.req.param("moduleId")
+  const { released, availableFrom } = await c.req.json()
+
+  let from: Date | null | undefined
+  if (availableFrom !== undefined) {
+    if (availableFrom === null || availableFrom === "") {
+      from = null
+    } else {
+      const parsed = new Date(availableFrom)
+      if (Number.isNaN(parsed.getTime())) return c.json({ error: "Fecha invalida" }, 400)
+      from = parsed
+    }
+  }
+
+  const release = await prisma.moduleRelease.upsert({
+    where: { moduleId_cohortId: { moduleId, cohortId } },
+    update: {
+      ...(released !== undefined ? { released: Boolean(released) } : {}),
+      ...(from !== undefined ? { availableFrom: from } : {}),
+    },
+    create: {
+      moduleId,
+      cohortId,
+      released: Boolean(released ?? false),
+      availableFrom: from ?? null,
+    },
+  })
+  return c.json(release)
+})
+
+/**
+ * POST /supervisor/cohorts/:id/releases/copy — body: { fromCohortId }
+ * Mirrors another cohort release state, so a new CIC does not have to be
+ * ticked module by module.
+ */
+supervisor.post("/cohorts/:id/releases/copy", async (c) => {
+  const cohortId = c.req.param("id")
+  const { fromCohortId } = await c.req.json()
+
+  if (!fromCohortId || fromCohortId === cohortId) {
+    return c.json({ error: "Elegi un CIC de origen distinto" }, 400)
+  }
+
+  const source = await prisma.moduleRelease.findMany({ where: { cohortId: fromCohortId } })
+
+  await prisma.$transaction(
+    source.map((r) =>
+      prisma.moduleRelease.upsert({
+        where: { moduleId_cohortId: { moduleId: r.moduleId, cohortId } },
+        update: { released: r.released, availableFrom: r.availableFrom },
+        create: {
+          moduleId: r.moduleId,
+          cohortId,
+          released: r.released,
+          availableFrom: r.availableFrom,
+        },
+      })
+    )
+  )
+
+  return c.json({ ok: true, copied: source.length })
+})
+
 
 /* ─────────────────────────────────────────
    Module progress
@@ -600,6 +888,226 @@ supervisor.put("/responses/:assignmentId", async (c) => {
     data: { responses },
   })
   return c.json(updated)
+})
+
+/* ─────────────────────────────────────────
+   Cohort roster helpers
+───────────────────────────────────────── */
+
+/**
+ * GET /supervisor/cohorts/:id/emails
+ * The enrolled coaches, ready to paste into a Zoom invite. Returns both the
+ * list and a pre-joined string so the UI can just copy it.
+ */
+supervisor.get("/cohorts/:id/emails", async (c) => {
+  const cohortId = c.req.param("id")
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: { cohortId },
+    include: { user: { select: { name: true, email: true, password: true } } },
+    orderBy: { user: { name: "asc" } },
+  })
+
+  const people = enrollments.map((e) => ({
+    name: e.user.name,
+    email: e.user.email,
+    // Invited but never finished registering — their inbox may not be watched.
+    pending: e.user.password === null,
+  }))
+
+  return c.json({
+    count: people.length,
+    people,
+    emails: people.map((p) => p.email).join(", "),
+  })
+})
+
+/* ─────────────────────────────────────────
+   Signup requests (public form -> supervisor approval)
+───────────────────────────────────────── */
+
+/** GET /supervisor/signups?status=PENDING */
+supervisor.get("/signups", async (c) => {
+  const status = c.req.query("status")
+  const valid = ["PENDING", "APPROVED", "REJECTED"] as const
+  const filter = valid.includes(status as (typeof valid)[number])
+    ? (status as (typeof valid)[number])
+    : undefined
+
+  const signups = await prisma.signupRequest.findMany({
+    where: filter ? { status: filter } : {},
+    include: { cohort: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "desc" },
+  })
+
+  // Never ship the stored password hash to the browser.
+  return c.json(signups.map(({ passwordHash, ...rest }) => rest))
+})
+
+/**
+ * POST /supervisor/signups/:id/approve
+ * Creates the real User from the request (reusing the password they chose, so
+ * they can log in immediately), enrolls them, and gives them the
+ * coach-as-coachee Client that the invite flow also creates.
+ */
+supervisor.post("/signups/:id/approve", async (c) => {
+  const supervisorUser = c.get("user")
+  const id = c.req.param("id")
+
+  const signup = await prisma.signupRequest.findUnique({ where: { id } })
+  if (!signup) return c.json({ error: "Solicitud no encontrada" }, 404)
+  if (signup.status !== "PENDING") return c.json({ error: "La solicitud ya fue resuelta" }, 400)
+
+  const clash = await prisma.user.findUnique({ where: { email: signup.email } })
+  if (clash) return c.json({ error: "Ya existe un usuario con ese email" }, 400)
+
+  const created = await prisma.$transaction(async (tx) => {
+    const coach = await tx.user.create({
+      data: {
+        email: signup.email,
+        name: signup.name,
+        password: signup.passwordHash,
+        role: "STUDENT_COACH",
+        phone: signup.phone,
+        especialidad: signup.especialidad,
+      },
+    })
+
+    if (signup.cohortId) {
+      await tx.enrollment.create({ data: { userId: coach.id, cohortId: signup.cohortId } })
+    }
+
+    await tx.client.create({
+      data: {
+        studentId: supervisorUser.id,
+        userId: coach.id,
+        name: signup.name,
+        email: signup.email,
+      },
+    })
+
+    await tx.signupRequest.update({
+      where: { id },
+      data: { status: "APPROVED", reviewedAt: new Date(), reviewedById: supervisorUser.id },
+    })
+
+    return coach
+  })
+
+  sendSignupApprovedEmail(signup.email, signup.name).catch(() => {})
+
+  return c.json({ ok: true, coach: { id: created.id, name: created.name, email: created.email } })
+})
+
+/** POST /supervisor/signups/:id/reject — body: { note? } */
+supervisor.post("/signups/:id/reject", async (c) => {
+  const supervisorUser = c.get("user")
+  const id = c.req.param("id")
+  const { note } = await c.req.json().catch(() => ({ note: undefined }))
+
+  const signup = await prisma.signupRequest.findUnique({ where: { id } })
+  if (!signup) return c.json({ error: "Solicitud no encontrada" }, 404)
+  if (signup.status !== "PENDING") return c.json({ error: "La solicitud ya fue resuelta" }, 400)
+
+  await prisma.signupRequest.update({
+    where: { id },
+    data: {
+      status: "REJECTED",
+      reviewedAt: new Date(),
+      reviewedById: supervisorUser.id,
+      reviewNote: note ? String(note).trim() : null,
+    },
+  })
+
+  return c.json({ ok: true })
+})
+
+/* ─────────────────────────────────────────
+   Settings — configurable link lifetimes
+───────────────────────────────────────── */
+
+/** GET /supervisor/settings */
+supervisor.get("/settings", async (c) => {
+  return c.json(await getSettings())
+})
+
+/** PUT /supervisor/settings — body: { testCompleteDays?, testResultsDays?, signupLinkDays? } */
+supervisor.put("/settings", async (c) => {
+  const body = await c.req.json()
+  const current = await getSettings()
+
+  const data = {
+    testCompleteDays: clampDays(body.testCompleteDays ?? current.testCompleteDays, current.testCompleteDays),
+    testResultsDays: clampDays(body.testResultsDays ?? current.testResultsDays, current.testResultsDays),
+    signupLinkDays: clampDays(body.signupLinkDays ?? current.signupLinkDays, current.signupLinkDays),
+  }
+
+  const row = await prisma.appSettings.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
+  })
+
+  return c.json({
+    testCompleteDays: row.testCompleteDays,
+    testResultsDays: row.testResultsDays,
+    signupLinkDays: row.signupLinkDays,
+  })
+})
+
+/* ─────────────────────────────────────────
+   Signup links — expiring public invitations
+───────────────────────────────────────── */
+
+/** GET /supervisor/signup-links */
+supervisor.get("/signup-links", async (c) => {
+  const links = await prisma.signupLink.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      cohort: { select: { id: true, name: true } },
+      _count: { select: { requests: true } },
+    },
+  })
+  return c.json(links)
+})
+
+/** POST /supervisor/signup-links — body: { cohortId?, days? } */
+supervisor.post("/signup-links", async (c) => {
+  const { cohortId, days } = await c.req.json().catch(() => ({}))
+  const settings = await getSettings()
+  const lifetime = clampDays(days ?? settings.signupLinkDays, settings.signupLinkDays)
+
+  const link = await prisma.signupLink.create({
+    data: {
+      token: randomBytes(24).toString("base64url"),
+      cohortId: cohortId || null,
+      expiresAt: daysFromNow(lifetime),
+    },
+    include: {
+      cohort: { select: { id: true, name: true } },
+      _count: { select: { requests: true } },
+    },
+  })
+  return c.json(link, 201)
+})
+
+/** POST /supervisor/signup-links/:id/disable — revoke before it expires. */
+supervisor.post("/signup-links/:id/disable", async (c) => {
+  const link = await prisma.signupLink.update({
+    where: { id: c.req.param("id") },
+    data: { disabled: true },
+    include: {
+      cohort: { select: { id: true, name: true } },
+      _count: { select: { requests: true } },
+    },
+  })
+  return c.json(link)
+})
+
+/** DELETE /supervisor/signup-links/:id */
+supervisor.delete("/signup-links/:id", async (c) => {
+  await prisma.signupLink.delete({ where: { id: c.req.param("id") } })
+  return c.json({ ok: true })
 })
 
 export default supervisor

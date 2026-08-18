@@ -18,6 +18,8 @@ import SupervisorSupervisionDetailPage from "@/pages/supervisor/SupervisionDetai
 import SupervisorRegistrosPage from "@/pages/supervisor/RegistrosPage"
 import SupervisorModulosPage from "@/pages/supervisor/ModulosPage"
 import SupervisorCohortesPage from "@/pages/supervisor/CohortesPage"
+import SupervisorInscripcionesPage from "@/pages/supervisor/InscripcionesPage"
+import InscripcionPage from "@/pages/InscripcionPage"
 
 // Pages - student
 import StudentProgramaPage from "@/pages/student/ProgramaPage"
@@ -65,6 +67,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/invite/:token" element={<RegisterPage />} />
           <Route path="/t/:token" element={<TokenPage />} />
+          <Route path="/inscripcion/:token" element={<InscripcionPage />} />
 
           {/* Supervisor routes */}
           <Route
@@ -84,6 +87,7 @@ export default function App() {
             <Route path="registros" element={<SupervisorRegistrosPage />} />
             <Route path="modulos" element={<SupervisorModulosPage />} />
             <Route path="cohortes" element={<SupervisorCohortesPage />} />
+            <Route path="inscripciones" element={<SupervisorInscripcionesPage />} />
           </Route>
 
           {/* Student routes */}

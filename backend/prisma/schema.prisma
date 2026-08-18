@@ -25,6 +25,20 @@ enum SupervisionStatus {
   REVIEWED
 }
 
+enum ModuleItemKind {
+  TAREA
+  BIBLIOGRAFIA
+  PRESENTACION
+  LINK
+  RECURSO
+}
+
+enum SignupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ResetStatus {
   PENDING
   APPROVED
@@ -57,15 +71,28 @@ model User {
   sessionRecords      SessionRecord[]
   resetRequestsMade   TestResetRequest[]   @relation("ResetRequestedBy")
   resetReviews        TestResetRequest[]   @relation("ResetReviewedBy")
+  signupReviews       SignupRequest[]      @relation("SignupReviewedBy")
 }
 
 model Cohort {
-  id          String       @id @default(cuid())
-  name        String
-  startDate   DateTime
-  active      Boolean      @default(true)
-  enrollments Enrollment[]
-  createdAt   DateTime     @default(now())
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Zoom link for the whole camada (shown to enrolled coaches).
+  zoomUrl String?
+
+  // The supervisor opens these per cohort: first they take the course, later
+  // they get to load coachees and run tests on them.
+  clientsEnabled Boolean @default(false)
+  testsEnabled   Boolean @default(false)
+
+  enrollments    Enrollment[]
+  moduleReleases ModuleRelease[]
+  signupRequests SignupRequest[]
+  signupLinks    SignupLink[]
 }
 
 model Enrollment {
@@ -79,25 +106,67 @@ model Enrollment {
   @@unique([userId, cohortId])
 }
 
+/// A class of the CIC. The content is shared by every cohort; what varies per
+/// cohort is WHEN it becomes visible — see ModuleRelease.
 model Module {
-  id          String           @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
   videoUrl    String?
   orderIndex  Int
-  published   Boolean          @default(false)
-  materials   Material[]
-  progress    ModuleProgress[]
-  createdAt   DateTime         @default(now())
+  /// false = draft, invisible to everyone regardless of releases.
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  items    ModuleItem[]
+  progress ModuleProgress[]
+  releases ModuleRelease[]
 }
 
-model Material {
+/// A card inside a module (mirrors a Trello card): "TAREA 1", "BIBLIOGRAFIA",
+/// "PPT de la clase". Carries the consigna as free text plus a list of links.
+model ModuleItem {
+  id          String         @id @default(cuid())
+  moduleId    String
+  module      Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  /// The consigna / long description. Plain text, newlines preserved.
+  description String?
+  kind        ModuleItemKind @default(RECURSO)
+  orderIndex  Int            @default(0)
+  createdAt   DateTime       @default(now())
+
+  links ModuleLink[]
+}
+
+/// A link hanging off a card. Nothing is ever uploaded or stored by this app —
+/// these point at Drive / Docs / Zoom / articles living elsewhere.
+model ModuleLink {
+  id         String     @id @default(cuid())
+  itemId     String
+  item       ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  title      String
+  url        String
+  orderIndex Int        @default(0)
+  createdAt  DateTime   @default(now())
+}
+
+/// Per-cohort visibility of a shared module. Absent row = never released.
+model ModuleRelease {
   id       String @id @default(cuid())
   moduleId String
+  cohortId String
   module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  title    String
-  fileUrl  String
-  fileType String
+  cohort   Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  released      Boolean   @default(false)
+  /// Optional scheduled opening. When set and in the future, the module stays
+  /// hidden even if `released` is true.
+  availableFrom DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleId, cohortId])
 }
 
 model ModuleProgress {
@@ -198,11 +267,11 @@ model TestResetRequest {
 }
 
 model SessionRecord {
-  id        String @id @default(cuid())
-  studentId String
-  student   User   @relation(fields: [studentId], references: [id])
-  clientId  String
-  client    Client @relation(fields: [clientId], references: [id])
+  id         String @id @default(cuid())
+  studentId  String
+  student    User   @relation(fields: [studentId], references: [id])
+  clientId   String
+  client     Client @relation(fields: [clientId], references: [id])
   sessionNum Int
 
   coacheeName     String
@@ -216,4 +285,71 @@ model SessionRecord {
   conclusions     String
 
   createdAt DateTime @default(now())
+}
+
+/// A coach applying through the public signup link. No User exists until the
+/// supervisor approves: the password they choose is hashed here and copied over
+/// on approval, so they can log in immediately without a second email round-trip.
+model SignupRequest {
+  id           String  @id @default(cuid())
+  name         String
+  email        String
+  phone        String?
+  especialidad String?
+  /// Why they want to join — free text from the form.
+  motivation   String?
+
+  /// The CIC they are applying to. Kept nullable so a cohort can be deleted
+  /// without destroying the historical request.
+  cohortId String?
+  cohort   Cohort? @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+
+  passwordHash String
+  status       SignupStatus @default(PENDING)
+
+  /// Which shared link this came through (null for older requests).
+  signupLinkId String?
+  signupLink   SignupLink? @relation(fields: [signupLinkId], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("SignupReviewedBy", fields: [reviewedById], references: [id])
+  /// Set when rejected, so the supervisor remembers why.
+  reviewNote   String?
+
+  @@index([status])
+}
+
+/// Single-row table (id is always "singleton") holding the durations the
+/// supervisor can tune from the UI, so link lifetimes are not hardcoded.
+model AppSettings {
+  id String @id @default("singleton")
+
+  /// Days a coachee has to COMPLETE a test from the magic link.
+  testCompleteDays Int @default(14)
+  /// Days the results stay readable after submitting.
+  testResultsDays  Int @default(365)
+  /// Default lifetime of a newly generated public signup link.
+  signupLinkDays   Int @default(30)
+
+  updatedAt DateTime @updatedAt
+}
+
+/// A shareable signup link. Gaby generates one (optionally bound to a CIC), it
+/// expires, and it can be revoked early. Replaces a single static /inscripcion URL.
+model SignupLink {
+  id    String @id @default(cuid())
+  token String @unique
+
+  cohortId String?
+  cohort   Cohort? @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+
+  expiresAt DateTime
+  /// Revoked by hand before expiry.
+  disabled  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  requests SignupRequest[]
 }

@@ -40,7 +40,7 @@ export default function AlumnosPage() {
 
   const [open, setOpen] = useState(false)
   const [cohorts, setCohorts] = useState<Cohort[]>([])
-  const [sicFilter, setSicFilter] = useState<string>("all")
+  const [cicFilter, setCicFilter] = useState<string>("all")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [cohortId, setCohortId] = useState("")
@@ -92,10 +92,10 @@ export default function AlumnosPage() {
     setName(""); setEmail(""); setCohortId(""); setInviteLink(""); setCopied(false)
   }
 
-  // Distinct SIC names present among students, for the filter dropdown.
-  const sicNames = Array.from(new Set(students.map((s) => s.cohort))).sort()
+  // Distinct CIC names present among students, for the filter dropdown.
+  const cicNames = Array.from(new Set(students.map((s) => s.cohort))).sort()
   const visibleStudents =
-    sicFilter === "all" ? students : students.filter((s) => s.cohort === sicFilter)
+    cicFilter === "all" ? students : students.filter((s) => s.cohort === cicFilter)
 
   return (
     <div className="space-y-6">
@@ -111,14 +111,14 @@ export default function AlumnosPage() {
 
       <div className="flex items-end gap-2">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">SIC</Label>
-          <Select value={sicFilter} onValueChange={setSicFilter}>
+          <Label className="text-xs text-muted-foreground">CIC</Label>
+          <Select value={cicFilter} onValueChange={setCicFilter}>
             <SelectTrigger className="w-56">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los SIC</SelectItem>
-              {sicNames.map((n) => (
+              <SelectItem value="all">Todos los CIC</SelectItem>
+              {cicNames.map((n) => (
                 <SelectItem key={n} value={n}>{n}</SelectItem>
               ))}
             </SelectContent>
@@ -132,7 +132,7 @@ export default function AlumnosPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>SIC</TableHead>
+                <TableHead>CIC</TableHead>
                 <TableHead className="text-center">Clientes</TableHead>
                 <TableHead className="text-center">Tests enviados</TableHead>
                 <TableHead className="text-center">Módulos</TableHead>
@@ -143,7 +143,7 @@ export default function AlumnosPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
               ) : visibleStudents.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay coaches en este SIC</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay coaches en este CIC</TableCell></TableRow>
               ) : (
                 visibleStudents.map((s) => (
                   <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -197,9 +197,9 @@ export default function AlumnosPage() {
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" />
               </div>
               <div className="space-y-2">
-                <Label>SIC (opcional)</Label>
+                <Label>CIC (opcional)</Label>
                 <Select value={cohortId} onValueChange={setCohortId}>
-                  <SelectTrigger><SelectValue placeholder="Elegí un SIC" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Elegí un CIC" /></SelectTrigger>
                   <SelectContent>
                     {cohorts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>

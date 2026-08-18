@@ -6,7 +6,9 @@ services:
       POSTGRES_USER: poligiros
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "127.0.0.1:5432:5432"
+      # Host port 5433: 5432 is taken by the native Postgres on the dev machine.
+      # backend/.env expects 5433, and docker-compose.local.yml uses the same.
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

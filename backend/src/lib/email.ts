@@ -110,3 +110,37 @@ export async function sendSessionRecordedEmail(
     `,
   })
 }
+
+/** Sent when the supervisor approves a public signup — the coach can log in already. */
+export async function sendSignupApprovedEmail(coachEmail: string, name: string) {
+  await resend.emails.send({
+    from: FROM,
+    to: coachEmail,
+    subject: "Tu inscripción al CIC fue aprobada",
+    html: `
+      <p>Hola ${name},</p>
+      <p>Tu inscripción a la <strong>Certificación en Coaching de Carrera y Bienestar Laboral</strong> fue aprobada.</p>
+      <p>Ya podés ingresar con el email y la contraseña que elegiste al inscribirte.</p>
+      <p><a href="${APP_URL}/login">Ingresar →</a></p>
+    `,
+  })
+}
+
+/** Sent to the supervisor when somebody applies through the public link. */
+export async function sendSignupReceivedEmail(
+  supervisorEmail: string,
+  name: string,
+  email: string,
+  cohortName: string | null
+) {
+  await resend.emails.send({
+    from: FROM,
+    to: supervisorEmail,
+    subject: `Nueva inscripción: ${name}`,
+    html: `
+      <p>Hola Gaby,</p>
+      <p><strong>${name}</strong> (${email}) se inscribió${cohortName ? ` a <strong>${cohortName}</strong>` : ""} y está esperando aprobación.</p>
+      <p><a href="${APP_URL}/supervisor/inscripciones">Ver solicitudes →</a></p>
+    `,
+  })
+}
