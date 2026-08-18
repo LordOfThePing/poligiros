@@ -66,6 +66,7 @@ model User {
   coacheeProfile      Client?              @relation("CoachAsCoachee")
   enrollments         Enrollment[]
   moduleProgress      ModuleProgress[]
+  moduleItemProgress  ModuleItemProgress[]
   supervisionRequests SupervisionRequest[] @relation("StudentRequests")
   supervisionReviews  SupervisionRequest[] @relation("SupervisorReviews")
   sessionRecords      SessionRecord[]
@@ -125,6 +126,20 @@ model Module {
 
 /// A card inside a module (mirrors a Trello card): "TAREA 1", "BIBLIOGRAFIA",
 /// "PPT de la clase". Carries the consigna as free text plus a list of links.
+/// Per-item completion. The item is the unit the coach ticks off; a module counts
+/// as completed when it has items and all of them are done — that derived state
+/// is mirrored into ModuleProgress so the supervisor stats keep working.
+model ModuleItemProgress {
+  id          String     @id @default(cuid())
+  userId      String
+  itemId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item        ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  completedAt DateTime   @default(now())
+
+  @@unique([userId, itemId])
+}
+
 model ModuleItem {
   id          String         @id @default(cuid())
   moduleId    String
@@ -136,7 +151,8 @@ model ModuleItem {
   orderIndex  Int            @default(0)
   createdAt   DateTime       @default(now())
 
-  links ModuleLink[]
+  links    ModuleLink[]
+  progress ModuleItemProgress[]
 }
 
 /// A link hanging off a card. Nothing is ever uploaded or stored by this app —

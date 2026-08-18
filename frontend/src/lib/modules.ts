@@ -40,8 +40,14 @@ export type Module = {
   items: ModuleItem[]
 }
 
-/** Student view adds their own progress. */
-export type StudentModule = Module & { completed: boolean }
+/** Student view adds their own progress, per item and derived per module. */
+export type StudentModuleItem = ModuleItem & { completed: boolean }
+
+export type StudentModule = Omit<Module, "items"> & {
+  items: StudentModuleItem[]
+  /** Derived server-side: has items and all of them are done. */
+  completed: boolean
+}
 
 export const ITEM_KINDS: ModuleItemKind[] = [
   "TAREA",

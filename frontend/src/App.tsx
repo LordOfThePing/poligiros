@@ -23,7 +23,6 @@ import InscripcionPage from "@/pages/InscripcionPage"
 
 // Pages - student
 import StudentProgramaPage from "@/pages/student/ProgramaPage"
-import StudentModuleDetailPage from "@/pages/student/ModuleDetailPage"
 import StudentMyTestsPage from "@/pages/student/MyTestsPage"
 import StudentTakeTestPage from "@/pages/student/TakeTestPage"
 import StudentClientesPage from "@/pages/student/ClientesPage"
@@ -101,7 +100,6 @@ export default function App() {
           >
             <Route index element={<Navigate to="/student/programa" replace />} />
             <Route path="programa" element={<StudentProgramaPage />} />
-            <Route path="programa/:id" element={<StudentModuleDetailPage />} />
             <Route path="my-tests" element={<StudentMyTestsPage />} />
             <Route path="my-tests/:id" element={<StudentTakeTestPage />} />
             <Route path="clientes" element={<StudentClientesPage />} />

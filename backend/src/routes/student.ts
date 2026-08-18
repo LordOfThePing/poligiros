@@ -393,6 +393,10 @@ student.post("/sessions", async (c) => {
    A module is visible when it is published (not a draft) AND released to one
    of the cohorts the coach belongs to. There is no sequential lock any more:
    the supervisor releasing a class IS the gate.
+
+   The unit the coach ticks off is the ITEM. Module-level completion is derived
+   (a module with items, all of them done) and mirrored into ModuleProgress so
+   the supervisor Panel and the alumno detail keep reporting the same thing.
 ───────────────────────────────────────── */
 
 /** GET /student/access — what this coach is allowed to do, plus Zoom links. */
@@ -419,6 +423,37 @@ async function releasedModuleIds(userId: string): Promise<string[]> {
   return [...new Set(releases.map((r) => r.moduleId))]
 }
 
+/**
+ * Keep ModuleProgress in step with the item ticks: present when the module has
+ * items and every one of them is done, absent otherwise.
+ */
+async function syncModuleProgress(userId: string, moduleId: string) {
+  const items = await prisma.moduleItem.findMany({
+    where: { moduleId },
+    select: { id: true },
+  })
+
+  const done = items.length
+    ? await prisma.moduleItemProgress.count({
+        where: { userId, itemId: { in: items.map((i) => i.id) } },
+      })
+    : 0
+
+  const complete = items.length > 0 && done === items.length
+
+  if (complete) {
+    await prisma.moduleProgress.upsert({
+      where: { userId_moduleId: { userId, moduleId } },
+      update: {},
+      create: { userId, moduleId },
+    })
+  } else {
+    await prisma.moduleProgress
+      .delete({ where: { userId_moduleId: { userId, moduleId } } })
+      .catch(() => {}) // not there is the desired state anyway
+  }
+}
+
 /** GET /student/modules */
 student.get("/modules", async (c) => {
   const user = c.get("user")
@@ -426,41 +461,84 @@ student.get("/modules", async (c) => {
   const moduleIds = await releasedModuleIds(user.id)
   if (moduleIds.length === 0) return c.json([])
 
-  const [modules, progress] = await Promise.all([
-    prisma.module.findMany({
-      where: { id: { in: moduleIds }, published: true },
-      orderBy: { orderIndex: "asc" },
-      include: {
-        items: {
-          orderBy: { orderIndex: "asc" },
-          include: { links: { orderBy: { orderIndex: "asc" } } },
-        },
+  const modules = await prisma.module.findMany({
+    where: { id: { in: moduleIds }, published: true },
+    orderBy: { orderIndex: "asc" },
+    include: {
+      items: {
+        orderBy: { orderIndex: "asc" },
+        include: { links: { orderBy: { orderIndex: "asc" } } },
       },
-    }),
-    prisma.moduleProgress.findMany({ where: { userId: user.id } }),
-  ])
-
-  const completedIds = new Set(progress.map((p) => p.moduleId))
-
-  return c.json(modules.map((m) => ({ ...m, completed: completedIds.has(m.id) })))
-})
-
-/** POST /student/modules/:id/complete */
-student.post("/modules/:id/complete", async (c) => {
-  const user = c.get("user")
-  const id = c.req.param("id")
-
-  // Do not let a coach tick off a module that was never released to them.
-  const moduleIds = await releasedModuleIds(user.id)
-  if (!moduleIds.includes(id)) return c.json({ error: "Modulo no disponible" }, 403)
-
-  await prisma.moduleProgress.upsert({
-    where: { userId_moduleId: { userId: user.id, moduleId: id } },
-    update: {},
-    create: { userId: user.id, moduleId: id },
+    },
   })
 
-  return c.json({ ok: true })
+  const allItemIds = modules.flatMap((m) => m.items.map((i) => i.id))
+  const progress = allItemIds.length
+    ? await prisma.moduleItemProgress.findMany({
+        where: { userId: user.id, itemId: { in: allItemIds } },
+        select: { itemId: true },
+      })
+    : []
+
+  const doneItems = new Set(progress.map((p) => p.itemId))
+
+  return c.json(
+    modules.map((m) => {
+      const items = m.items.map((i) => ({ ...i, completed: doneItems.has(i.id) }))
+      return {
+        ...m,
+        items,
+        // Derived, so it can never disagree with the checkboxes on screen.
+        completed: items.length > 0 && items.every((i) => i.completed),
+      }
+    })
+  )
+})
+
+/** Guard: the item must belong to a module released to this coach. */
+async function findReleasedItem(userId: string, itemId: string) {
+  const item = await prisma.moduleItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, moduleId: true, module: { select: { published: true } } },
+  })
+  if (!item || !item.module.published) return null
+
+  const moduleIds = await releasedModuleIds(userId)
+  return moduleIds.includes(item.moduleId) ? item : null
+}
+
+/** POST /student/module-items/:itemId/complete */
+student.post("/module-items/:itemId/complete", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("itemId")
+
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  await prisma.moduleItemProgress.upsert({
+    where: { userId_itemId: { userId: user.id, itemId } },
+    update: {},
+    create: { userId: user.id, itemId },
+  })
+  await syncModuleProgress(user.id, item.moduleId)
+
+  return c.json({ ok: true, completed: true })
+})
+
+/** DELETE /student/module-items/:itemId/complete — untick it. */
+student.delete("/module-items/:itemId/complete", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("itemId")
+
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  await prisma.moduleItemProgress
+    .delete({ where: { userId_itemId: { userId: user.id, itemId } } })
+    .catch(() => {})
+  await syncModuleProgress(user.id, item.moduleId)
+
+  return c.json({ ok: true, completed: false })
 })
 
 

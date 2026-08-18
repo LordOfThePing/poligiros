@@ -50,6 +50,35 @@ function getEmbedUrl(url: string): string | null {
 
 type ItemDraft = { id?: string; title: string; description: string; kind: ModuleItemKind }
 
+/**
+ * One draggable card row. The grip is the only drag handle — the row is full of
+ * buttons, inputs and links, and making the whole thing draggable would swallow
+ * their clicks.
+ */
+function SortableItemRow({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`bg-muted/40 rounded-lg p-3 space-y-2 ${isDragging ? "opacity-60" : ""}`}
+    >
+      <div className="flex items-start gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0"
+          aria-label="Reordenar ítem"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0 space-y-2">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 function ModuleContentEditor({
   mod,
   onModuleChange,
@@ -64,6 +93,31 @@ function ModuleContentEditor({
   const [linkTitle, setLinkTitle] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
   const [uploadingFor, setUploadingFor] = useState<string | null>(null)
+
+  const itemSensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  async function handleItemDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = mod.items.findIndex((i) => i.id === active.id)
+    const newIndex = mod.items.findIndex((i) => i.id === over.id)
+    const reordered = arrayMove(mod.items, oldIndex, newIndex)
+
+    onModuleChange({ ...mod, items: reordered })
+
+    const res = await apiTry(`/supervisor/modules/${mod.id}/items/reorder`, {
+      method: "PUT",
+      body: JSON.stringify({ ids: reordered.map((i) => i.id) }),
+    })
+    if (!res.ok) {
+      toast({ title: "No se pudo reordenar", variant: "destructive" })
+      onModuleChange({ ...mod, items: mod.items })
+    }
+  }
 
   function replaceItem(item: ModuleItem) {
     onModuleChange({
@@ -164,8 +218,14 @@ function ModuleContentEditor({
         <p className="text-sm text-muted-foreground">Sin contenido todavía.</p>
       )}
 
+      <DndContext
+        sensors={itemSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleItemDragEnd}
+      >
+      <SortableContext items={mod.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
       {mod.items.map((item) => (
-        <div key={item.id} className="bg-muted/40 rounded-lg p-3 space-y-2">
+        <SortableItemRow key={item.id} id={item.id}>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -290,8 +350,10 @@ function ModuleContentEditor({
               </label>
             </div>
           )}
-        </div>
+        </SortableItemRow>
       ))}
+      </SortableContext>
+      </DndContext>
 
       <Button
         size="sm"

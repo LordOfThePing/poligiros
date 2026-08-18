@@ -44,6 +44,7 @@ Ninguna corrió todavía en prod. Las tres ya se aplicaron **local** con
 - [ ] `20260813120000_modules_per_cohort_signup`
 - [ ] `20260813140000_settings_and_signup_links`
 - [ ] `20260813170000_module_link_files`
+- [ ] `20260813190000_module_item_progress`
 - [ ] Resolver primero 1.1, después `make prod-deploy`
 
 > El bloque de migración de datos `Material → ModuleItem + ModuleLink` **no está
@@ -145,9 +146,6 @@ con `TASK3-CONTRACT.md` y `TODOS.md`.
 - [ ] **Bundle de 811 KB** (238 KB gzip), arriba del warning de 500 KB. Subió
       ~165 KB al agregar `react-markdown`. Se arregla con code-splitting por ruta
       (`React.lazy` en `App.tsx`).
-- [ ] **`PUT /supervisor/modules/:id/items/reorder` existe pero nadie lo usa**: el
-      backend acepta reordenar las tarjetas de una clase, pero el frontend solo
-      tiene drag para los módulos, no para los ítems dentro de uno.
 - [ ] **Coaches sin CIC quedan sin permisos**: con el modelo nuevo, los permisos
       salen de las inscripciones. Un coach sin ninguna queda sin acceso a nada, en
       silencio. Marcar en rojo los "Sin CIC" en la pantalla de Alumnos.
@@ -162,7 +160,6 @@ con `TASK3-CONTRACT.md` y `TODOS.md`.
 
 - [ ] **Importador del Trello**: nunca llegó el JSON (solo capturas). Con el export
       se puede escribir un script que cree módulos + tarjetas + links de una.
-- [ ] Reordenar tarjetas dentro de una clase por drag (ver 5, ya hay endpoint).
 - [ ] Notificar por email a los inscriptos cuando se libera una clase nueva.
 - [ ] Que el alumno vea qué clases faltan liberar ("Clase 4 — se habilita el X").
       El dato ya existe: `ModuleRelease.availableFrom`.
