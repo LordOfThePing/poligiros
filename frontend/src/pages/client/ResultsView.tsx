@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Sparkles, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatShortDate } from "@/lib/date"
-import { groupRankedAnchors } from "@/lib/anclas"
+import { AnclasResult } from "@/components/results/AnclasResult"
 import { RawDataView } from "@/components/RawDataView"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 import { PV_SECTIONS } from "@/lib/planVital"
@@ -13,12 +13,6 @@ interface ResultsViewProps {
   coachFeedback: string | null
   completedAt: string
   footer?: React.ReactNode
-}
-
-const ANCHOR_NAMES: Record<string, string> = {
-  TF: "Técnico/Funcional", GG: "Gerencia General", AU: "Autonomía",
-  SE: "Seguridad/Estabilidad", CE: "Creativo-Emprendedor", SC: "Servicio a la Causa",
-  PD: "Puro Desafío", EV: "Estilo de Vida",
 }
 
 const TABLERO_COLUMNS = [
@@ -36,39 +30,10 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
 
       {/* Test-specific results */}
       {testType === "ANCLAS_CARRERA" && Boolean(responses.scores) && (
-        <div className="space-y-4">
-          <h2 className="font-serif text-2xl text-foreground">Tus Anclas de Carrera</h2>
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">Ranking de anclas:</p>
-            {groupRankedAnchors(
-              responses.scores as Record<string, number>,
-              responses.ranking as string[] | undefined,
-            ).map((group) => (
-              <div key={group.rank} className="flex items-start gap-3 text-sm bg-white rounded-lg border border-border px-4 py-3">
-                <span className="w-5 text-muted-foreground font-medium shrink-0">{group.rank}.</span>
-                <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1">
-                  {group.anchors.map((anchor) => (
-                    <span key={anchor} className="flex items-center gap-2">
-                      <span className="font-medium">{ANCHOR_NAMES[anchor]}</span>
-                      <Badge variant="outline" className="text-xs">{anchor}</Badge>
-                    </span>
-                  ))}
-                </div>
-                <span className="font-medium text-brand-accent shrink-0">{group.score}</span>
-              </div>
-            ))}
-          </div>
-          {Boolean(responses.aiInsight) && (
-            <div className="rounded-xl bg-gray-900 text-gray-100 p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-yellow-400" />
-                <span className="text-sm font-medium text-gray-300">Insight personalizado</span>
-              </div>
-              <p className="text-sm leading-relaxed">{responses.aiInsight as string}</p>
-            </div>
-          )}
-          <RawDataView testType={testType} responses={responses} />
-        </div>
+        <AnclasResult
+          scores={responses.scores as Record<string, number>}
+          aiInsight={(responses.aiInsight as string | undefined) ?? null}
+        />
       )}
 
       {testType === "TABLERO_IDEAS" && (

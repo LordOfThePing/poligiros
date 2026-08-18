@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { selectBonusCandidates, groupRankedAnchors } from "@/lib/anclas"
+import { selectBonusCandidates } from "@/lib/anclas"
+import { AnclasResult, ANCHOR_ORDER } from "@/components/results/AnclasResult"
 import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
 import type { TestApi } from "@/lib/testApi"
 
@@ -62,19 +63,6 @@ const ANCHOR_ITEMS: Record<string, number[]> = {
   PD: [6, 14, 22, 30, 38],
   EV: [7, 15, 23, 31, 39],
 }
-
-const ANCHOR_INFO: Record<string, { name: string; description: string; icon: string }> = {
-  TF: { name: "Técnico/Funcional", icon: "🔬", description: "Tu identidad profesional está ligada al dominio de un área específica. Buscás ser experto/a reconocido/a." },
-  GG: { name: "Gerencia General", icon: "🏢", description: "Te motiva liderar organizaciones complejas, integrar personas y tomar decisiones de alto impacto." },
-  AU: { name: "Autonomía", icon: "🦅", description: "Valorás la libertad de trabajar a tu manera. La autonomía es innegociable para vos." },
-  SE: { name: "Seguridad/Estabilidad", icon: "⚓", description: "Priorizás entornos predecibles y seguros. La estabilidad te permite dar lo mejor de vos." },
-  CE: { name: "Creativo-Emprendedor", icon: "🚀", description: "Te impulsa crear algo propio. Encontrás satisfacción en construir desde cero." },
-  SC: { name: "Servicio a la Causa", icon: "🌿", description: "El propósito y el impacto en otros son centrales. Querés que tu trabajo tenga significado mayor." },
-  PD: { name: "Puro Desafío", icon: "⚡", description: "Los problemas complejos te energizan. Necesitás un trabajo que desafíe constantemente tus capacidades." },
-  EV: { name: "Estilo de Vida", icon: "⚖️", description: "Buscás integrar armoniosamente lo profesional y lo personal. Tu bienestar integral no es negociable." },
-}
-
-const ANCHOR_ORDER = ["TF", "GG", "AU", "SE", "CE", "SC", "PD", "EV"]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -405,88 +393,10 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   }
 
   // ─── Step 3: Results ───────────────────────────────────────────────────────
-  // The average can exceed 6 (bonus items add +4), so bars scale to the top
-  // anchor rather than to a fixed /6 max.
-  const topScore = Math.max(...Object.values(scores), 1)
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <div>
-        <h2 className="font-serif text-3xl text-foreground mb-1">Tus Anclas de Carrera</h2>
-        <p className="text-sm text-muted-foreground">Resultados según la metodología de Edgar Schein</p>
-      </div>
+      <AnclasResult scores={scores} aiInsight={aiInsight} loadingInsight={loadingInsight} />
 
-      <div className="space-y-3">
-        {/* Dense ranking: tied anchors share a rank and sit side by side. */}
-        {groupRankedAnchors(scores, ANCHOR_ORDER).map((group) => {
-          const isTop = group.rank === 1
-          return (
-            <div key={group.rank} className={cn(
-              "bg-white rounded-xl border border-border p-5",
-              isTop && "border-brand-accent/50 shadow-sm"
-            )}>
-              <div className="flex items-start gap-4">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base",
-                  isTop ? "bg-brand-accent text-white" : "bg-muted text-muted-foreground"
-                )}>
-                  {isTop ? "🏆" : group.rank}
-                </div>
-                <div className={cn(
-                  "flex-1 min-w-0 grid gap-x-6 gap-y-4",
-                  group.anchors.length > 1 && "sm:grid-cols-2"
-                )}>
-                  {group.anchors.map((anchor) => {
-                    const info = ANCHOR_INFO[anchor]
-                    const barWidth = (scores[anchor] / topScore) * 100
-                    return (
-                      <div key={anchor} className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-lg">{info.icon}</span>
-                          <span className="font-semibold text-foreground">{info.name}</span>
-                          <Badge variant="outline" className="text-xs">{anchor}</Badge>
-                          {isTop && <Badge className="bg-brand-accent text-white hover:bg-brand-accent text-xs">1er ancla</Badge>}
-                          {group.anchors.length > 1 && <Badge variant="secondary" className="text-xs">empate</Badge>}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
-                        <div className="mt-3 space-y-1">
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Puntuación</span>
-                            <span className="font-medium text-foreground">{scores[anchor]}</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full bg-brand-accent rounded-full transition-all duration-700 ease-out"
-                              style={{ width: `${barWidth}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="rounded-xl bg-gray-900 text-gray-100 p-6 space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-yellow-400" />
-          <span className="text-sm font-medium text-gray-300">Insight personalizado</span>
-        </div>
-        {loadingInsight ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className={cn("h-4 bg-gray-700 rounded animate-pulse", i === 3 && "w-2/3")} />
-            ))}
-          </div>
-        ) : aiInsight ? (
-          <p className="text-sm leading-relaxed">{aiInsight}</p>
-        ) : (
-          <p className="text-sm text-gray-500">No se pudo generar el insight.</p>
-        )}
-      </div>
 
       {saving && (
         <p className="text-sm text-muted-foreground text-center font-medium">

@@ -401,13 +401,13 @@ function ModuleContentEditor({
       </Button>
 
       <Dialog open={!!draft} onOpenChange={(open) => !open && setDraft(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="font-serif">
               {draft?.id ? "Editar ítem" : "Nuevo ítem"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
             <div className="space-y-2">
               <Label>Título *</Label>
               <Input
