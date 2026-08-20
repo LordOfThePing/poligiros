@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ImagePlus, Loader2, Send, Trash2, X, MessageSquare } from "lucide-react"
+import { Eraser, ImagePlus, Loader2, Send, Trash2, X, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/lib/auth"
 import { apiJson, apiTry, apiUpload } from "@/lib/api"
 import { formatShortDate } from "@/lib/date"
+import { cn } from "@/lib/utils"
 import type { ModuleItemComment } from "@/lib/modules"
 
 /**
@@ -89,6 +90,15 @@ export function CommentPanel({ itemId }: { itemId: string }) {
     setComments((prev) => prev.filter((c) => c.id !== id))
   }
 
+  /** The supervisor can wipe the whole discussion at once. */
+  async function clearAll() {
+    if (!isSupervisor || comments.length === 0) return
+    if (!confirm("¿Eliminar todos los comentarios de esta discusión?")) return
+    const res = await apiTry(`/supervisor/module-item-comments/${itemId}`, { method: "DELETE" })
+    if (!res.ok) return
+    setComments([])
+  }
+
   return (
     <div className="flex flex-col h-full min-h-[320px]">
       <div className="flex items-center gap-2 pb-3 border-b border-border">
@@ -96,6 +106,15 @@ export function CommentPanel({ itemId }: { itemId: string }) {
         <h3 className="font-serif text-base font-medium">Discusión</h3>
         {comments.length > 0 && (
           <span className="text-xs text-muted-foreground">({comments.length})</span>
+        )}
+        {isSupervisor && comments.length > 0 && (
+          <button
+            onClick={clearAll}
+            className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+            title="Eliminar todos los comentarios"
+          >
+            <Eraser className="h-3.5 w-3.5" /> Limpiar
+          </button>
         )}
       </div>
 
@@ -114,43 +133,54 @@ export function CommentPanel({ itemId }: { itemId: string }) {
             const mine = c.user.id === user?.id
             const isGabriela = c.user.role === "SUPERVISOR"
             return (
-              <div key={c.id} className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`text-sm font-medium ${isGabriela ? "text-brand-accent" : "text-foreground"}`}
-                  >
-                    {c.user.name}
+              <div
+                key={c.id}
+                className={cn("flex flex-col", mine ? "items-end" : "items-start")}
+              >
+                {/* Small meta (name / role / time) over the bubble */}
+                <div className={cn("flex items-center gap-1.5 px-1 text-[0.7rem] text-muted-foreground mb-0.5", mine && "flex-row-reverse")}>
+                  <span className={cn("font-medium", isGabriela ? "text-brand-accent" : "")}>
+                    {mine ? "Vos" : c.user.name}
                   </span>
-                  <span
-                    className={`text-[0.65rem] px-1.5 py-0.5 rounded-full ${
-                      isGabriela
-                        ? "bg-brand-accent/10 text-brand-accent"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {isGabriela ? "Supervisora" : "Coach"}
-                  </span>
-                  <span className="text-[0.7rem] text-muted-foreground ml-auto">
-                    {formatShortDate(c.createdAt)}
-                  </span>
-                  {mine && (
+                  {!mine && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-muted/70">
+                      {isGabriela ? "Supervisora" : "Coach"}
+                    </span>
+                  )}
+                  <span>{formatShortDate(c.createdAt)}</span>
+                  {(mine || isSupervisor) && (
                     <button
                       onClick={() => remove(c.id)}
                       className="text-muted-foreground hover:text-destructive"
-                      aria-label="Eliminar comentario"
+                      aria-label={mine ? "Eliminar comentario" : "Eliminar comentario (moderación)"}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   )}
                 </div>
-                {c.text && <p className="text-sm text-foreground whitespace-pre-wrap">{c.text}</p>}
-                {c.imageUrl && (
-                  <img
-                    src={c.imageUrl}
-                    alt="Imagen del comentario"
-                    className="rounded-lg border border-border w-full h-auto object-cover bg-muted"
-                  />
-                )}
+
+                {/* Bubble: own messages go right, the rest left (WhatsApp-style) */}
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-3 py-2 space-y-1.5",
+                    mine
+                      ? "bg-brand-accent text-white rounded-br-md"
+                      : "bg-white border border-border rounded-bl-md"
+                  )}
+                >
+                  {c.text && (
+                    <p className={cn("text-sm whitespace-pre-wrap", mine ? "text-white" : "text-foreground")}>
+                      {c.text}
+                    </p>
+                  )}
+                  {c.imageUrl && (
+                    <img
+                      src={c.imageUrl}
+                      alt="Imagen del comentario"
+                      className="rounded-lg w-full h-auto object-cover bg-muted/50"
+                    />
+                  )}
+                </div>
               </div>
             )
           })

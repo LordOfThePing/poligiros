@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { CoverCropDialog } from "@/components/CoverCropDialog"
 import {
   ITEM_KINDS, KIND_BADGE, KIND_LABEL, stripMarkdown, formatBytes,
   type Module, type ModuleItem, type ModuleItemKind, type ModuleLink, type LinkedTest,
@@ -102,6 +103,8 @@ function ModuleContentEditor({
   const [linkUrl, setLinkUrl] = useState("")
   const [uploadingFor, setUploadingFor] = useState<string | null>(null)
   const [tests, setTests] = useState<LinkedTest[]>([])
+  // Pending cover image waiting to be cropped before upload.
+  const [cropFile, setCropFile] = useState<File | null>(null)
 
   useEffect(() => {
     // PLAN_VITAL is a permanent placeholder with no form — never offer it.
@@ -513,7 +516,7 @@ function ModuleContentEditor({
                           className="sr-only"
                           onChange={(e) => {
                             const f = e.target.files?.[0]
-                            if (f) handleItemCoverUpload(f)
+                            if (f) setCropFile(f)
                             e.target.value = ""
                           }}
                         />
@@ -538,7 +541,7 @@ function ModuleContentEditor({
                         className="sr-only"
                         onChange={(e) => {
                           const f = e.target.files?.[0]
-                          if (f) handleItemCoverUpload(f)
+                          if (f) setCropFile(f)
                           e.target.value = ""
                         }}
                       />
@@ -556,6 +559,16 @@ function ModuleContentEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CoverCropDialog
+        open={!!cropFile}
+        imageFile={cropFile}
+        onCancel={() => setCropFile(null)}
+        onConfirm={(cropped) => {
+          setCropFile(null)
+          handleItemCoverUpload(cropped)
+        }}
+      />
     </div>
   )
 }

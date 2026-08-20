@@ -77,7 +77,12 @@ export function CollapsibleSidebar({
       </div>
 
       {footer && (
-        <div className={cn("border-t border-border shrink-0", expanded ? "p-2.5" : "px-2 py-3")}>
+        <div
+          className={cn(
+            "border-t border-border shrink-0 mt-auto",
+            expanded ? "p-2.5" : "px-2 py-3"
+          )}
+        >
           {footer({ expanded })}
         </div>
       )}

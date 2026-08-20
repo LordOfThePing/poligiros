@@ -1066,6 +1066,19 @@ supervisor.delete("/module-item-comments/:itemId/:commentId", async (c) => {
   return c.json({ ok: true })
 })
 
+/** DELETE /supervisor/module-item-comments/:itemId — clear the whole discussion. */
+supervisor.delete("/module-item-comments/:itemId", async (c) => {
+  const itemId = c.req.param("itemId")
+  const withImages = await prisma.moduleItemComment.findMany({
+    where: { itemId, imageKey: { not: null } },
+    select: { imageKey: true },
+  })
+
+  await prisma.moduleItemComment.deleteMany({ where: { itemId } })
+  await Promise.all(withImages.map((c) => deleteFromR2(c.imageKey!).catch(() => {})))
+  return c.json({ ok: true })
+})
+
 /* ─────────────────────────────────────────
    Module releases — per-cohort visibility
 ───────────────────────────────────────── */

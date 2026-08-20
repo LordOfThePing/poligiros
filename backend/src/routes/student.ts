@@ -430,9 +430,12 @@ student.get("/notifications", async (c) => {
   const myClient = await prisma.client.findUnique({ where: { userId: user.id } })
 
   const [pendingTests, pendingFeedback] = await Promise.all([
-    // Self-tests assigned but not yet completed.
+    // Self-tests assigned but not yet completed, excluding any whose access
+    // Gaby revoked (they should no longer show as "pending" in the badge).
     myClient
-      ? prisma.testAssignment.count({ where: { clientId: myClient.id, completedAt: null } })
+      ? prisma.testAssignment.count({
+          where: { clientId: myClient.id, completedAt: null, accessRevokedAt: null },
+        })
       : Promise.resolve(0),
     // Supervisions she sent that Gaby has not reviewed yet.
     prisma.supervisionRequest.count({ where: { studentId: user.id, status: "PENDING" } }),
@@ -520,7 +523,7 @@ student.get("/modules", async (c) => {
   const myAssignments = myClient
     ? await prisma.testAssignment.findMany({
         where: { clientId: myClient.id },
-        select: { id: true, testId: true, completedAt: true },
+        select: { id: true, testId: true, completedAt: true, accessRevokedAt: true },
       })
     : []
   const assignmentByTest = new Map(myAssignments.map((a) => [a.testId, a]))
@@ -546,6 +549,8 @@ student.get("/modules", async (c) => {
           // Only meaningful for kind = TEST: where the coach stands on it.
           assignmentId: assignment?.id ?? null,
           submitted: Boolean(assignment?.completedAt),
+          // A still-pending TEST whose access Gaby revoked can't be taken.
+          revoked: Boolean(assignment && !assignment.completedAt && assignment.accessRevokedAt),
           // Only meaningful for kind = ENTREGA.
           submission: submission
             ? {
@@ -854,7 +859,12 @@ student.get("/my-tests", async (c) => {
     include: { test: true, response: true },
     orderBy: { assignedAt: "asc" },
   })
-  return c.json(assignments)
+  return c.json(
+    assignments.map((a) => ({
+      ...a,
+      revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
+    }))
+  )
 })
 
 /** GET /student/my-tests/:id */
