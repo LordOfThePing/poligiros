@@ -43,12 +43,6 @@ export function CollapsibleSidebar({
   // Expanded when fixed, or when auto is hovered or an inner menu is open.
   const expanded = fixed || hovering || keepOpen
 
-  // Publish the current width so the layout's main content can pad accordingly
-  // (the sidebar is fixed/overlay, so it never shifts the page).
-  useEffect(() => {
-    document.documentElement.style.setProperty("--sidebar-w", expanded ? "16rem" : "4rem")
-  }, [expanded])
-
   return (
     <aside
       onMouseEnter={() => (fixed ? undefined : setHovering(true))}

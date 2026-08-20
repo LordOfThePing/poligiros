@@ -39,7 +39,9 @@ function SupervisorLayout() {
   return (
     <div className="h-screen overflow-hidden bg-brand-bg">
       <SupervisorSidebar />
-      <main className="h-full overflow-y-auto pl-[var(--sidebar-w)]">
+      {/* pl-16 reserves the collapsed rail; the expanded sidebar overlays over
+          the content instead of shifting it. */}
+      <main className="h-full overflow-y-auto pl-16">
         <div className="p-6 max-w-7xl mx-auto">
           <Outlet />
         </div>
@@ -52,8 +54,8 @@ function StudentLayout() {
   return (
     <div className="h-screen overflow-hidden bg-brand-bg">
       <StudentSidebar />
-      <main className="h-full overflow-y-auto pl-[var(--sidebar-w)]">
-        <div className="p-6">
+      <main className="h-full overflow-y-auto pl-16">
+        <div className="p-6 max-w-7xl mx-auto">
           <Outlet />
         </div>
       </main>
