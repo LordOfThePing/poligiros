@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import bcrypt from "bcryptjs"
 import { prisma } from "../lib/prisma.js"
-import { ModuleItemKind } from "@prisma/client"
+import { ModuleItemKind, Prisma } from "@prisma/client"
 import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/r2.js"
 import { checkUpload, buildObjectKey, ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES } from "../lib/uploads.js"
 import {
@@ -296,6 +296,82 @@ supervisor.put("/students/:id/memberships", async (c) => {
 
   const access = await getCoachAccess(id)
   return c.json({ cohorts: access.cohorts, cohortIds: access.cohortIds })
+})
+
+/**
+ * DELETE /supervisor/students/:id
+ * Permanently remove a coach and everything they own: their clients, the
+ * coach-as-coachee profile and their self-tests, enrollments, progress,
+ * submissions, comments, supervisions and session records. R2 blobs attached to
+ * the coach's comments are also removed. Best-effort per object.
+ */
+supervisor.delete("/students/:id", async (c) => {
+  const id = c.req.param("id")
+  const student = await prisma.user.findUnique({ where: { id } })
+  if (!student || student.role !== "STUDENT_COACH") {
+    return c.json({ error: "Estudiante no encontrado" }, 404)
+  }
+
+  // Comment images owned by this coach live in R2 and must be removed by hand.
+  const commentImages = await prisma.moduleItemComment.findMany({
+    where: { userId: id, imageKey: { not: null } },
+    select: { imageKey: true },
+  })
+
+  // Everything that hangs off the coach, in dependency order.
+  const clientIds = (
+    await prisma.client.findMany({
+      where: { OR: [{ studentId: id }, { userId: id }] },
+      select: { id: true },
+    })
+  ).map((r) => r.id)
+
+  const assignmentIds =
+    clientIds.length > 0
+      ? (
+          await prisma.testAssignment.findMany({
+            where: { clientId: { in: clientIds } },
+            select: { id: true },
+          })
+        ).map((r) => r.id)
+      : []
+
+  const ops: Prisma.PrismaPromise<unknown>[] = []
+
+  if (assignmentIds.length > 0) {
+    ops.push(
+      prisma.testResetRequest.deleteMany({ where: { assignmentId: { in: assignmentIds } } }),
+      prisma.supervisionRequest.deleteMany({ where: { assignmentId: { in: assignmentIds } } }),
+      prisma.testResponse.deleteMany({ where: { assignmentId: { in: assignmentIds } } }),
+      prisma.testAssignment.deleteMany({ where: { id: { in: assignmentIds } } })
+    )
+  }
+  if (clientIds.length > 0) {
+    ops.push(
+      prisma.sessionRecord.deleteMany({ where: { clientId: { in: clientIds } } }),
+      prisma.client.deleteMany({ where: { id: { in: clientIds } } })
+    )
+  }
+
+  // Coach-referenced rows (also covered by DB cascades where present, deleted
+  // here explicitly for clarity + to free the FKs without cascade).
+  ops.push(
+    prisma.enrollment.deleteMany({ where: { userId: id } }),
+    prisma.moduleProgress.deleteMany({ where: { userId: id } }),
+    prisma.moduleItemProgress.deleteMany({ where: { userId: id } }),
+    prisma.moduleItemSubmission.deleteMany({ where: { userId: id } }),
+    prisma.moduleItemComment.deleteMany({ where: { userId: id } }),
+    prisma.supervisionRequest.deleteMany({ where: { studentId: id } }),
+    prisma.sessionRecord.deleteMany({ where: { studentId: id } }),
+    prisma.testResetRequest.deleteMany({ where: { requestedById: id } })
+  )
+
+  ops.push(prisma.user.delete({ where: { id } }))
+
+  await prisma.$transaction(ops)
+  await Promise.all(commentImages.map((i) => deleteFromR2(i.imageKey!).catch(() => {})))
+
+  return c.json({ ok: true })
 })
 
 /**

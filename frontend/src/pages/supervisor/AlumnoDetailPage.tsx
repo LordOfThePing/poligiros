@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Pencil, KeyRound, Ban, RotateCcw } from "lucide-react"
+import { ArrowLeft, Pencil, KeyRound, Ban, RotateCcw, Trash2, AlertTriangle } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost, apiTry } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -69,6 +69,14 @@ export default function AlumnoDetailPage() {
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([])
   const [memberCohortIds, setMemberCohortIds] = useState<Set<string>>(new Set())
   const [savingCohorts, setSavingCohorts] = useState(false)
+
+  // Multi-step delete confirmation (so it never happens by accident).
+  const [delOpen, setDelOpen] = useState(false)
+  const [delStep, setDelStep] = useState<1 | 2>(1)
+  const [delConfirmText, setDelConfirmText] = useState("")
+  const [delBusy, setDelBusy] = useState(false)
+
+  const navigate = useNavigate()
 
   function loadCoachTests() {
     apiJson<any[]>(`/supervisor/coaches/${id}/tests`)
@@ -144,6 +152,19 @@ export default function AlumnoDetailPage() {
     }
     toast({ title: "CIC actualizados" })
     loadStudent()
+  }
+
+  async function handleDelete() {
+    setDelBusy(true)
+    const res = await apiTry(`/supervisor/students/${id}`, { method: "DELETE" })
+    setDelBusy(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      toast({ title: j.error || "No se pudo eliminar el alumno", variant: "destructive" })
+      return
+    }
+    toast({ title: "Alumno eliminado" })
+    navigate("/supervisor/alumnos", { replace: true })
   }
 
   useEffect(() => {
@@ -258,6 +279,14 @@ export default function AlumnoDetailPage() {
         )}
         <Button variant="outline" size="sm" onClick={openEdit}>
           <Pencil className="h-4 w-4 mr-1" /> Editar datos
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          onClick={() => { setDelOpen(true); setDelStep(1); setDelConfirmText("") }}
+        >
+          <Trash2 className="h-4 w-4 mr-1" /> Eliminar
         </Button>
         {student.pending && (
           <Button variant="outline" size="sm" onClick={handleResendInvite}>
@@ -579,6 +608,61 @@ export default function AlumnoDetailPage() {
                 <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>Cancelar</Button>
                 <Button onClick={handleResetPassword} disabled={resetting} className="bg-brand-accent hover:bg-brand-accent-dark">
                   {resetting ? "Restableciendo..." : "Restablecer contraseña"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete coach — two-step confirmation to avoid accidental deletes. */}
+      <Dialog open={delOpen} onOpenChange={(open) => { if (!open) { setDelOpen(false); setDelConfirmText("") } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              {delStep === 1 ? "Eliminar alumno" : "Confirmación final"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {delStep === 1 ? (
+            <div className="space-y-4">
+              <DialogDescription>
+                ¿Borrar a <strong>{student.name}</strong> definitivamente? Esta acción elimina
+                todos sus datos: clientes, tests, entregas, comentarios, supervisiones, registros y
+                su acceso a los CIC. <span className="text-destructive font-medium">No se puede deshacer.</span>
+              </DialogDescription>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDelOpen(false)}>Cancelar</Button>
+                <Button variant="destructive" onClick={() => setDelStep(2)}>Continuar</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <DialogDescription>
+                Para confirmar, escribí el <strong>nombre del alumno</strong> exactamente como
+                aparece (<code className="text-foreground">{student.name}</code>).
+              </DialogDescription>
+              <Input
+                value={delConfirmText}
+                onChange={(e) => setDelConfirmText(e.target.value)}
+                placeholder={student.name}
+                autoFocus
+              />
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setDelStep(1)}
+                  disabled={delBusy}
+                >
+                  Volver
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={delBusy || delConfirmText.trim() !== student.name}
+                  onClick={handleDelete}
+                >
+                  {delBusy ? "Eliminando..." : "Eliminar definitivamente"}
                 </Button>
               </DialogFooter>
             </div>
