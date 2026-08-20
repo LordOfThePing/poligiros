@@ -3,7 +3,7 @@ import { ImagePlus, Loader2, Send, Trash2, X, MessageSquare } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/lib/auth"
-import { apiJson, apiTry } from "@/lib/api"
+import { apiJson, apiTry, apiUpload } from "@/lib/api"
 import { formatShortDate } from "@/lib/date"
 import type { ModuleItemComment } from "@/lib/modules"
 
@@ -52,10 +52,13 @@ export function CommentPanel({ itemId }: { itemId: string }) {
 
     let res: Response
     if (file) {
+      // apiUpload never sets Content-Type, so the browser adds the multipart
+      // boundary and the server can parse the FormData + file. apiTry would
+      // force application/json and the image would be lost.
       const form = new FormData()
       form.append("text", text.trim())
       form.append("image", file)
-      res = await apiTry(basePath, { method: "POST", body: form })
+      res = await apiUpload(basePath, form)
     } else {
       res = await apiTry(basePath, {
         method: "POST",

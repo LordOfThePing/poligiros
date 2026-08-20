@@ -131,12 +131,6 @@ model Module {
   published   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  /// Optional cover image uploaded through the app (R2). Shown above the class
-  /// when an item is open. `coverImageKey` is the R2 object key (needed to
-  /// delete the blob); `coverImageUrl` is the public URL to display.
-  coverImageKey String?
-  coverImageUrl String?
-
   items    ModuleItem[]
   progress ModuleProgress[]
   releases ModuleRelease[]
@@ -174,6 +168,12 @@ model ModuleItem {
   testId    String?
   test      Test?    @relation(fields: [testId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+
+  /// Optional cover image uploaded through the app (R2), shown above this item
+  /// when it is opened. `coverImageKey` is the R2 object key (for deletion);
+  /// `coverImageUrl` is the public URL to display.
+  coverImageKey String?
+  coverImageUrl String?
 
   links       ModuleLink[]
   progress    ModuleItemProgress[]

@@ -598,64 +598,29 @@ supervisor.put("/modules/:id", async (c) => {
 })
 
 /**
- * POST /supervisor/modules/:id/cover — upload the module's cover image.
- * Multipart, field `file` (image only). Replaces any previous cover and, if the
- * old one was uploaded through the app, deletes its blob from R2.
- */
-supervisor.post("/modules/:id/cover", async (c) => {
-  const id = c.req.param("id")
-  const module = await prisma.module.findUnique({ where: { id } })
-  if (!module) return c.json({ error: "Módulo no encontrado" }, 404)
-
-  if (!isR2Configured()) {
-    return c.json({ error: "La subida de imágenes no está configurada (falta CLOUDFLARE_R2_*)." }, 503)
-  }
-
-  const form = await c.req.formData()
-  const file = form.get("file")
-  if (!(file instanceof File)) return c.json({ error: "No se recibió ningún archivo" }, 400)
-  if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
-    return c.json({ error: "La portada debe ser una imagen (png, jpg, webp, gif)." }, 400)
-  }
-  if (file.size > COMMENT_IMAGE_MAX_BYTES) {
-    return c.json({ error: "La portada supera el máximo permitido." }, 400)
-  }
-
-  const key = buildCommentImageKey(id, file.name)
-  const buffer = Buffer.from(await file.arrayBuffer())
-  let url: string
-  try {
-    url = await uploadToR2(key, buffer, file.type)
-  } catch {
-    return c.json({ error: "No se pudo subir la imagen. Revisá la configuración." }, 502)
-  }
-
-  const oldKey = module.coverImageKey
-  const updated = await prisma.module.update({
-    where: { id },
-    data: { coverImageKey: key, coverImageUrl: url },
-  })
-  if (oldKey) await deleteFromR2(oldKey).catch(() => {})
-
-  return c.json({ id: updated.id, coverImageUrl: updated.coverImageUrl })
-})
-
-/**
  * DELETE /supervisor/modules/:id — cascades to its cards, links, files and
- * releases. Also removes the module's own cover from R2.
+ * releases (each item's cover is cleaned up in the item delete path).
  */
 supervisor.delete("/modules/:id", async (c) => {
   const id = c.req.param("id")
 
-  const module = await prisma.module.findUnique({ where: { id }, select: { coverImageKey: true } })
+  // Item covers + uploaded links both live in R2 and the DB cascade would drop
+  // the rows leaving the objects orphaned, so collect their keys first.
+  const itemsWithCovers = await prisma.moduleItem.findMany({
+    where: { moduleId: id, coverImageKey: { not: null } },
+    select: { coverImageKey: true },
+  })
   const stored = await prisma.moduleLink.findMany({
     where: { item: { moduleId: id }, storageKey: { not: null } },
     select: { storageKey: true },
   })
 
   await prisma.module.delete({ where: { id } })
-  await Promise.all(stored.map((l) => deleteFromR2(l.storageKey!).catch(() => {})))
-  if (module?.coverImageKey) await deleteFromR2(module.coverImageKey).catch(() => {})
+  const keys = [
+    ...itemsWithCovers.map((i) => i.coverImageKey!),
+    ...stored.map((l) => l.storageKey!),
+  ]
+  await Promise.all(keys.map((k) => deleteFromR2(k).catch(() => {})))
 
   return c.json({ ok: true })
 })
@@ -761,19 +726,90 @@ supervisor.put("/module-items/:itemId", async (c) => {
   return c.json(item)
 })
 
-/** DELETE /supervisor/module-items/:itemId — cascades to its links (and their files). */
+/** DELETE /supervisor/module-items/:itemId — cascades to its links (and their files) + cover. */
 supervisor.delete("/module-items/:itemId", async (c) => {
   const itemId = c.req.param("itemId")
 
   // The DB cascade would drop the rows and leave the R2 objects orphaned.
+  const item = await prisma.moduleItem.findUnique({
+    where: { id: itemId },
+    select: { coverImageKey: true },
+  })
   const stored = await prisma.moduleLink.findMany({
     where: { itemId, storageKey: { not: null } },
     select: { storageKey: true },
   })
 
   await prisma.moduleItem.delete({ where: { id: itemId } })
-  await Promise.all(stored.map((l) => deleteFromR2(l.storageKey!).catch(() => {})))
+  const keys = [
+    ...(item?.coverImageKey ? [item.coverImageKey] : []),
+    ...stored.map((l) => l.storageKey!),
+  ]
+  await Promise.all(keys.map((k) => deleteFromR2(k).catch(() => {})))
 
+  return c.json({ ok: true })
+})
+
+/**
+ * POST /supervisor/module-items/:itemId/cover — upload the item's cover image.
+ * Multipart, field `file` (image only). Replaces/removes any previous cover.
+ */
+supervisor.post("/module-items/:itemId/cover", async (c) => {
+  const itemId = c.req.param("itemId")
+  const item = await prisma.moduleItem.findUnique({ where: { id: itemId } })
+  if (!item) return c.json({ error: "Ítem no encontrado" }, 404)
+
+  if (!isR2Configured()) {
+    return c.json({ error: "La subida de imágenes no está configurada (falta CLOUDFLARE_R2_*)." }, 503)
+  }
+
+  const form = await c.req.formData()
+  const file = form.get("file")
+  if (!(file instanceof File)) return c.json({ error: "No se recibió ningún archivo" }, 400)
+  if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+    return c.json({ error: "La portada debe ser una imagen (png, jpg, webp, gif)." }, 400)
+  }
+  if (file.size > COMMENT_IMAGE_MAX_BYTES) {
+    return c.json({ error: "La portada supera el máximo permitido." }, 400)
+  }
+
+  const key = buildCommentImageKey(itemId, file.name)
+  const buffer = Buffer.from(await file.arrayBuffer())
+  let url: string
+  try {
+    url = await uploadToR2(key, buffer, file.type)
+  } catch {
+    return c.json({ error: "No se pudo subir la imagen. Revisá la configuración." }, 502)
+  }
+
+  const oldKey = item.coverImageKey
+  const updated = await prisma.moduleItem.update({
+    where: { id: itemId },
+    data: { coverImageKey: key, coverImageUrl: url },
+  })
+  if (oldKey) await deleteFromR2(oldKey).catch(() => {})
+
+  return c.json({ id: updated.id, coverImageUrl: updated.coverImageUrl })
+})
+
+/**
+ * DELETE /supervisor/module-items/:itemId/cover — remove the item's cover and
+ * delete its blob from R2.
+ */
+supervisor.delete("/module-items/:itemId/cover", async (c) => {
+  const itemId = c.req.param("itemId")
+  const item = await prisma.moduleItem.findUnique({
+    where: { id: itemId },
+    select: { coverImageKey: true },
+  })
+  if (!item) return c.json({ error: "Ítem no encontrado" }, 404)
+  if (!item.coverImageKey) return c.json({ ok: true })
+
+  await prisma.moduleItem.update({
+    where: { id: itemId },
+    data: { coverImageKey: null, coverImageUrl: null },
+  })
+  await deleteFromR2(item.coverImageKey).catch(() => {})
   return c.json({ ok: true })
 })
 

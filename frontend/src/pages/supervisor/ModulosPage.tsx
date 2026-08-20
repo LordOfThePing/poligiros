@@ -55,6 +55,7 @@ type ItemDraft = {
   description: string
   kind: ModuleItemKind
   testId: string
+  coverImageUrl?: string | null
 }
 
 /**
@@ -169,6 +170,35 @@ function ModuleContentEditor({
     toast({ title: isNew ? "Ítem agregado" : "Ítem actualizado" })
   }
 
+  /** Upload a cover for the item being edited (already saved), updating state. */
+  async function handleItemCoverUpload(file: File) {
+    if (!draft?.id) return
+    const form = new FormData()
+    form.append("file", file)
+    const res = await apiUpload(`/supervisor/module-items/${draft.id}/cover`, form)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "Error" }))
+      toast({ title: j.error || "No se pudo subir la portada", variant: "destructive" })
+      return
+    }
+    const { coverImageUrl } = await res.json()
+    setDraft((p) => (p ? { ...p, coverImageUrl } : p))
+    // The student page reads the cover off the item, so keep state in sync.
+    const fresh = await apiJson<ModuleItem>(`/supervisor/module-items/${draft.id}`)
+    replaceItem(fresh)
+    toast({ title: "Portada actualizada" })
+  }
+
+  /** Delete the cover of the item being edited (already saved), updating state. */
+  async function handleItemCoverDelete() {
+    if (!draft?.id) return
+    await apiRaw(`/supervisor/module-items/${draft.id}/cover`, { method: "DELETE" })
+    setDraft((p) => (p ? { ...p, coverImageUrl: null } : p))
+    const fresh = await apiJson<ModuleItem>(`/supervisor/module-items/${draft.id}`)
+    replaceItem(fresh)
+    toast({ title: "Portada eliminada" })
+  }
+
   async function deleteItem(itemId: string) {
     if (!confirm("¿Eliminar este ítem y sus links?")) return
     await apiRaw(`/supervisor/module-items/${itemId}`, { method: "DELETE" })
@@ -281,6 +311,7 @@ function ModuleContentEditor({
                     description: item.description ?? "",
                     kind: item.kind,
                     testId: item.testId ?? "",
+                    coverImageUrl: item.coverImageUrl,
                   })
                 }
               >
@@ -396,7 +427,7 @@ function ModuleContentEditor({
       <Button
         size="sm"
         variant="outline"
-        onClick={() => setDraft({ title: "", description: "", kind: "RECURSO", testId: "" })}
+        onClick={() => setDraft({ title: "", description: "", kind: "RECURSO", testId: "", coverImageUrl: null })}
       >
         <Plus className="h-3.5 w-3.5 mr-1" /> Agregar ítem
       </Button>
@@ -461,6 +492,61 @@ function ModuleContentEditor({
                 placeholder={"## Tareas para la clase 1\n\n**a) Competencias del coaching**\n\nCONSIGNA: Leer las competencias..."}
               />
             </div>
+
+            {draft?.id && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <Label>Portada del ítem</Label>
+                {draft.coverImageUrl ? (
+                  <>
+                    <img
+                      src={draft.coverImageUrl}
+                      alt="Portada"
+                      className="rounded-lg border border-border h-28 w-full object-cover bg-muted"
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="inline-flex items-center gap-1 text-sm text-brand-accent cursor-pointer hover:underline">
+                        <Upload className="h-3.5 w-3.5" />
+                        Cambiar portada
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          className="sr-only"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) handleItemCoverUpload(f)
+                            e.target.value = ""
+                          }}
+                        />
+                      </label>
+                      <button
+                        onClick={handleItemCoverDelete}
+                        className="inline-flex items-center gap-1 text-sm text-destructive hover:underline"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Eliminar portada
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">Sin portada aún. Guardá el ítem y luego subí una imagen.</p>
+                    <label className="inline-flex items-center gap-1 text-sm text-brand-accent cursor-pointer hover:underline">
+                      <Upload className="h-3.5 w-3.5" />
+                      Subir portada
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) handleItemCoverUpload(f)
+                          e.target.value = ""
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDraft(null)}>Cancelar</Button>
@@ -568,7 +654,6 @@ export default function ModulosPage() {
   const [loadingModules, setLoadingModules] = useState(true)
   const [editingModule, setEditingModule] = useState<Partial<Module> | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [uploadingCover, setUploadingCover] = useState(false)
   const { toast } = useToast()
 
   const sensors = useSensors(
@@ -632,26 +717,6 @@ export default function ModulosPage() {
     setEditingModule(null)
     setIsCreating(false)
     toast({ title: isNew ? "Módulo creado" : "Módulo actualizado" })
-  }
-
-  async function handleCoverUpload(file: File) {
-    if (!editingModule?.id) return
-    setUploadingCover(true)
-    const form = new FormData()
-    form.append("file", file)
-    const res = await apiUpload(`/supervisor/modules/${editingModule.id}/cover`, form)
-    setUploadingCover(false)
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      toast({ title: j.error || "No se pudo subir la portada", variant: "destructive" })
-      return
-    }
-    const { coverImageUrl } = await res.json()
-    setEditingModule((prev) => ({ ...prev, coverImageUrl }))
-    setModules((prev) =>
-      prev.map((m) => (m.id === editingModule.id ? { ...m, coverImageUrl } : m))
-    )
-    toast({ title: "Portada actualizada" })
   }
 
   async function handleDelete(id: string) {
@@ -748,42 +813,6 @@ export default function ModulosPage() {
                 placeholder="https://www.youtube.com/watch?v=..."
               />
             </div>
-            {!isCreating && (
-              <div className="space-y-2">
-                <Label>Portada del módulo</Label>
-                {editingModule?.coverImageUrl ? (
-                  <img
-                    src={editingModule.coverImageUrl}
-                    alt="Portada"
-                    className="rounded-lg border border-border h-28 w-full object-cover bg-muted"
-                  />
-                ) : (
-                  <p className="text-xs text-muted-foreground">Sin portada. Subí una imagen.</p>
-                )}
-                <label className="block">
-                  <span className="inline-flex items-center gap-1 text-sm text-brand-accent cursor-pointer hover:underline">
-                    <Upload className="h-3.5 w-3.5" />
-                    {editingModule?.coverImageUrl ? "Cambiar portada" : "Subir portada"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    className="sr-only"
-                    disabled={uploadingCover}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) handleCoverUpload(f)
-                      e.target.value = ""
-                    }}
-                  />
-                </label>
-                {uploadingCover && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Subiendo portada...
-                  </p>
-                )}
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingModule(null)}>Cancelar</Button>

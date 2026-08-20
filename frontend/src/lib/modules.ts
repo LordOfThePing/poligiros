@@ -41,6 +41,8 @@ export type ModuleItem = {
   /** Only for kind = TEST. */
   testId: string | null
   test: LinkedTest | null
+  /** Optional cover image (R2 public URL) shown above this item when opened. */
+  coverImageUrl: string | null
 }
 
 export type Module = {
@@ -51,8 +53,6 @@ export type Module = {
   orderIndex: number
   published: boolean
   items: ModuleItem[]
-  /** Optional cover image (R2 public URL) shown above the class when opened. */
-  coverImageUrl: string | null
 }
 
 /** A blog-style comment on a card, with an optional photo shown flat. */

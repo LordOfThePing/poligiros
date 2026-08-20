@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProfileBanner } from "@/components/ProfileBanner"
+import { CollapsibleSidebar } from "@/components/CollapsibleSidebar"
 import { useNotifications, badgeForRole } from "@/lib/useNotifications"
 
 const links = [
@@ -35,49 +36,58 @@ export function SupervisorSidebar() {
   const { supervisor } = useNotifications()
 
   return (
-    <aside className="w-64 shrink-0 bg-white border-r border-border flex flex-col h-full">
-      <div className="p-6 border-b border-border">
-        <h1 className="font-serif text-2xl text-brand-accent">Poligiros</h1>
-        <p className="text-xs text-muted-foreground mt-1">Supervisora</p>
-      </div>
+    <CollapsibleSidebar roleLabel="Supervisora">
+      {({ expanded }) => (
+        <>
+          <nav className="space-y-1">
+            {links.map(({ href, label, icon: Icon }) => {
+              const count = badgeForRole(user?.role, { href, label }, supervisor, null)
+              const active = location.pathname.startsWith(href)
+              return (
+                <Link
+                  key={href}
+                  to={href}
+                  className={cn(
+                    "sidebar-link relative",
+                    expanded ? "" : "justify-center px-0",
+                    active ? "sidebar-link-active" : "sidebar-link-inactive"
+                  )}
+                  title={expanded ? undefined : label}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {expanded && <span className="flex-1 truncate">{label}</span>}
+                  {expanded && typeof count === "number" && count > 0 && (
+                    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.7rem] font-semibold leading-none text-white">
+                      {count}
+                    </span>
+                  )}
+                  {!expanded && typeof count === "number" && count > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.6rem] font-semibold leading-none text-white">
+                      {count}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </nav>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {links.map(({ href, label, icon: Icon }) => {
-          const count = badgeForRole(user?.role, { href, label }, supervisor, null)
-          return (
-            <Link
-              key={href}
-              to={href}
+          <div className={cn("border-t border-border space-y-2", expanded ? "p-4" : "px-2 pt-3")}>
+            <ProfileBanner collapsed={!expanded} />
+            <Button
+              variant="ghost"
               className={cn(
-                "sidebar-link",
-                location.pathname.startsWith(href)
-                  ? "sidebar-link-active"
-                  : "sidebar-link-inactive"
+                "text-muted-foreground hover:text-foreground gap-3",
+                expanded ? "w-full justify-start" : "w-full justify-center px-0"
               )}
+              onClick={logout}
+              title={expanded ? undefined : "Cerrar sesión"}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="flex-1">{label}</span>
-              {typeof count === "number" && count > 0 && (
-                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.7rem] font-semibold leading-none text-white">
-                  {count}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-border space-y-2">
-        <ProfileBanner />
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:text-foreground gap-3"
-          onClick={logout}
-        >
-          <LogOut className="h-4 w-4" />
-          Cerrar sesión
-        </Button>
-      </div>
-    </aside>
+              <LogOut className="h-4 w-4" />
+              {expanded && "Cerrar sesión"}
+            </Button>
+          </div>
+        </>
+      )}
+    </CollapsibleSidebar>
   )
 }

@@ -21,6 +21,19 @@ import type { CoachAccess } from "@/lib/access"
 /** Which item is open, kept as a pair so the header can name its module. */
 type Selection = { moduleId: string; itemId: string }
 
+/** True at the `lg` breakpoint (1024px) and up. */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)")
+    const update = () => setIsDesktop(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+  return isDesktop
+}
+
 export default function ProgramaPage() {
   const [modules, setModules] = useState<StudentModule[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,9 +41,11 @@ export default function ProgramaPage() {
   const [openModules, setOpenModules] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Selection | null>(null)
   const [saving, setSaving] = useState(false)
-  // Left index panel: pinned open (default) or auto-hidden once an item opens
-  // on large screens, so the item + discussion get more room.
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // Left modules index: pinned open (fixed) or a thin rail that only expands on
+  // hover ("auto"), so the item + discussion get more room.
+  const [indexPinned, setIndexPinned] = useState(true)
+  const [indexHover, setIndexHover] = useState(false)
+  const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.
   const [entrega, setEntrega] = useState("")
@@ -55,6 +70,10 @@ export default function ProgramaPage() {
   const doneCount = allItems.filter((i) => i.completed).length
   const totalCount = allItems.length
   const pct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0
+
+  // Only collapses to a rail at the lg breakpoint; on mobile the module index
+  // always shows full so items stay tappable.
+  const indexExpanded = !isDesktop || indexPinned || indexHover
 
   const current: { module: StudentModule; item: StudentModuleItem } | null = useMemo(() => {
     if (!selected) return null
@@ -205,94 +224,137 @@ export default function ProgramaPage() {
           la cursada.
         </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr] xl:grid-cols-[320px_minmax(0,1fr)_380px]">
-          {/* Index. Pinned open (desktop) or auto-hidden once an item opens, so
-              the item + discussion get the width. */}
-          <div className={cn("space-y-3", (current && !sidebarOpen) && "hidden lg:block")}>
-            <div className="flex items-center justify-between bg-white rounded-lg border border-border px-4 py-2.5">
-              <span className="text-sm font-medium text-foreground">Contenido</span>
-              <button
-                onClick={() => setSidebarOpen((v) => !v)}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                title={sidebarOpen ? "Plegar el panel al elegir un ítem" : "Mantener el panel siempre abierto"}
-              >
-                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-                {sidebarOpen ? "Auto-ocultar" : "Fijo"}
-              </button>
-            </div>
-            {modules.map((mod, idx) => {
-              const open = openModules.has(mod.id)
-              const done = mod.items.filter((i) => i.completed).length
-              return (
-                <div key={mod.id} className="bg-white rounded-lg border border-border">
+        <div className="grid gap-6 lg:grid-cols-[auto_1fr] xl:grid-cols-[auto_minmax(0,1fr)_380px]">
+          {/* Modules index: a thin rail by default that expands on hover, or
+              stays pinned open. The pin button fixes/auto-hides it. */}
+          <div
+            onMouseEnter={() => setIndexHover(true)}
+            onMouseLeave={() => setIndexHover(false)}
+            className={cn(
+              "transition-[width] duration-200 ease-in-out overflow-hidden w-full",
+              indexExpanded ? "lg:w-[320px]" : "lg:w-14"
+            )}
+          >
+            <div
+              className={cn(
+                "bg-white rounded-lg border border-border mb-3 flex items-center",
+                indexExpanded ? "justify-between px-4 py-2.5" : "justify-center px-1 py-2"
+              )}
+            >
+              {indexExpanded ? (
+                <>
+                  <span className="text-sm font-medium text-foreground">Contenido</span>
                   <button
-                    onClick={() => toggleModule(mod.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left"
+                    onClick={() => setIndexPinned((v) => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    title={indexPinned ? "Auto-ocultar los módulos" : "Mantener los módulos fijos"}
                   >
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
-                      mod.completed
-                        ? "bg-brand-accent text-white"
-                        : "bg-brand-accent/10 text-brand-accent"
-                    )}>
-                      {mod.completed ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground">{mod.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {mod.items.length === 0
-                          ? "Sin contenido"
-                          : `${done} de ${mod.items.length} completados`}
-                      </p>
-                    </div>
-                    {open ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    )}
+                    {indexPinned ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+                    {indexPinned ? "Auto" : "Fijo"}
                   </button>
+                </>
+              ) : (
+                <button onClick={() => setIndexPinned(true)} className="text-muted-foreground hover:text-foreground">
+                  <PanelLeftOpen className="h-4 w-4" />
+                </button>
+              )}
+            </div>
 
-                  {open && mod.items.length > 0 && (
-                    <div className="border-t border-border p-2 space-y-1">
-                      {mod.items.map((item) => {
-                        const active = selected?.itemId === item.id
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => setSelected({ moduleId: mod.id, itemId: item.id })}
-                            className={cn(
-                              "w-full flex items-start gap-2 rounded-md px-2 py-2 text-left transition-colors",
-                              active ? "bg-brand-accent/10" : "hover:bg-muted"
-                            )}
-                          >
-                            {item.completed ? (
-                              <CheckCircle2 className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
-                            ) : (
-                              <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                            )}
-                            <span className="flex-1 min-w-0">
-                              <span
+            {indexExpanded ? (
+              <div className="space-y-3">
+                {modules.map((mod, idx) => {
+                  const open = openModules.has(mod.id)
+                  const done = mod.items.filter((i) => i.completed).length
+                  return (
+                    <div key={mod.id} className="bg-white rounded-lg border border-border">
+                      <button
+                        onClick={() => toggleModule(mod.id)}
+                        className="w-full flex items-center gap-3 p-4 text-left"
+                      >
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
+                          mod.completed
+                            ? "bg-brand-accent text-white"
+                            : "bg-brand-accent/10 text-brand-accent"
+                        )}>
+                          {mod.completed ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-foreground">{mod.title}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {mod.items.length === 0
+                              ? "Sin contenido"
+                              : `${done} de ${mod.items.length} completados`}
+                          </p>
+                        </div>
+                        {open ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
+
+                      {open && mod.items.length > 0 && (
+                        <div className="border-t border-border p-2 space-y-1">
+                          {mod.items.map((item) => {
+                            const active = selected?.itemId === item.id
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => setSelected({ moduleId: mod.id, itemId: item.id })}
                                 className={cn(
-                                  "block text-sm",
-                                  item.completed ? "text-muted-foreground" : "text-foreground"
+                                  "w-full flex items-start gap-2 rounded-md px-2 py-2 text-left transition-colors",
+                                  active ? "bg-brand-accent/10" : "hover:bg-muted"
                                 )}
                               >
-                                {item.title}
-                              </span>
-                              <span
-                                className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[item.kind]}`}
-                              >
-                                {KIND_LABEL[item.kind]}
-                              </span>
-                            </span>
-                          </button>
-                        )
-                      })}
+                                {item.completed ? (
+                                  <CheckCircle2 className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
+                                ) : (
+                                  <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                )}
+                                <span className="flex-1 min-w-0">
+                                  <span
+                                    className={cn(
+                                      "block text-sm",
+                                      item.completed ? "text-muted-foreground" : "text-foreground"
+                                    )}
+                                  >
+                                    {item.title}
+                                  </span>
+                                  <span
+                                    className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[item.kind]}`}
+                                  >
+                                    {KIND_LABEL[item.kind]}
+                                  </span>
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            ) : (
+              /* Collapsed rail: numbered module chips only. */
+              <div className="space-y-2">
+                {modules.map((mod, idx) => (
+                  <div
+                    key={mod.id}
+                    className="bg-white rounded-lg border border-border h-12 flex items-center justify-center relative"
+                    title={mod.title}
+                  >
+                    <div className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold",
+                      mod.completed ? "bg-brand-accent text-white" : "bg-brand-accent/10 text-brand-accent"
+                    )}>
+                      {mod.completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : idx + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Detail + discussion */}
@@ -300,10 +362,10 @@ export default function ProgramaPage() {
             {current ? (
               <div className="grid gap-6 items-start lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <div className="bg-white rounded-lg border border-border p-5 space-y-4 min-w-0">
-                {current.module.coverImageUrl && (
+                {current.item.coverImageUrl && (
                   <img
-                    src={current.module.coverImageUrl}
-                    alt={`Portada de ${current.module.title}`}
+                    src={current.item.coverImageUrl}
+                    alt={`Portada de ${current.item.title}`}
                     className="rounded-lg border border-border w-full h-40 object-cover bg-muted"
                   />
                 )}
