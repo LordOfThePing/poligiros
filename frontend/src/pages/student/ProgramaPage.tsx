@@ -517,6 +517,7 @@ export default function ProgramaPage() {
                       )}
                     </div>
                   ) : current.item.kind === "TEST" ? (
+                    <>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       {current.item.submitted ? (
                         <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
@@ -537,6 +538,15 @@ export default function ProgramaPage() {
                         {current.item.submitted ? "Ver mi resultado" : "Realizar test"}
                       </Button>
                     </div>
+                    {current.item.supervision?.feedback && (
+                      <div className="mt-4 bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-4 space-y-1.5">
+                        <p className="text-xs text-muted-foreground">Feedback de Gaby</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {current.item.supervision.feedback}
+                        </p>
+                      </div>
+                    )}
+                    </>
                   ) : current.item.completed ? (
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <span className="flex items-center gap-2 text-green-700 text-sm font-medium">

@@ -27,11 +27,7 @@ export function CollapsibleSidebar({
   /** Fixed footer pinned to the bottom (e.g. the profile + logout menu). */
   footer?: (args: { expanded: boolean; keepOpen: (open: boolean) => void }) => ReactNode
 }) {
-  const [fixed, setFixed] = useState<boolean>(() => {
-    // Auto-hide by default (better on small screens); users can pin it open.
-    if (typeof localStorage === "undefined") return false
-    return localStorage.getItem(STORAGE_KEY) === "fixed"
-  })
+  const [fixed, setFixed] = useState<boolean>(false)
   const [hovering, setHovering] = useState(false)
   // An open dropdown/popover must keep the sidebar expanded (no flicker).
   const [keepOpen, setKeepOpen] = useState(false)

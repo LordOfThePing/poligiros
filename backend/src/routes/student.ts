@@ -529,6 +529,18 @@ student.get("/modules", async (c) => {
         select: { id: true, testId: true, completedAt: true, accessRevokedAt: true },
       })
     : []
+
+  // For the coach's OWN tests, the supervision feedback goes to the coach themself.
+  // Surface it on the TEST card so they can read it right there.
+  const assignmentIds = myAssignments.map((a) => a.id)
+  const mySupervisions = assignmentIds.length
+    ? await prisma.supervisionRequest.findMany({
+        where: { assignmentId: { in: assignmentIds }, studentId: user.id },
+        select: { assignmentId: true, supervisorNotes: true, coachFeedback: true, reviewedAt: true },
+      })
+    : []
+  const supervisionByAssignment = new Map(mySupervisions.map((s) => [s.assignmentId, s]))
+
   const assignmentByTest = new Map(myAssignments.map((a) => [a.testId, a]))
 
   const allItemIds = modules.flatMap((m) => m.items.map((i) => i.id))
@@ -546,6 +558,8 @@ student.get("/modules", async (c) => {
       const items = m.items.map((i) => {
         const assignment = i.testId ? assignmentByTest.get(i.testId) : undefined
         const submission = submissionByItem.get(i.id)
+        // The coach's own test supervision feedback, if any (read from the item).
+        const ownSupervision = assignment ? supervisionByAssignment.get(assignment.id) : undefined
         return {
           ...i,
           completed: doneItems.has(i.id),
@@ -554,6 +568,13 @@ student.get("/modules", async (c) => {
           submitted: Boolean(assignment?.completedAt),
           // A still-pending TEST whose access Gaby revoked can't be taken.
           revoked: Boolean(assignment && !assignment.completedAt && assignment.accessRevokedAt),
+          // For a TEST the coach took on themself: the supervisor's feedback.
+          supervision: ownSupervision
+            ? {
+                feedback: ownSupervision.coachFeedback || ownSupervision.supervisorNotes,
+                reviewedAt: ownSupervision.reviewedAt,
+              }
+            : null,
           // Only meaningful for kind = ENTREGA.
           submission: submission
             ? {
@@ -862,11 +883,25 @@ student.get("/my-tests", async (c) => {
     include: { test: true, response: true },
     orderBy: { assignedAt: "asc" },
   })
+  // Feedback from Gaby on the coach's own test, if any.
+  const ids = assignments.map((a) => a.id)
+  const supervisions = ids.length
+    ? await prisma.supervisionRequest.findMany({
+        where: { assignmentId: { in: ids }, studentId: user.id },
+        select: { assignmentId: true, coachFeedback: true, supervisorNotes: true },
+      })
+    : []
+  const supervisionByAssignment = new Map(supervisions.map((s) => [s.assignmentId, s]))
+
   return c.json(
-    assignments.map((a) => ({
-      ...a,
-      revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
-    }))
+    assignments.map((a) => {
+      const sv = supervisionByAssignment.get(a.id)
+      return {
+        ...a,
+        revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
+        feedback: sv ? sv.coachFeedback || sv.supervisorNotes : null,
+      }
+    })
   )
 })
 

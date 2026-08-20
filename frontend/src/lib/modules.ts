@@ -74,11 +74,19 @@ export type OwnSubmission = {
   reviewedAt: string | null
 }
 
+/** kind = TEST only: the supervisor's feedback on a test the coach took on themself. */
+export type OwnSupervision = {
+  feedback: string | null
+  reviewedAt: string | null
+}
+
 export type StudentModuleItem = ModuleItem & {
   completed: boolean
   /** kind = TEST only: the coach own assignment, created on first open. */
   assignmentId: string | null
   submitted: boolean
+  /** kind = TEST only: feedback from Gaby on the coach's own test. */
+  supervision: OwnSupervision | null
   submission: OwnSubmission | null
 }
 
