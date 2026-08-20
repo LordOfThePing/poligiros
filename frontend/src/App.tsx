@@ -52,7 +52,7 @@ function StudentLayout() {
     <div className="flex h-screen overflow-hidden bg-brand-bg">
       <StudentSidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="p-6 max-w-5xl mx-auto">
+        <div className="p-6">
           <Outlet />
         </div>
       </main>

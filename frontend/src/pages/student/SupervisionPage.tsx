@@ -59,7 +59,7 @@ export default function StudentSupervisionPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Supervisión</h1>
         <p className="text-muted-foreground text-sm">Enviá tus tests a Gaby para recibir feedback</p>

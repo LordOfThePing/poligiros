@@ -129,9 +129,9 @@ publicRoutes.post("/signup/:token", async (c) => {
   })
 
   const signupTo = await notifyTarget("signupRequest")
-  if (signupTo) {
+  for (const to of signupTo) {
     sendSignupReceivedEmail(
-      signupTo,
+      to,
       created.name,
       created.email,
       created.cohort?.name ?? null

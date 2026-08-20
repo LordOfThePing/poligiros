@@ -250,11 +250,11 @@ student.post("/supervision", async (c) => {
     },
   })
 
-  // Fire-and-forget email to supervisor (unless she switched this one off)
+  // Fire-and-forget email(s) to supervisor / any secondary address
   const supervisionTo = await notifyTarget("supervisionRequest")
-  if (supervisionTo) {
+  for (const to of supervisionTo) {
     sendSupervisionSubmittedEmail(
-      supervisionTo,
+      to,
       user.name,
       assignment.client.name,
       assignment.test.title
@@ -388,11 +388,11 @@ student.post("/sessions", async (c) => {
     include: { client: true, student: true },
   })
 
-  // Fire-and-forget email to supervisor (unless she switched this one off)
+  // Fire-and-forget email(s) to supervisor / any secondary address
   const sessionTo = await notifyTarget("sessionRecorded")
-  if (sessionTo) {
+  for (const to of sessionTo) {
     sendSessionRecordedEmail(
-      sessionTo,
+      to,
       record.student.name,
       record.client.name,
       record.sessionNum
@@ -699,10 +699,10 @@ student.put("/module-items/:itemId/submission", async (c) => {
       where: { id: itemId },
       select: { title: true, module: { select: { title: true } } },
     })
-    if (submissionTo && card) {
-      sendSubmissionReceivedEmail(submissionTo, user.name, card.module.title, card.title).catch(
-        () => {}
-      )
+    if (card) {
+      for (const to of submissionTo) {
+        sendSubmissionReceivedEmail(to, user.name, card.module.title, card.title).catch(() => {})
+      }
     }
   }
 
@@ -942,13 +942,15 @@ async function openSupervisionForOwnTest(userId: string, assignmentId: string) {
 
   const ownTestTo = await notifyTarget("supervisionRequest")
   const coach = await prisma.user.findUnique({ where: { id: userId } })
-  if (ownTestTo && coach) {
-    sendSupervisionSubmittedEmail(
-      ownTestTo,
-      coach.name,
-      assignment.client.name,
-      assignment.test.title
-    ).catch(() => {})
+  if (coach) {
+    for (const to of ownTestTo) {
+      sendSupervisionSubmittedEmail(
+        to,
+        coach.name,
+        assignment.client.name,
+        assignment.test.title
+      ).catch(() => {})
+    }
   }
 }
 

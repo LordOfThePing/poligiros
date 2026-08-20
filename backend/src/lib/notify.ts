@@ -33,15 +33,22 @@ export async function supervisorRecipient(): Promise<string | null> {
 }
 
 /**
- * The address to notify for this event, or null when it must not be sent —
- * either the event is switched off, or there is nobody to send it to.
+ * The addresses to notify for this event, or an empty array when it must not be
+ * sent — either the event is switched off, or there is nobody to send it to.
  *
- * Callers use it as a single guard:
+ * This is the primary (env override or the supervisor) plus any secondary email
+ * configured in the app. Callers send one email per address:
  *   const to = await notifyTarget("submission")
- *   if (to) sendSomething(to, ...).catch(() => {})
+ *   for (const addr of to) sendSomething(addr, ...).catch(() => {})
  */
-export async function notifyTarget(kind: NotifyKind): Promise<string | null> {
+export async function notifyTarget(kind: NotifyKind): Promise<string[]> {
   const settings = await getSettings()
-  if (!settings[SETTING_KEY[kind]]) return null
-  return supervisorRecipient()
+  if (!settings[SETTING_KEY[kind]]) return []
+
+  const primary = await supervisorRecipient()
+  if (!primary) return []
+
+  const extra = settings.notifySecondaryEmail?.trim()
+  // Avoid sending a duplicate when the secondary equals the primary.
+  return extra && extra !== primary ? [primary, extra] : [primary]
 }

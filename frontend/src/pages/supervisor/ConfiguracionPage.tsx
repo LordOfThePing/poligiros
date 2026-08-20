@@ -17,6 +17,7 @@ type Settings = {
   notifySupervisionRequest: boolean
   notifySubmission: boolean
   notifySessionRecorded: boolean
+  notifySecondaryEmail: string | null
 }
 
 type Recipient = { email: string | null; overridden: boolean }
@@ -115,6 +116,34 @@ export default function ConfiguracionPage() {
             Por defecto va al email de tu cuenta. Para mandarlas a otra casilla, definí
             <code className="mx-1">SUPERVISOR_NOTIFY_EMAIL</code> en el <code>.env</code> del servidor.
           </p>
+
+          <div className="space-y-1.5 pt-1">
+            <Label className="text-xs text-muted-foreground">Email secundario de notificaciones</Label>
+            <div className="flex items-end gap-2">
+              <Input
+                type="email"
+                value={settings.notifySecondaryEmail ?? ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, notifySecondaryEmail: e.target.value || null })
+                }
+                placeholder="opcional@correo.com"
+                className="h-8 flex-1"
+              />
+              <Button
+                size="sm"
+                className="h-8"
+                disabled={saving}
+                onClick={() => save(settings)}
+              >
+                {saving && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                Guardar
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cada notificación también llega a esta casilla. Dejalo vacío para que solo se mande a la
+              dirección principal.
+            </p>
+          </div>
 
           <div className="space-y-3 pt-1">
             {NOTIFICATIONS.map((n) => (

@@ -1485,6 +1485,10 @@ supervisor.put("/settings", async (c) => {
     notifySupervisionRequest: flag(body.notifySupervisionRequest, current.notifySupervisionRequest),
     notifySubmission: flag(body.notifySubmission, current.notifySubmission),
     notifySessionRecorded: flag(body.notifySessionRecorded, current.notifySessionRecorded),
+    // Optional second notification address; "" clears it.
+    ...(body.notifySecondaryEmail !== undefined
+      ? { notifySecondaryEmail: String(body.notifySecondaryEmail).trim() || null }
+      : {}),
   }
 
   const row = await prisma.appSettings.upsert({
@@ -1501,6 +1505,7 @@ supervisor.put("/settings", async (c) => {
     notifySupervisionRequest: row.notifySupervisionRequest,
     notifySubmission: row.notifySubmission,
     notifySessionRecorded: row.notifySessionRecorded,
+    notifySecondaryEmail: row.notifySecondaryEmail,
   })
 })
 

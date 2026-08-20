@@ -395,6 +395,10 @@ model AppSettings {
   notifySubmission         Boolean @default(true)
   notifySessionRecorded    Boolean @default(true)
 
+  /// An optional SECOND address that also receives the supervisor notifications.
+  /// Editable from the UI (Configuración); empty means only the primary gets sent.
+  notifySecondaryEmail String?
+
   updatedAt DateTime @updatedAt
 }
 

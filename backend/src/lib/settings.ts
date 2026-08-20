@@ -13,6 +13,8 @@ export type Settings = {
   notifySupervisionRequest: boolean
   notifySubmission: boolean
   notifySessionRecorded: boolean
+  /// Optional second address that also receives the supervisor notifications.
+  notifySecondaryEmail: string | null
 }
 
 const DEFAULTS: Settings = {
@@ -23,6 +25,7 @@ const DEFAULTS: Settings = {
   notifySupervisionRequest: true,
   notifySubmission: true,
   notifySessionRecorded: true,
+  notifySecondaryEmail: null,
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -40,6 +43,7 @@ export async function getSettings(): Promise<Settings> {
     notifySupervisionRequest: row.notifySupervisionRequest,
     notifySubmission: row.notifySubmission,
     notifySessionRecorded: row.notifySessionRecorded,
+    notifySecondaryEmail: row.notifySecondaryEmail,
   }
 }
 

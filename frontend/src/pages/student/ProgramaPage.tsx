@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
-  ClipboardCheck, PanelLeftClose, PanelLeftOpen,
+  ClipboardCheck, PanelLeftClose, PanelLeftOpen, MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
@@ -45,6 +45,8 @@ export default function ProgramaPage() {
   // hover ("auto"), so the item + discussion get more room.
   const [indexPinned, setIndexPinned] = useState(true)
   const [indexHover, setIndexHover] = useState(false)
+  // Discussion panel is collapsible and hidden by default (auto), opened on demand.
+  const [discussionOpen, setDiscussionOpen] = useState(false)
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.
@@ -167,6 +169,8 @@ export default function ProgramaPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header stays centered; the modules/discussion below use full width. */}
+      <div className="w-full max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Mi Programa</h1>
         <p className="text-muted-foreground text-sm">
@@ -215,6 +219,7 @@ export default function ProgramaPage() {
           </p>
         </div>
       </div>
+      </div>
 
       {loading ? (
         <LoadingBadge />
@@ -224,7 +229,7 @@ export default function ProgramaPage() {
           la cursada.
         </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[auto_1fr] xl:grid-cols-[auto_minmax(0,1fr)_380px]">
+        <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
           {/* Modules index: a thin rail by default that expands on hover, or
               stays pinned open. The pin button fixes/auto-hides it. */}
           <div
@@ -357,11 +362,12 @@ export default function ProgramaPage() {
             )}
           </div>
 
-          {/* Detail + discussion */}
-          <div className="xl:col-span-2">
+          {/* Detail + discussion. The item keeps a stable width and never shrinks;
+              the modules rail and the discussion are what give way. */}
+          <div className="min-w-0">
             {current ? (
-              <div className="grid gap-6 items-start lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px]">
-                <div className="bg-white rounded-lg border border-border p-5 space-y-4 min-w-0">
+              <div className="flex items-start gap-6">
+                <div className="shrink-0 w-[min(100%,600px)] bg-white rounded-lg border border-border p-5 space-y-4">
                 {current.item.coverImageUrl && (
                   <img
                     src={current.item.coverImageUrl}
@@ -380,10 +386,25 @@ export default function ProgramaPage() {
                     <p className="text-xs text-muted-foreground">{current.module.title}</p>
                     <h2 className="font-serif text-2xl text-foreground">{current.item.title}</h2>
                   </div>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${KIND_BADGE[current.item.kind]}`}
-                  >
-                    {KIND_LABEL[current.item.kind]}
+                  <span className="flex items-start gap-2 shrink-0">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[current.item.kind]}`}
+                    >
+                      {KIND_LABEL[current.item.kind]}
+                    </span>
+                    <button
+                      onClick={() => setDiscussionOpen((v) => !v)}
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors",
+                        discussionOpen
+                          ? "bg-brand-accent/10 border-brand-accent/30 text-brand-accent"
+                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
+                      )}
+                      title={discussionOpen ? "Ocultar la discusión" : "Abrir la discusión"}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Discusión
+                    </button>
                   </span>
                 </div>
 
@@ -507,10 +528,12 @@ export default function ProgramaPage() {
                     </Button>
                   )}
                 </div>
-              </div>
-                <div className="bg-white rounded-lg border border-border p-4 xl:h-[calc(100vh-200px)] xl:sticky xl:top-6">
-                  <CommentPanel itemId={current.item.id} />
                 </div>
+                {discussionOpen && (
+                  <div className="shrink-0 w-[360px] xl:max-w-[360px] bg-white rounded-lg border border-border p-4 xl:h-[calc(100vh-200px)] xl:sticky xl:top-6">
+                    <CommentPanel itemId={current.item.id} />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="hidden lg:flex items-center justify-center h-full min-h-[240px] bg-white rounded-lg border border-dashed border-border">

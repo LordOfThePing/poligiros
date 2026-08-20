@@ -1,10 +1,9 @@
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
-import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ProfileBanner } from "@/components/ProfileBanner"
+import { BookOpen, Users, ClipboardCheck, FileText, ListChecks } from "lucide-react"
 import { CollapsibleSidebar } from "@/components/CollapsibleSidebar"
+import { ProfileMenu } from "@/components/ProfileMenu"
 import { useCoachAccess } from "@/lib/useCoachAccess"
 import { useNotifications, badgeForRole } from "@/lib/useNotifications"
 
@@ -19,7 +18,7 @@ const links = [
 
 export function StudentSidebar() {
   const location = useLocation()
-  const { logout, user } = useAuth()
+  const { user } = useAuth()
   const { access, loading } = useCoachAccess()
   const { student } = useNotifications()
 
@@ -32,7 +31,7 @@ export function StudentSidebar() {
     <CollapsibleSidebar roleLabel="Coach">
       {({ expanded }) => (
         <>
-          <nav className={cn("space-y-1")}>
+          <div className={cn("space-y-1", !expanded && "flex flex-col items-center")}>
             {visibleLinks.map(({ href, label, icon: Icon }) => {
               const count = badgeForRole(user?.role, { href, label }, null, student)
               const active = location.pathname.startsWith(href)
@@ -62,22 +61,10 @@ export function StudentSidebar() {
                 </Link>
               )
             })}
-          </nav>
+          </div>
 
-          <div className={cn("border-t border-border space-y-2", expanded ? "p-4" : "px-2 pt-3")}>
-            <ProfileBanner collapsed={!expanded} />
-            <Button
-              variant="ghost"
-              className={cn(
-                "text-muted-foreground hover:text-foreground gap-3",
-                expanded ? "w-full justify-start" : "w-full justify-center px-0"
-              )}
-              onClick={logout}
-              title={expanded ? undefined : "Cerrar sesión"}
-            >
-              <LogOut className="h-4 w-4" />
-              {expanded && "Cerrar sesión"}
-            </Button>
+          <div className={cn("border-t border-border", expanded ? "p-2.5" : "px-2 py-3")}>
+            <ProfileMenu collapsed={!expanded} />
           </div>
         </>
       )}
