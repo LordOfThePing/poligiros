@@ -21,6 +21,7 @@ import SupervisorModulosPage from "@/pages/supervisor/ModulosPage"
 import SupervisorCohortesPage from "@/pages/supervisor/CohortesPage"
 import SupervisorInscripcionesPage from "@/pages/supervisor/InscripcionesPage"
 import SupervisorEntregasPage from "@/pages/supervisor/EntregasPage"
+import SupervisorPreviewPage from "@/pages/supervisor/PreviewPage"
 import SupervisorConfiguracionPage from "@/pages/supervisor/ConfiguracionPage"
 import InscripcionPage from "@/pages/InscripcionPage"
 
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="cohortes" element={<SupervisorCohortesPage />} />
             <Route path="entregas" element={<SupervisorEntregasPage />} />
             <Route path="inscripciones" element={<SupervisorInscripcionesPage />} />
+            <Route path="preview" element={<SupervisorPreviewPage />} />
             <Route path="configuracion" element={<SupervisorConfiguracionPage />} />
           </Route>
 

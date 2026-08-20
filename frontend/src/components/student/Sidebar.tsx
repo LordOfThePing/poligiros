@@ -28,45 +28,42 @@ export function StudentSidebar() {
   )
 
   return (
-    <CollapsibleSidebar roleLabel="Coach">
+    <CollapsibleSidebar
+      roleLabel="Coach"
+      footer={({ expanded }) => <ProfileMenu collapsed={!expanded} />}
+    >
       {({ expanded }) => (
-        <>
-          <div className={cn("space-y-1", !expanded && "flex flex-col items-center")}>
-            {visibleLinks.map(({ href, label, icon: Icon }) => {
-              const count = badgeForRole(user?.role, { href, label }, null, student)
-              const active = location.pathname.startsWith(href)
-              return (
-                <Link
-                  key={href}
-                  to={href}
-                  className={cn(
-                    "sidebar-link relative",
-                    expanded ? "" : "justify-center px-0",
-                    active ? "sidebar-link-active" : "sidebar-link-inactive"
-                  )}
-                  title={expanded ? undefined : label}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {expanded && <span className="flex-1 truncate">{label}</span>}
-                  {expanded && typeof count === "number" && count > 0 && (
-                    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.7rem] font-semibold leading-none text-white">
-                      {count}
-                    </span>
-                  )}
-                  {!expanded && typeof count === "number" && count > 0 && (
-                    <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.6rem] font-semibold leading-none text-white">
-                      {count}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-
-          <div className={cn("border-t border-border", expanded ? "p-2.5" : "px-2 py-3")}>
-            <ProfileMenu collapsed={!expanded} />
-          </div>
-        </>
+        <div className={cn("space-y-1", !expanded && "flex flex-col items-center")}>
+          {visibleLinks.map(({ href, label, icon: Icon }) => {
+            const count = badgeForRole(user?.role, { href, label }, null, student)
+            const active = location.pathname.startsWith(href)
+            return (
+              <Link
+                key={href}
+                to={href}
+                className={cn(
+                  "sidebar-link relative",
+                  expanded ? "" : "justify-center px-0",
+                  active ? "sidebar-link-active" : "sidebar-link-inactive"
+                )}
+                title={expanded ? undefined : label}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {expanded && <span className="flex-1 truncate">{label}</span>}
+                {expanded && typeof count === "number" && count > 0 && (
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.7rem] font-semibold leading-none text-white">
+                    {count}
+                  </span>
+                )}
+                {!expanded && typeof count === "number" && count > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.6rem] font-semibold leading-none text-white">
+                    {count}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </div>
       )}
     </CollapsibleSidebar>
   )

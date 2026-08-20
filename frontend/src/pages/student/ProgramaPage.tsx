@@ -45,8 +45,8 @@ export default function ProgramaPage() {
   // hover ("auto"), so the item + discussion get more room.
   const [indexPinned, setIndexPinned] = useState(true)
   const [indexHover, setIndexHover] = useState(false)
-  // Discussion panel is collapsible and hidden by default (auto), opened on demand.
-  const [discussionOpen, setDiscussionOpen] = useState(false)
+  // Discussion panel is collapsible, shown by default, closable on demand.
+  const [discussionOpen, setDiscussionOpen] = useState(true)
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.

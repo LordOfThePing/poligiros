@@ -18,9 +18,12 @@ const STORAGE_KEY = "poligiros.sidebar-fixed"
 export function CollapsibleSidebar({
   roleLabel,
   children,
+  footer,
 }: {
   roleLabel: string
   children: (args: { expanded: boolean }) => ReactNode
+  /** Fixed footer pinned to the bottom (e.g. the profile + logout menu). */
+  footer?: (args: { expanded: boolean }) => ReactNode
 }) {
   const [fixed, setFixed] = useState<boolean>(() => {
     if (typeof localStorage === "undefined") return true
@@ -44,14 +47,19 @@ export function CollapsibleSidebar({
         expanded ? "w-64" : "w-16"
       )}
     >
-      <div className="p-4 border-b border-border flex items-center gap-2">
+      <div
+        className={cn(
+          "flex items-center border-b border-border",
+          expanded ? "justify-between p-4" : "justify-center p-4"
+        )}
+      >
         {expanded ? (
           <>
             <h1 className="font-serif text-2xl text-brand-accent leading-none">Poligiros</h1>
             <span className="text-xs text-muted-foreground mt-1 hidden lg:block">{roleLabel}</span>
           </>
         ) : (
-          <span className="font-serif text-2xl text-brand-accent leading-none mx-auto">P.</span>
+          <span className="font-serif text-2xl text-brand-accent leading-none">P.</span>
         )}
         <button
           onClick={() => setFixed((v) => !v)}
@@ -63,9 +71,16 @@ export function CollapsibleSidebar({
         </button>
       </div>
 
-      <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", expanded ? "p-4" : "px-2 py-3")}>
+      {/* Nav is the only scrollable area; the footer stays pinned to the bottom. */}
+      <div className={cn("flex-1 overflow-y-auto overflow-x-hidden min-h-0", expanded ? "p-4" : "px-2 py-3")}>
         {children({ expanded })}
       </div>
+
+      {footer && (
+        <div className={cn("border-t border-border shrink-0", expanded ? "p-2.5" : "px-2 py-3")}>
+          {footer({ expanded })}
+        </div>
+      )}
     </aside>
   )
 }

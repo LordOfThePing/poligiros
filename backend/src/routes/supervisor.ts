@@ -561,6 +561,39 @@ supervisor.get("/modules", async (c) => {
   return c.json(modules)
 })
 
+/**
+ * GET /supervisor/preview-modules?cohortId=...
+ * What a coach of this CIC currently sees in "Mi Programa": modules that are
+ * published AND released (with an availableFrom already reached) to that cohort,
+ * with their items/links/test. Used so the supervisor can browse a CIC's view
+ * and comment on the discussion threads.
+ */
+supervisor.get("/preview-modules", async (c) => {
+  const cohortId = c.req.query("cohortId")
+
+  const where: Record<string, unknown> = { published: true }
+  if (cohortId) {
+    const releases = await prisma.moduleRelease.findMany({
+      where: {
+        cohortId,
+        released: true,
+        OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
+      },
+      select: { moduleId: true },
+    })
+    const ids = releases.map((r) => r.moduleId)
+    if (ids.length === 0) return c.json([])
+    where.id = { in: ids }
+  }
+
+  const modules = await prisma.module.findMany({
+    where,
+    orderBy: { orderIndex: "asc" },
+    include: moduleItemsInclude,
+  })
+  return c.json(modules)
+})
+
 /** POST /supervisor/modules */
 supervisor.post("/modules", async (c) => {
   const { title, description, videoUrl, orderIndex } = await c.req.json()
