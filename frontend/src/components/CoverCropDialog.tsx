@@ -29,7 +29,7 @@ async function cropImage(image: HTMLImageElement, crop: Area): Promise<Blob> {
   const ctx = canvas.getContext("2d")!
   ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas vacío"))), "image/png")
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas vacío"))), "image/jpeg", 0.9)
   })
 }
 
@@ -70,8 +70,8 @@ export function CoverCropDialog({
       const image = imageRef.current ?? (await fileToImage(imageFile))
       imageRef.current = image
       const blob = await cropImage(image, croppedArea)
-      const name = imageFile.name.replace(/\.[^.]+$/, ".png")
-      onConfirm(new File([blob], name, { type: "image/png" }))
+      const name = imageFile.name.replace(/\.[^.]+$/, ".jpg")
+      onConfirm(new File([blob], name, { type: "image/jpeg" }))
     } catch {
       // fall back to the original if cropping failed
       onConfirm(imageFile)

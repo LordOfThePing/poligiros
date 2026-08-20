@@ -86,6 +86,28 @@
     @apply text-muted-foreground hover:bg-muted hover:text-foreground;
   }
 
+  /* Print-to-PDF: when printing a result, hide the app and only show the
+     .print-result block (rendered once by the download button). */
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-result,
+    .print-result * {
+      visibility: visible;
+    }
+    .print-result {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      padding: 0;
+      background: white;
+    }
+    .no-print {
+      display: none !important;
+    }
+  }
+
   /* Business Model Canvas: mobile stacks; desktop uses the reference layout. */
   .bmc-grid {
     display: grid;

@@ -158,7 +158,7 @@ export default function PreviewPage() {
               <div className="flex items-start gap-6">
                 <div className="shrink-0 w-[min(100%,600px)] bg-white rounded-lg border border-border p-5 space-y-4">
                   {selectedItem.coverImageUrl && (
-                    <img src={selectedItem.coverImageUrl} alt="Portada" className="rounded-lg border border-border w-full h-40 object-cover bg-muted" />
+                    <img src={selectedItem.coverImageUrl} alt="Portada" className="rounded-lg border border-border w-full aspect-[2/1] object-cover bg-muted" />
                   )}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

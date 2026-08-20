@@ -6,6 +6,7 @@ import { AnclasResult } from "@/components/results/AnclasResult"
 import { RawDataView } from "@/components/RawDataView"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 import { PV_SECTIONS } from "@/lib/planVital"
+import { DownloadResultPdf } from "@/components/DownloadResultPdf"
 
 interface ResultsViewProps {
   testType: string
@@ -237,6 +238,16 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
           <p className="text-sm text-indigo-900 leading-relaxed">{coachFeedback}</p>
         </div>
       )}
+
+      {/* Download as PDF */}
+      <div className="no-print flex justify-end pt-2">
+        <DownloadResultPdf
+          testType={testType}
+          responses={responses}
+          coachFeedback={coachFeedback}
+          completedAt={completedAt}
+        />
+      </div>
     </div>
   )
 }

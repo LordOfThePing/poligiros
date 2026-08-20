@@ -105,6 +105,10 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   // Which statement currently has keyboard focus (for the highlight + indicator).
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+  // Root of the current step; we scroll it into view on section change so the
+  // new section's heading lands at the top without jumping to the absolute
+  // page top.
+  const rootRef = useRef<HTMLDivElement | null>(null)
 
   const answered = answers.filter((a) => a !== null).length
   const progressPct = Math.round((answered / 40) * 100)
@@ -115,6 +119,13 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   // without scrolling the page away from the instructions.
   useEffect(() => {
     if (step === 1) cardRefs.current[0]?.focus({ preventScroll: true })
+  }, [step])
+
+  // When a section finishes and the next one starts, bring its heading to the
+  // top of the viewport instead of snapping to the absolute top of the page.
+  useEffect(() => {
+    if (step === 0) return
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [step])
 
   function setAnswer(idx: number, val: number) {
@@ -157,7 +168,6 @@ export default function AnclasTest({ api }: AnclasTestProps) {
     }
     setUnanswered(new Set())
     setStep(2)
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   // Persists the response. Separated from the AI insight so the test is always
@@ -200,7 +210,6 @@ export default function AnclasTest({ api }: AnclasTestProps) {
     setRanking(r)
     setFinalAnswers(fa)
     setStep(3)
-    window.scrollTo({ top: 0, behavior: "smooth" })
 
     // Best-effort AI insight — must never block or fail the submission.
     setLoadingInsight(true)
@@ -231,7 +240,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   // ─── Step 0: Consigna ──────────────────────────────────────────────────────
   if (step === 0) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div ref={rootRef} className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="font-serif text-3xl text-foreground mb-1">Test de Anclas de Carrera</h1>
           <p className="text-sm text-muted-foreground">
@@ -300,7 +309,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
 
   if (step === 1) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div ref={rootRef} className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="font-serif text-3xl text-foreground mb-1">Test de Anclas de Carrera</h1>
           <p className="text-sm text-muted-foreground">Respondé las 40 afirmaciones según cuánto te representan</p>
@@ -406,7 +415,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   // ─── Step 2: Bonus selection ───────────────────────────────────────────────
   if (step === 2) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div ref={rootRef} className="max-w-2xl mx-auto space-y-6">
         <div>
           <h2 className="font-serif text-3xl text-foreground mb-1">Seleccioná tus top 3</h2>
           <p className="text-sm text-muted-foreground">
@@ -465,7 +474,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
 
   // ─── Step 3: Results ───────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div ref={rootRef} className="max-w-2xl mx-auto space-y-8">
       <AnclasResult scores={scores} aiInsight={aiInsight} loadingInsight={loadingInsight} />
 
 

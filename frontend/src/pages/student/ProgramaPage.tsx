@@ -372,7 +372,7 @@ export default function ProgramaPage() {
                   <img
                     src={current.item.coverImageUrl}
                     alt={`Portada de ${current.item.title}`}
-                    className="rounded-lg border border-border w-full h-40 object-cover bg-muted"
+                    className="rounded-lg border border-border w-full aspect-[2/1] object-cover bg-muted"
                   />
                 )}
                 <div className="flex items-start justify-between gap-3">

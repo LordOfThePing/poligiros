@@ -15,6 +15,9 @@ import { EditableResult } from "@/components/EditableResult"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 import { PV_SECTIONS } from "@/lib/planVital"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Eye } from "lucide-react"
+import ResultsView from "@/pages/client/ResultsView"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -174,6 +177,7 @@ export default function SupervisionDetailPage() {
   const [coachFeedback, setCoachFeedback] = useState("")
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [fullView, setFullView] = useState(false)
 
   function load() {
     apiJson<any[]>("/supervisor/supervision")
@@ -237,9 +241,14 @@ export default function SupervisionDetailPage() {
         <Card className="bg-white">
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
-            <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
-              {editing ? "Cancelar" : "Editar"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setFullView(true)}>
+                <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
+                {editing ? "Cancelar" : "Editar"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {editing ? (
@@ -307,6 +316,25 @@ export default function SupervisionDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Full (nice) result view, same as what the coach/coachee sees. */}
+      <Dialog open={fullView} onOpenChange={setFullView}>
+        <DialogContent className="w-[min(1200px,95vw)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif">
+              {req.assignment.test.title} — vista completa
+            </DialogTitle>
+          </DialogHeader>
+          {responses && (
+            <ResultsView
+              testType={req.assignment.test.type}
+              responses={responses}
+              coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
+              completedAt={req.assignment.completedAt}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

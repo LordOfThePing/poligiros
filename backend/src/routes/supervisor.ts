@@ -18,8 +18,8 @@ import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
 
-/** Max bytes for images (comment photos + module covers). */
-const COMMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+/** Max bytes for images (comment photos + module covers). 25 MB like other uploads. */
+const COMMENT_IMAGE_MAX_BYTES = 25 * 1024 * 1024
 /** Collision-proof R2 key for an image. */
 function buildCommentImageKey(scopeId: string, fileName: string): string {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "jpg"
@@ -407,6 +407,39 @@ supervisor.post("/reset-requests/:id/reject", async (c) => {
     data: { status: "REJECTED", reviewedById: user.id, reviewedAt: new Date() },
   })
   return c.json(updated)
+})
+
+/**
+ * POST /supervisor/assignments/:id/reset-direct
+ * Direct action: wipe a completed test result and reopen it so the coach/coachee
+ * can take it again — without requiring a prior reset request. Also clears the
+ * revocation flag (in case it was pending-revoked) and the supervision thread.
+ */
+supervisor.post("/assignments/:id/reset-direct", async (c) => {
+  const id = c.req.param("id")
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { id },
+    include: { test: true, client: true },
+  })
+  if (!assignment) return c.json({ error: "Asignación no encontrada" }, 404)
+
+  const hasWindow = Boolean(assignment.completeBy)
+  await prisma.$transaction([
+    prisma.testResponse.deleteMany({ where: { assignmentId: id } }),
+    prisma.supervisionRequest.deleteMany({ where: { assignmentId: id } }),
+    prisma.testResetRequest.deleteMany({ where: { assignmentId: id } }),
+    prisma.testAssignment.update({
+      where: { id },
+      data: {
+        completedAt: null,
+        accessRevokedAt: null,
+        // Re-open the magic-link window so the coachee can retake it.
+        ...(hasWindow ? { completeBy: daysFromNow((await getSettings()).testCompleteDays) } : {}),
+      },
+    }),
+  ])
+
+  return c.json({ ok: true })
 })
 
 /* ─────────────────────────────────────────

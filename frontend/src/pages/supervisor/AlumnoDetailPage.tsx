@@ -94,6 +94,26 @@ export default function AlumnoDetailPage() {
     loadStudent()
   }
 
+  /** Wipe a completed test so the user can take it again (direct, no request). */
+  async function handleResetDirect(assignment: { id: string }) {
+    if (
+      !confirm(
+        "¿Borrar el resultado y reabrir este test para que lo vuelva a hacer? El resultado y su supervisión se eliminan."
+      )
+    ) {
+      return
+    }
+    const res = await apiTry(`/supervisor/assignments/${assignment.id}/reset-direct`, { method: "POST" })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      toast({ title: j.error || "No se pudo reabrir el test", variant: "destructive" })
+      return
+    }
+    toast({ title: "Test reabierto para rehacerlo" })
+    loadCoachTests()
+    loadStudent()
+  }
+
   function loadStudent() {
     apiJson<any>(`/supervisor/students/${id}`)
       .then((data) => { setStudent(data); setLoading(false) })
@@ -272,6 +292,15 @@ export default function AlumnoDetailPage() {
                             <RotateCcw className="h-3 w-3" />
                           </button>
                         )}
+                        {assignment?.completedAt && (
+                          <button
+                            onClick={() => handleResetDirect(assignment)}
+                            className="text-muted-foreground hover:text-brand-accent"
+                            title="Borrar resultado y volver a hacerlo"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </button>
+                        )}
                       </span>
                     )
                   })}
@@ -323,6 +352,11 @@ export default function AlumnoDetailPage() {
                       {assignment && !assignment.completedAt && assignment.revoked && (
                         <Button size="sm" variant="outline" onClick={() => setRevoked(assignment, false)}>
                           <RotateCcw className="h-3 w-3 mr-1" /> Reabrir
+                        </Button>
+                      )}
+                      {assignment?.completedAt && (
+                        <Button size="sm" variant="outline" onClick={() => handleResetDirect(assignment)}>
+                          <RotateCcw className="h-3 w-3 mr-1" /> Rehacer
                         </Button>
                       )}
                       {!assignment && (

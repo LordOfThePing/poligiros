@@ -55,8 +55,12 @@ export function CollapsibleSidebar({
       >
         {expanded ? (
           <>
-            <h1 className="font-serif text-2xl text-brand-accent leading-none">Poligiros</h1>
-            <span className="text-xs text-muted-foreground mt-1 hidden lg:block">{roleLabel}</span>
+            <div className="min-w-0 leading-tight">
+              <h1 className="font-serif text-2xl text-brand-accent leading-none">Poligiros</h1>
+              <span className="block text-[0.7rem] text-muted-foreground mt-1.5 truncate">
+                {roleLabel}
+              </span>
+            </div>
           </>
         ) : (
           <span className="font-serif text-2xl text-brand-accent leading-none">P.</span>

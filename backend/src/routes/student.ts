@@ -16,8 +16,8 @@ import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
 
-/** Max bytes for a comment photo (smaller than the class-material cap). */
-const COMMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+/** Max bytes for a comment photo. */
+const COMMENT_IMAGE_MAX_BYTES = 25 * 1024 * 1024
 function imageMaxBytes() {
   return COMMENT_IMAGE_MAX_BYTES
 }

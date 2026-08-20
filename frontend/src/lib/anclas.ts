@@ -56,3 +56,37 @@ export function groupRankedAnchors(
   }
   return groups
 }
+
+/**
+ * Which anchors earn the 🏆 on the results screen.
+ *
+ * The trophy marks the top `max` anchors — but a tie at the very top takes
+ * precedence and counts as its own full set: a 2-way tie for 1st means only
+ * those two anchors get the trophy (they are the clear story), so 3 distinct
+ * cards do NOT automatically follow. Otherwise the top `max` distinct anchors
+ * are awarded, treating each tie group as a unit (never split).
+ */
+export function podiumAnchors(
+  scores: Record<string, number>,
+  order?: string[],
+  max = 3,
+): Set<string> {
+  const groups = groupRankedAnchors(scores, order)
+  if (groups.length === 0) return new Set()
+
+  // A tie at the top: highlight exactly that tie.
+  if (groups[0].anchors.length > 1) {
+    return new Set(groups[0].anchors)
+  }
+
+  // Otherwise fill the top `max` positions, never splitting a tied group.
+  const result = new Set<string>()
+  let budget = max
+  for (const g of groups) {
+    if (budget <= 0) break
+    if (g.anchors.length > budget) break // would split the tie → stop
+    g.anchors.forEach((a) => result.add(a))
+    budget -= g.anchors.length
+  }
+  return result
+}

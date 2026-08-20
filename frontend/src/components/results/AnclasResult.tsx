@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { groupRankedAnchors } from "@/lib/anclas"
+import { groupRankedAnchors, podiumAnchors } from "@/lib/anclas"
 
 /**
  * The Anclas results screen.
