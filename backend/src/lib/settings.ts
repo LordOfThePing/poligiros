@@ -9,12 +9,20 @@ export type Settings = {
   testCompleteDays: number
   testResultsDays: number
   signupLinkDays: number
+  notifySignupRequest: boolean
+  notifySupervisionRequest: boolean
+  notifySubmission: boolean
+  notifySessionRecorded: boolean
 }
 
 const DEFAULTS: Settings = {
   testCompleteDays: 14,
   testResultsDays: 365,
   signupLinkDays: 30,
+  notifySignupRequest: true,
+  notifySupervisionRequest: true,
+  notifySubmission: true,
+  notifySessionRecorded: true,
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -28,6 +36,10 @@ export async function getSettings(): Promise<Settings> {
     testCompleteDays: row.testCompleteDays,
     testResultsDays: row.testResultsDays,
     signupLinkDays: row.signupLinkDays,
+    notifySignupRequest: row.notifySignupRequest,
+    notifySupervisionRequest: row.notifySupervisionRequest,
+    notifySubmission: row.notifySubmission,
+    notifySessionRecorded: row.notifySessionRecorded,
   }
 }
 

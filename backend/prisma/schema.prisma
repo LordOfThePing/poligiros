@@ -371,6 +371,13 @@ model AppSettings {
   /// Default lifetime of a newly generated public signup link.
   signupLinkDays   Int @default(30)
 
+  /// Which events email the supervisor. Every one defaults to on so turning the
+  /// feature on does not silently change what she already receives.
+  notifySignupRequest      Boolean @default(true)
+  notifySupervisionRequest Boolean @default(true)
+  notifySubmission         Boolean @default(true)
+  notifySessionRecorded    Boolean @default(true)
+
   updatedAt DateTime @updatedAt
 }
 

@@ -11,6 +11,7 @@ import {
 } from "../lib/email.js"
 import { randomBytes } from "node:crypto"
 import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
+import { supervisorRecipient } from "../lib/notify.js"
 import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
@@ -1180,10 +1181,18 @@ supervisor.put("/settings", async (c) => {
   const body = await c.req.json()
   const current = await getSettings()
 
+  /** Keep the stored value when the field is absent from the request. */
+  const flag = (raw: unknown, fallback: boolean) =>
+    raw === undefined ? fallback : Boolean(raw)
+
   const data = {
     testCompleteDays: clampDays(body.testCompleteDays ?? current.testCompleteDays, current.testCompleteDays),
     testResultsDays: clampDays(body.testResultsDays ?? current.testResultsDays, current.testResultsDays),
     signupLinkDays: clampDays(body.signupLinkDays ?? current.signupLinkDays, current.signupLinkDays),
+    notifySignupRequest: flag(body.notifySignupRequest, current.notifySignupRequest),
+    notifySupervisionRequest: flag(body.notifySupervisionRequest, current.notifySupervisionRequest),
+    notifySubmission: flag(body.notifySubmission, current.notifySubmission),
+    notifySessionRecorded: flag(body.notifySessionRecorded, current.notifySessionRecorded),
   }
 
   const row = await prisma.appSettings.upsert({
@@ -1196,7 +1205,16 @@ supervisor.put("/settings", async (c) => {
     testCompleteDays: row.testCompleteDays,
     testResultsDays: row.testResultsDays,
     signupLinkDays: row.signupLinkDays,
+    notifySignupRequest: row.notifySignupRequest,
+    notifySupervisionRequest: row.notifySupervisionRequest,
+    notifySubmission: row.notifySubmission,
+    notifySessionRecorded: row.notifySessionRecorded,
   })
+})
+
+/** GET /supervisor/notify-recipient — where notifications actually land. */
+supervisor.get("/notify-recipient", async (c) => {
+  return c.json({ email: await supervisorRecipient(), overridden: Boolean(process.env.SUPERVISOR_NOTIFY_EMAIL) })
 })
 
 /* ─────────────────────────────────────────

@@ -62,7 +62,7 @@ export default function SupervisorSupervisionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-3xl text-foreground mb-1">Supervisión</h1>
+        <h1 className="font-serif text-3xl text-foreground mb-1">Tests</h1>
         <p className="text-muted-foreground text-sm">Revisá las solicitudes de tus alumnos</p>
       </div>
 

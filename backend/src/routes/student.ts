@@ -10,6 +10,7 @@ import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { latestTableroIdea } from "./client.js"
 import { getCoachAccess } from "../lib/cohort.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
+import { notifyTarget } from "../lib/notify.js"
 import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
@@ -236,11 +237,11 @@ student.post("/supervision", async (c) => {
     },
   })
 
-  // Fire-and-forget email to supervisor
-  const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
-  if (supervisor) {
+  // Fire-and-forget email to supervisor (unless she switched this one off)
+  const supervisionTo = await notifyTarget("supervisionRequest")
+  if (supervisionTo) {
     sendSupervisionSubmittedEmail(
-      supervisor.email,
+      supervisionTo,
       user.name,
       assignment.client.name,
       assignment.test.title
@@ -374,11 +375,11 @@ student.post("/sessions", async (c) => {
     include: { client: true, student: true },
   })
 
-  // Fire-and-forget email to supervisor
-  const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
-  if (supervisor) {
+  // Fire-and-forget email to supervisor (unless she switched this one off)
+  const sessionTo = await notifyTarget("sessionRecorded")
+  if (sessionTo) {
     sendSessionRecordedEmail(
-      supervisor.email,
+      sessionTo,
       record.student.name,
       record.client.name,
       record.sessionNum
@@ -655,13 +656,13 @@ student.put("/module-items/:itemId/submission", async (c) => {
 
   // Only tell the supervisor the first time; edits before review are not news.
   if (!existing) {
-    const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
+    const submissionTo = await notifyTarget("submission")
     const card = await prisma.moduleItem.findUnique({
       where: { id: itemId },
       select: { title: true, module: { select: { title: true } } },
     })
-    if (supervisor && card) {
-      sendSubmissionReceivedEmail(supervisor.email, user.name, card.module.title, card.title).catch(
+    if (submissionTo && card) {
+      sendSubmissionReceivedEmail(submissionTo, user.name, card.module.title, card.title).catch(
         () => {}
       )
     }
@@ -796,11 +797,11 @@ async function openSupervisionForOwnTest(userId: string, assignmentId: string) {
     data: { assignmentId, studentId: userId },
   })
 
-  const supervisor = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
+  const ownTestTo = await notifyTarget("supervisionRequest")
   const coach = await prisma.user.findUnique({ where: { id: userId } })
-  if (supervisor && coach) {
+  if (ownTestTo && coach) {
     sendSupervisionSubmittedEmail(
-      supervisor.email,
+      ownTestTo,
       coach.name,
       assignment.client.name,
       assignment.test.title

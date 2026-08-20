@@ -87,7 +87,8 @@ interface AnclasTestProps {
 }
 
 export default function AnclasTest({ api }: AnclasTestProps) {
-  const [step, setStep] = useState(1)
+  // 0 = consigna, 1 = statements, 2 = bonus, 3 = results.
+  const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<(number | null)[]>(Array(40).fill(null))
   const [unanswered, setUnanswered] = useState<Set<number>>(new Set())
   const [bonusItems, setBonusItems] = useState<number[]>([])
@@ -227,6 +228,76 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   }
 
   // ─── Step 1: 40 questions ─────────────────────────────────────────────────
+  // ─── Step 0: Consigna ──────────────────────────────────────────────────────
+  if (step === 0) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="font-serif text-3xl text-foreground mb-1">Test de Anclas de Carrera</h1>
+          <p className="text-sm text-muted-foreground">
+            De Edgar Schein · te va a llevar unos 30 minutos
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-5 space-y-4 text-sm leading-relaxed">
+          <p className="text-foreground">
+            Vas a leer <strong>40 afirmaciones</strong>. Para cada una, ponés un puntaje según
+            cuánto te identificás con ella: <em>¿esto es lo que yo siento?, ¿lo que pienso?</em>
+          </p>
+
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">La escala va del 1 al 6</p>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="rounded-md bg-muted px-2 py-1 font-semibold text-foreground">1</span>
+              <span className="text-muted-foreground">
+                <strong className="text-foreground">Nunca</strong> — no te identificás en nada
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="rounded-md bg-muted px-2 py-1 font-semibold text-foreground">6</span>
+              <span className="text-muted-foreground">
+                <strong className="text-foreground">Siempre</strong> — te identificás totalmente
+              </span>
+            </div>
+            <p className="text-muted-foreground">
+              Entre medio tenés el 2, 3, 4 y 5: cuanto más te represente la frase, más alto el
+              número. Podés usar el 1 y el 6, pero guardalos para cuando estés completamente
+              seguro/a.
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-1">
+            <p className="font-medium text-amber-900">Respondé rápido y con honestidad</p>
+            <p className="text-amber-900/80">
+              Sin analizar demasiado: lo primero que te viene a la mente es lo que deberías poner.
+            </p>
+          </div>
+
+          <p className="text-muted-foreground">
+            Donde dice <strong className="text-foreground">"Director General"</strong>, no pienses
+            solo en un CEO o Gerente General: sirve cualquier posición gerencial — de proyecto, de
+            área, de unidad de negocio.
+          </p>
+
+          <div className="border-t border-border pt-4 text-muted-foreground">
+            Al terminar las 40 afirmaciones vas a elegir <strong className="text-foreground">3
+            frases</strong> que te representen especialmente. El ranking final lo calcula el
+            sistema: no tenés que sumar nada a mano.
+          </div>
+        </div>
+
+        <Button
+          onClick={() => setStep(1)}
+          size="lg"
+          className="w-full bg-brand-accent hover:bg-brand-accent-dark"
+        >
+          Comenzar el test
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    )
+  }
+
   if (step === 1) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">

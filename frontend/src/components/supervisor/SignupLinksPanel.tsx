@@ -13,11 +13,8 @@ import { copyToClipboard, signupUrl, type SignupLink } from "@/lib/signup"
 
 type Cohort = { id: string; name: string }
 
-type Settings = {
-  testCompleteDays: number
-  testResultsDays: number
-  signupLinkDays: number
-}
+/** Only the field this panel needs, to prefill the expiry of a new link. */
+type Settings = { signupLinkDays: number }
 
 /** No cohort bound — the applicant picks from the active CICs. */
 const ANY_COHORT = "__any__"
@@ -26,17 +23,16 @@ export function SignupLinksPanel() {
   const { toast } = useToast()
   const [links, setLinks] = useState<SignupLink[]>([])
   const [cohorts, setCohorts] = useState<Cohort[]>([])
-  const [settings, setSettings] = useState<Settings | null>(null)
   const [newCohort, setNewCohort] = useState<string>(ANY_COHORT)
   const [newDays, setNewDays] = useState<string>("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [savingSettings, setSavingSettings] = useState(false)
 
   useEffect(() => {
     apiJson<SignupLink[]>("/supervisor/signup-links").then(setLinks).catch(() => {})
     apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
+    // Only to prefill the days field with the configured default.
     apiJson<Settings>("/supervisor/settings")
-      .then((s) => { setSettings(s); setNewDays(String(s.signupLinkDays)) })
+      .then((s) => setNewDays(String(s.signupLinkDays)))
       .catch(() => {})
   }, [])
 
@@ -73,21 +69,6 @@ export function SignupLinksPanel() {
     setLinks((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
   }
 
-  async function saveSettings() {
-    if (!settings) return
-    setSavingSettings(true)
-    const res = await apiTry("/supervisor/settings", {
-      method: "PUT",
-      body: JSON.stringify(settings),
-    })
-    if (res.ok) {
-      setSettings(await res.json())
-      toast({ title: "Vencimientos actualizados" })
-    } else {
-      toast({ title: "No se pudo guardar", variant: "destructive" })
-    }
-    setSavingSettings(false)
-  }
 
   function status(link: SignupLink): { label: string; className: string } {
     if (link.disabled) return { label: "Dado de baja", className: "bg-slate-100 text-slate-600" }
@@ -99,67 +80,6 @@ export function SignupLinksPanel() {
 
   return (
     <div className="space-y-4">
-      <Card className="bg-white">
-        <CardHeader className="pb-3">
-          <CardTitle className="font-sans text-base font-medium">Vencimiento de links</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {settings ? (
-            <>
-              <div className="flex flex-wrap gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Completar un test (días)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={settings.testCompleteDays}
-                    onChange={(e) =>
-                      setSettings({ ...settings, testCompleteDays: Number(e.target.value) })
-                    }
-                    className="h-8 w-28"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Ver resultados (días)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={settings.testResultsDays}
-                    onChange={(e) =>
-                      setSettings({ ...settings, testResultsDays: Number(e.target.value) })
-                    }
-                    className="h-8 w-28"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Link de inscripción (días)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={settings.signupLinkDays}
-                    onChange={(e) =>
-                      setSettings({ ...settings, signupLinkDays: Number(e.target.value) })
-                    }
-                    className="h-8 w-28"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button size="sm" className="h-8" onClick={saveSettings} disabled={savingSettings}>
-                    Guardar
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Aplica a los links que se generen de acá en adelante; los ya emitidos mantienen su
-                fecha.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
-          )}
-        </CardContent>
-      </Card>
-
       <Card className="bg-white">
         <CardHeader className="pb-3">
           <CardTitle className="font-sans text-base font-medium">Links de inscripción</CardTitle>

@@ -66,7 +66,7 @@ export default function EntregasPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-3xl text-foreground mb-1">Entregas</h1>
+        <h1 className="font-serif text-3xl text-foreground mb-1">Tareas</h1>
         <p className="text-muted-foreground text-sm">
           Lo que los coaches entregan en las tarjetas de tipo Entrega. Al devolver, el coach recibe
           un mail y lo ve en su clase.

@@ -48,6 +48,7 @@ Ninguna corrió todavía en prod. Las tres ya se aplicaron **local** con
 - [ ] `20260813210000_module_item_test`
 - [ ] `20260813230000_module_item_submission`
 - [ ] `20260814000000_merge_cohort_practice_flag`
+- [ ] `20260814020000_notification_settings` ← **sin aplicar ni verificar drift** (Docker estaba apagado)
 - [ ] Resolver primero 1.1, después `make prod-deploy`
 
 > El bloque de migración de datos `Material → ModuleItem + ModuleLink` **no está

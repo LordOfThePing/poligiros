@@ -10,6 +10,7 @@ import { Hono } from "hono"
 import bcrypt from "bcryptjs"
 import { prisma } from "../lib/prisma.js"
 import { sendSignupReceivedEmail } from "../lib/email.js"
+import { notifyTarget } from "../lib/notify.js"
 
 const publicRoutes = new Hono()
 
@@ -127,10 +128,10 @@ publicRoutes.post("/signup/:token", async (c) => {
     include: { cohort: { select: { name: true } } },
   })
 
-  const supervisorUser = await prisma.user.findFirst({ where: { role: "SUPERVISOR" } })
-  if (supervisorUser) {
+  const signupTo = await notifyTarget("signupRequest")
+  if (signupTo) {
     sendSignupReceivedEmail(
-      supervisorUser.email,
+      signupTo,
       created.name,
       created.email,
       created.cohort?.name ?? null

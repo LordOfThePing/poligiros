@@ -11,6 +11,7 @@ import {
   LogOut,
   UserPlus,
   Inbox,
+  Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProfileBanner } from "@/components/ProfileBanner"
@@ -18,12 +19,13 @@ import { ProfileBanner } from "@/components/ProfileBanner"
 const links = [
   { href: "/supervisor/panel", label: "Panel", icon: LayoutDashboard },
   { href: "/supervisor/alumnos", label: "Alumnos", icon: Users },
-  { href: "/supervisor/supervision", label: "Supervisión", icon: ClipboardCheck },
+  { href: "/supervisor/supervision", label: "Tests", icon: ClipboardCheck },
   { href: "/supervisor/registros", label: "Registros", icon: FileText },
   { href: "/supervisor/modulos", label: "Módulos", icon: BookOpen },
-  { href: "/supervisor/entregas", label: "Entregas", icon: Inbox },
+  { href: "/supervisor/entregas", label: "Tareas", icon: Inbox },
   { href: "/supervisor/cohortes", label: "CIC", icon: GraduationCap },
   { href: "/supervisor/inscripciones", label: "Inscripciones", icon: UserPlus },
+  { href: "/supervisor/configuracion", label: "Configuración", icon: Settings },
 ]
 
 export function SupervisorSidebar() {
