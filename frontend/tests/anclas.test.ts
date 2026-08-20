@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { selectBonusCandidates, groupRankedAnchors } from "../src/lib/anclas"
+import { selectBonusCandidates, groupRankedAnchors, podiumAnchors } from "../src/lib/anclas"
 
 // The tier walk: start at 6, drop a tier at a time until >= minCount items
 // qualify; otherwise return everything sorted. null answers count as 0.
@@ -68,5 +68,27 @@ describe("groupRankedAnchors", () => {
   it("respects a provided order for stable tie display", () => {
     const groups = groupRankedAnchors({ A: 5, B: 5 }, ["B", "A"])
     expect(groups[0].anchors).toEqual(["B", "A"])
+  })
+})
+
+describe("podiumAnchors", () => {
+  it("awards the top 3 ranks when there are no ties", () => {
+    const podium = podiumAnchors({ A: 6, B: 5, C: 4, D: 3 })
+    expect([...podium].sort()).toEqual(["A", "B", "C"])
+  })
+
+  it("stops at a tie for 1st — a later 3rd does NOT get a trophy", () => {
+    const podium = podiumAnchors({ A: 6, B: 6, C: 5, D: 4 })
+    expect([...podium].sort()).toEqual(["A", "B"])
+  })
+
+  it("stops at a tie for 2nd — the 3rd does NOT get a trophy", () => {
+    const podium = podiumAnchors({ A: 6, B: 5, C: 5, D: 4 })
+    expect([...podium].sort()).toEqual(["A", "B", "C"])
+  })
+
+  it("a tie for 3rd still awards the trophy to all tied anchors", () => {
+    const podium = podiumAnchors({ A: 6, B: 5, C: 4, D: 4, E: 3 })
+    expect([...podium].sort()).toEqual(["A", "B", "C", "D"])
   })
 })

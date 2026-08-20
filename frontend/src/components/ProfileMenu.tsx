@@ -34,12 +34,19 @@ export function ProfileAvatar({ name }: { name?: string }) {
  * collapsed rail only the avatar shows, but it is still clickable to open the
  * same menu. No separate logout button sits below it.
  */
-export function ProfileMenu({ collapsed = false }: { collapsed?: boolean }) {
+export function ProfileMenu({
+  collapsed = false,
+  keepOpen,
+}: {
+  collapsed?: boolean
+  /** Keep the sidebar expanded while the menu is open (prevents flicker). */
+  keepOpen?: (open: boolean) => void
+}) {
   const { user, logout } = useAuth()
   if (!user) return null
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => keepOpen?.(open)}>
       <DropdownMenuTrigger asChild>
         <button
           className={

@@ -38,7 +38,9 @@ export function SupervisorSidebar() {
   return (
     <CollapsibleSidebar
       roleLabel="Supervisora"
-      footer={({ expanded }) => <ProfileMenu collapsed={!expanded} />}
+      footer={({ expanded, keepOpen }) => (
+        <ProfileMenu collapsed={!expanded} keepOpen={keepOpen} />
+      )}
     >
       {({ expanded }) => (
         <div className={cn("space-y-1", !expanded && "flex flex-col items-center")}>

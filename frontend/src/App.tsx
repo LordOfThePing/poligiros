@@ -37,9 +37,9 @@ import StudentNuevoRegistroPage from "@/pages/student/NuevoRegistroPage"
 
 function SupervisorLayout() {
   return (
-    <div className="flex h-screen overflow-hidden bg-brand-bg">
+    <div className="h-screen overflow-hidden bg-brand-bg">
       <SupervisorSidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="h-full overflow-y-auto pl-[var(--sidebar-w)]">
         <div className="p-6 max-w-7xl mx-auto">
           <Outlet />
         </div>
@@ -50,9 +50,9 @@ function SupervisorLayout() {
 
 function StudentLayout() {
   return (
-    <div className="flex h-screen overflow-hidden bg-brand-bg">
+    <div className="h-screen overflow-hidden bg-brand-bg">
       <StudentSidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="h-full overflow-y-auto pl-[var(--sidebar-w)]">
         <div className="p-6">
           <Outlet />
         </div>

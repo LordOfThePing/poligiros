@@ -6,13 +6,16 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 
-/** Read a File into an HTMLImageElement so it can be cropped. */
-function fileToImage(file: File): Promise<HTMLImageElement> {
+/** Read a File or an image URL into an HTMLImageElement so it can be cropped. */
+function loadImage(source: File | string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
+    const url = source instanceof File ? URL.createObjectURL(source) : source
     const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e) }
+    img.onload = () => {
+      if (source instanceof File) URL.revokeObjectURL(url)
+      resolve(img)
+    }
+    img.onerror = (e) => { reject(e) }
     img.src = url
   })
 }
@@ -35,17 +38,19 @@ async function cropImage(image: HTMLImageElement, crop: Area): Promise<Blob> {
 
 /**
  * Dialoga de recorte de portada: muestra la imagen con un rectángulo que se
- * arrastra para elegir qué parte se usa, con zoom. Al confirmar produce la
- * imagen recortada y la entrega como File para subirla.
+ * arrastra para elegir qué parte se usa, con zoom. Acepta un archivo nuevo O la
+ * URL de la portada actual (para recortarla en el lugar sin volver a subirla).
+ * Al confirmar produce la imagen recortada y la entrega como File para subirla.
  */
 export function CoverCropDialog({
   open,
-  imageFile,
+  source,
   onCancel,
   onConfirm,
 }: {
   open: boolean
-  imageFile: File | null
+  /** New uploaded file, or the URL of the currently stored cover. */
+  source: File | string | null
   onCancel: () => void
   onConfirm: (cropped: File) => void
 }) {
@@ -54,31 +59,47 @@ export function CoverCropDialog({
   const [croppedArea, setCroppedArea] = useState<Area | null>(null)
   const [busy, setBusy] = useState(false)
   const imageRef = useRef<HTMLImageElement | null>(null)
+  const sourceRef = useRef<File | string | null>(null)
+  if (source !== sourceRef.current) {
+    // Reset the crop when a different image is opened.
+    sourceRef.current = source
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setCroppedArea(null)
+    imageRef.current = null
+  }
 
   // The first argument is the crop area as percentages (0-100), which we use to
   // map onto the image's natural pixels.
   const onCropComplete = useCallback((percentCrop: Area) => setCroppedArea(percentCrop), [])
 
   function onOpenChange(next: boolean) {
-    if (!next) { setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedArea(null); onCancel() }
+    if (!next) { sourceRef.current = null; onCancel() }
   }
 
   async function accept() {
-    if (!imageFile || !croppedArea) return
+    if (!source || !croppedArea) return
     setBusy(true)
     try {
-      const image = imageRef.current ?? (await fileToImage(imageFile))
+      const image = imageRef.current ?? (await loadImage(source))
       imageRef.current = image
       const blob = await cropImage(image, croppedArea)
-      const name = imageFile.name.replace(/\.[^.]+$/, ".jpg")
-      onConfirm(new File([blob], name, { type: "image/jpeg" }))
+      const base = source instanceof File ? source.name.replace(/\.[^.]+$/, "") : "cover"
+      onConfirm(new File([blob], `${base}.jpg`, { type: "image/jpeg" }))
     } catch {
-      // fall back to the original if cropping failed
-      onConfirm(imageFile)
+      // fall back to the original if cropping failed (only meaningful for a File)
+      if (source instanceof File) onConfirm(source)
     } finally {
       setBusy(false)
     }
   }
+
+  const cropperImage =
+    source == null
+      ? undefined
+      : source instanceof File
+        ? URL.createObjectURL(source)
+        : source
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,9 +112,9 @@ export function CoverCropDialog({
         </p>
 
         <div className="relative w-full h-64 bg-black/5 rounded-lg overflow-hidden">
-          {imageFile && (
+          {cropperImage && (
             <Cropper
-              image={URL.createObjectURL(imageFile)}
+              image={cropperImage}
               crop={crop}
               zoom={zoom}
               aspect={2 / 1}
@@ -123,7 +144,7 @@ export function CoverCropDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancelar</Button>
           <Button
             className="bg-brand-accent hover:bg-brand-accent-dark"
-            disabled={busy || !imageFile}
+            disabled={busy || !source}
             onClick={accept}
           >
             {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}

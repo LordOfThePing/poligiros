@@ -109,6 +109,9 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   // new section's heading lands at the top without jumping to the absolute
   // page top.
   const rootRef = useRef<HTMLDivElement | null>(null)
+  // The "Continuar" button on the statements step, so we can focus it when the
+  // last question is answered.
+  const continueRef = useRef<HTMLButtonElement | null>(null)
 
   const answered = answers.filter((a) => a !== null).length
   const progressPct = Math.round((answered / 40) * 100)
@@ -120,6 +123,18 @@ export default function AnclasTest({ api }: AnclasTestProps) {
   useEffect(() => {
     if (step === 1) cardRefs.current[0]?.focus({ preventScroll: true })
   }, [step])
+
+  // When the last of the 40 is answered, move focus to the "Continuar" button
+  // so the flow reads on. Track the prior count so it fires once, on the 40th.
+  const prevAnswered = useRef(0)
+  useEffect(() => {
+    if (step !== 1) { prevAnswered.current = answered; return }
+    if (answered === 40 && prevAnswered.current < 40) {
+      // Let the re-render land, then focus the button.
+      requestAnimationFrame(() => continueRef.current?.focus())
+    }
+    prevAnswered.current = answered
+  }, [answered, step])
 
   // When a section finishes and the next one starts, bring its heading to the
   // top of the viewport instead of snapping to the absolute top of the page.
@@ -148,6 +163,8 @@ export default function AnclasTest({ api }: AnclasTestProps) {
     if (e.key >= "1" && e.key <= "6") {
       e.preventDefault()
       setAnswer(idx, Number(e.key))
+      // Advance to the next statement; the continue-button focus is handled by
+      // an effect once the last one is answered.
       cardRefs.current[idx + 1]?.focus()
     } else if (e.key === "ArrowDown") {
       e.preventDefault()
@@ -402,6 +419,7 @@ export default function AnclasTest({ api }: AnclasTestProps) {
         )}
 
         <Button
+          ref={continueRef}
           onClick={handleNextStep}
           className="w-full bg-brand-accent hover:bg-brand-accent-dark"
           size="lg"

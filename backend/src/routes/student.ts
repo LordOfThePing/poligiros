@@ -443,14 +443,15 @@ student.get("/notifications", async (c) => {
   return c.json({ pendingTests, pendingFeedback })
 })
 
-/** Module ids released to this coach right now. */
-async function releasedModuleIds(userId: string): Promise<string[]> {
+/** Module ids released to this coach (optionally for a single cohort). */
+async function releasedModuleIds(userId: string, cohortId?: string): Promise<string[]> {
   const access = await getCoachAccess(userId)
-  if (access.cohortIds.length === 0) return []
+  const ids = cohortId ? (access.cohortIds.includes(cohortId) ? [cohortId] : []) : access.cohortIds
+  if (ids.length === 0) return []
 
   const releases = await prisma.moduleRelease.findMany({
     where: {
-      cohortId: { in: access.cohortIds },
+      cohortId: { in: ids },
       released: true,
       // A scheduled opening in the future keeps the module hidden.
       OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
@@ -495,8 +496,10 @@ async function syncModuleProgress(userId: string, moduleId: string) {
 /** GET /student/modules */
 student.get("/modules", async (c) => {
   const user = c.get("user")
+  // Optional: show only a specific CIC the coach is enrolled in.
+  const cohortId = c.req.query("cohortId") || undefined
 
-  const moduleIds = await releasedModuleIds(user.id)
+  const moduleIds = await releasedModuleIds(user.id, cohortId)
   if (moduleIds.length === 0) return c.json([])
 
   const modules = await prisma.module.findMany({

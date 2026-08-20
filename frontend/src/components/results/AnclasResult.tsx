@@ -39,6 +39,8 @@ export function AnclasResult({
   // The average can exceed 6 (bonus items add +4), so bars scale to the top
   // anchor rather than to a fixed /6 max.
   const topScore = Math.max(...Object.values(scores), 1)
+  // Anchors that earn the 🏆 (top 3 ranks; a tie at a rank includes all of it).
+  const podium = podiumAnchors(scores, ANCHOR_ORDER)
 
   return (
     <div className="space-y-8">
@@ -53,27 +55,28 @@ export function AnclasResult({
         {/* Dense ranking: tied anchors share a rank and sit side by side. */}
         {groupRankedAnchors(scores, ANCHOR_ORDER).map((group) => {
           const isTop = group.rank === 1
+          const isPodium = group.anchors.every((a) => podium.has(a))
           const tied = group.anchors.length > 1
           return (
             <div
               key={group.rank}
               className={cn(
                 "bg-white rounded-xl border border-border p-5",
-                isTop && "border-brand-accent/50 shadow-sm"
+                isPodium && "border-brand-accent/50 shadow-sm"
               )}
             >
               <div className="flex items-start gap-4">
-                {/* The rank column carries the tie note: a tie qualifies the
-                    position, not any one anchor, so it belongs here and shows
-                    once instead of repeating on every card. */}
+                {/* The rank column: a 🏆 marks a podium rank (1, 2, 3); a tie
+                    qualifies the position, not any one anchor, so it shows once
+                    here instead of repeating on every card. */}
                 <div className="flex flex-col items-center gap-1.5 shrink-0 w-8">
                   <div
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-base",
-                      isTop ? "bg-brand-accent text-white" : "bg-muted text-muted-foreground"
+                      isPodium ? "bg-brand-accent text-white" : "bg-muted text-muted-foreground"
                     )}
                   >
-                    {isTop ? "🏆" : group.rank}
+                    {isPodium ? "🏆" : group.rank}
                   </div>
                   {tied && (
                     <span className="text-[10px] leading-tight text-muted-foreground text-center">
@@ -89,6 +92,7 @@ export function AnclasResult({
                       return (
                         <div key={anchor} className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
+                            {isPodium && <span className="text-base">🏆</span>}
                             <span className="text-lg">{info.icon}</span>
                             <span className="font-semibold text-foreground">{info.name}</span>
                             <Badge variant="outline" className="text-xs">{anchor}</Badge>

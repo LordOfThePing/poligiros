@@ -14,6 +14,7 @@ import {
 import { randomBytes } from "node:crypto"
 import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
 import { supervisorRecipient } from "../lib/notify.js"
+import { getCoachAccess } from "../lib/cohort.js"
 import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
@@ -255,6 +256,46 @@ supervisor.put("/students/:id", async (c) => {
   const updated = await prisma.user.update({ where: { id }, data })
   const { password, inviteToken, ...safe } = updated as unknown as Record<string, unknown>
   return c.json(safe)
+})
+
+/**
+ * PUT /supervisor/students/:id/memberships — body: { cohortIds: string[] }
+ * Replace the coach's CIC memberships (add/remove) in one call. Only valid for
+ * a coach; verified that every cohort exists.
+ */
+supervisor.put("/students/:id/memberships", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}) as Record<string, unknown>)
+
+  const student = await prisma.user.findUnique({ where: { id } })
+  if (!student || student.role !== "STUDENT_COACH") {
+    return c.json({ error: "Estudiante no encontrado" }, 404)
+  }
+
+  const cohortIds = Array.isArray(body.cohortIds)
+    ? [...new Set((body.cohortIds as string[]).filter(Boolean))]
+    : null
+  if (cohortIds === null) return c.json({ error: "Enviá una lista cohortIds" }, 400)
+
+  if (cohortIds.length > 0) {
+    const found = await prisma.cohort.findMany({
+      where: { id: { in: cohortIds } },
+      select: { id: true },
+    })
+    if (found.length !== cohortIds.length) {
+      return c.json({ error: "Algún CIC no existe" }, 400)
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.enrollment.deleteMany({ where: { userId: id } }),
+    ...cohortIds.map((cohortId) =>
+      prisma.enrollment.create({ data: { userId: id, cohortId } })
+    ),
+  ])
+
+  const access = await getCoachAccess(id)
+  return c.json({ cohorts: access.cohorts, cohortIds: access.cohortIds })
 })
 
 /**

@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import {
   GripVertical, Plus, Edit2, Trash2, ExternalLink, ChevronDown, ChevronRight, Link2,
-  Upload, FileText, Loader2, Copy,
+  Upload, FileText, Loader2, Copy, Crop,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
@@ -103,8 +103,9 @@ function ModuleContentEditor({
   const [linkUrl, setLinkUrl] = useState("")
   const [uploadingFor, setUploadingFor] = useState<string | null>(null)
   const [tests, setTests] = useState<LinkedTest[]>([])
-  // Pending cover image waiting to be cropped before upload.
-  const [cropFile, setCropFile] = useState<File | null>(null)
+  // Pending cover image waiting to be cropped before upload: a new File OR the
+  // URL of the currently stored cover (to re-crop it in place).
+  const [cropSource, setCropSource] = useState<File | string | null>(null)
 
   useEffect(() => {
     // PLAN_VITAL is a permanent placeholder with no form — never offer it.
@@ -516,11 +517,19 @@ function ModuleContentEditor({
                           className="sr-only"
                           onChange={(e) => {
                             const f = e.target.files?.[0]
-                            if (f) setCropFile(f)
+                            if (f) setCropSource(f)
                             e.target.value = ""
                           }}
                         />
                       </label>
+                      {draft.coverImageUrl && (
+                        <button
+                          onClick={() => setCropSource(draft.coverImageUrl ?? null)}
+                          className="inline-flex items-center gap-1 text-sm text-brand-accent hover:text-brand-accent-dark hover:underline"
+                        >
+                          <Crop className="h-3.5 w-3.5" /> Recortar la actual
+                        </button>
+                      )}
                       <button
                         onClick={handleItemCoverDelete}
                         className="inline-flex items-center gap-1 text-sm text-destructive hover:underline"
@@ -541,7 +550,7 @@ function ModuleContentEditor({
                         className="sr-only"
                         onChange={(e) => {
                           const f = e.target.files?.[0]
-                          if (f) setCropFile(f)
+                          if (f) setCropSource(f)
                           e.target.value = ""
                         }}
                       />
@@ -561,11 +570,11 @@ function ModuleContentEditor({
       </Dialog>
 
       <CoverCropDialog
-        open={!!cropFile}
-        imageFile={cropFile}
-        onCancel={() => setCropFile(null)}
+        open={!!cropSource}
+        source={cropSource}
+        onCancel={() => setCropSource(null)}
         onConfirm={(cropped) => {
-          setCropFile(null)
+          setCropSource(null)
           handleItemCoverUpload(cropped)
         }}
       />

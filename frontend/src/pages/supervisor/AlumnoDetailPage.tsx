@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Pencil, KeyRound, Ban, RotateCcw } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost, apiTry } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { useToast } from "@/hooks/use-toast"
 
@@ -63,6 +64,11 @@ export default function AlumnoDetailPage() {
   const [resetPassword, setResetPassword] = useState("")
   const [resetResult, setResetResult] = useState<string | null>(null)
   const [resetError, setResetError] = useState("")
+
+  // CIC memberships editor (assign the coach to one or more CICs).
+  const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([])
+  const [memberCohortIds, setMemberCohortIds] = useState<Set<string>>(new Set())
+  const [savingCohorts, setSavingCohorts] = useState(false)
 
   function loadCoachTests() {
     apiJson<any[]>(`/supervisor/coaches/${id}/tests`)
@@ -116,13 +122,34 @@ export default function AlumnoDetailPage() {
 
   function loadStudent() {
     apiJson<any>(`/supervisor/students/${id}`)
-      .then((data) => { setStudent(data); setLoading(false) })
+      .then((data) => {
+        setStudent(data)
+        setLoading(false)
+        setMemberCohortIds(new Set((data.enrollments ?? []).map((e: any) => e.cohortId)))
+      })
       .catch(() => setLoading(false))
+  }
+
+  async function saveMemberships() {
+    setSavingCohorts(true)
+    const res = await apiTry(`/supervisor/students/${id}/memberships`, {
+      method: "PUT",
+      body: JSON.stringify({ cohortIds: [...memberCohortIds] }),
+    })
+    setSavingCohorts(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      toast({ title: j.error || "No se pudieron actualizar los CIC", variant: "destructive" })
+      return
+    }
+    toast({ title: "CIC actualizados" })
+    loadStudent()
   }
 
   useEffect(() => {
     loadStudent()
     apiJson<Test[]>("/supervisor/tests").then(setAllTests).catch(() => {})
+    apiJson<{ id: string; name: string }[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
     loadCoachTests()
   }, [id])
 
@@ -238,6 +265,69 @@ export default function AlumnoDetailPage() {
           </Button>
         )}
       </div>
+
+      {/* CIC memberships: assign the coach to one or more CICs. */}
+      <Card className="bg-white">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-sans text-base font-medium">CIC (camadas)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {cohorts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay CIC creados todavía.</p>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              {cohorts.map((c) => {
+                const active = memberCohortIds.has(c.id)
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() =>
+                      setMemberCohortIds((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(c.id)) next.delete(c.id)
+                        else next.add(c.id)
+                        return next
+                      })
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-brand-accent text-white border-brand-accent"
+                        : "border-border text-muted-foreground hover:border-brand-accent hover:text-foreground"
+                    )}
+                  >
+                    {active ? "✓ " : ""}{c.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {memberCohortIds.size > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {student.name} pertenece a {memberCohortIds.size}{" "}
+              {memberCohortIds.size === 1 ? "CIC" : "CIC"} — verá el contenido de {memberCohortIds.size === 1 ? "ese CIC" : "esos CIC"}.
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="bg-brand-accent hover:bg-brand-accent-dark"
+              disabled={savingCohorts}
+              onClick={saveMemberships}
+            >
+              {savingCohorts ? "Guardando..." : "Guardar CIC"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={savingCohorts}
+              onClick={() => loadStudent()}
+            >
+              Descartar cambios
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="space-y-4">
         <h2 className="font-serif text-xl">Clientes</h2>

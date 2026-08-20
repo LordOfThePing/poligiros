@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
   ClipboardCheck, PanelLeftClose, PanelLeftOpen, MessageSquare,
@@ -38,6 +39,9 @@ export default function ProgramaPage() {
   const [modules, setModules] = useState<StudentModule[]>([])
   const [loading, setLoading] = useState(true)
   const [zoom, setZoom] = useState<CoachAccess["zoom"]>([])
+  // The CICs this coach belongs to + which one is currently being viewed.
+  const [cohorts, setCohorts] = useState<CoachAccess["cohorts"]>([])
+  const [selectedCohortId, setSelectedCohortId] = useState<string>("")
   const [openModules, setOpenModules] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Selection | null>(null)
   const [saving, setSaving] = useState(false)
@@ -52,21 +56,36 @@ export default function ProgramaPage() {
   // Draft text for the ENTREGA card currently open.
   const [entrega, setEntrega] = useState("")
 
-  useEffect(() => {
-    apiJson<StudentModule[]>("/student/modules")
+  const loadModules = useCallback((cohortId: string) => {
+    setSelected(null)
+    setLoading(true)
+    const qs = cohortId ? `?cohortId=${cohortId}` : ""
+    apiJson<StudentModule[]>(`/student/modules${qs}`)
       .then((data) => {
         setModules(data)
-        setLoading(false)
-        // Open the first module that still has something pending, so the page
-        // lands on where the coach left off instead of collapsed.
+        // Open the first module that still has something pending.
         const next = data.find((m) => !m.completed) ?? data[0]
-        if (next) setOpenModules(new Set([next.id]))
+        setOpenModules(next ? new Set([next.id]) : new Set())
       })
-      .catch(() => setLoading(false))
+      .catch(() => setModules([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
     apiJson<CoachAccess>("/student/access")
-      .then((a) => setZoom(a.zoom))
+      .then((a) => {
+        setZoom(a.zoom)
+        setCohorts(a.cohorts)
+        // Default to the first enrolled CIC; if only one, no selector shown.
+        setSelectedCohortId((prev) => prev || a.cohorts[0]?.id || "")
+      })
       .catch(() => {})
   }, [])
+
+  // Load the modules for the currently selected CIC.
+  useEffect(() => {
+    loadModules(selectedCohortId)
+  }, [selectedCohortId, loadModules])
 
   const allItems = useMemo(() => modules.flatMap((m) => m.items), [modules])
   const doneCount = allItems.filter((i) => i.completed).length
@@ -177,6 +196,21 @@ export default function ProgramaPage() {
           Las clases se van habilitando a medida que avanza la cursada
         </p>
       </div>
+
+      {cohorts.length > 1 && (
+        <div className="max-w-xs">
+          <Select value={selectedCohortId} onValueChange={setSelectedCohortId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Elegí un CIC" />
+            </SelectTrigger>
+            <SelectContent>
+              {cohorts.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {zoom.map((z) => (
         <a

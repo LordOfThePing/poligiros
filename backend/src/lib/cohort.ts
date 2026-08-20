@@ -14,6 +14,8 @@ import { prisma } from "./prisma.js"
  */
 export type CoachAccess = {
   cohortIds: string[]
+  /** The CICs this coach belongs to, with names — for a CIC picker in the app. */
+  cohorts: { id: string; name: string }[]
   /** May load coachees AND run tests on them — one permission, not two. */
   practiceEnabled: boolean
   /** Zoom links of the cohorts the coach belongs to, for the Programa page. */
@@ -28,6 +30,7 @@ export async function getCoachAccess(userId: string): Promise<CoachAccess> {
 
   return {
     cohortIds: enrollments.map((e) => e.cohortId),
+    cohorts: enrollments.map((e) => ({ id: e.cohortId, name: e.cohort.name })),
     practiceEnabled: enrollments.some((e) => e.cohort.practiceEnabled),
     zoom: enrollments
       .filter((e) => e.cohort.zoomUrl)

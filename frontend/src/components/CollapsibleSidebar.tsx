@@ -8,12 +8,14 @@ const STORAGE_KEY = "poligiros.sidebar-fixed"
  * The global left nav shell, shared by the supervisor and the coach.
  *
  * Two modes, toggled by the icon button in the header:
- *  - "fixed": always expanded (w-64).
- *  - "auto": shrinks to a narrow icon rail (w-16) and only expands on hover, so
- *    the profile + items can be tucked away without losing quick access.
+ *  - "fixed": always expanded (w-64). The default for large screens.
+ *  - "auto": shrinks to a narrow icon rail (w-16) and only expands on hover,
+ *    floating OVER the page content without shifting it. Default for small
+ *    screens / best fit.
  *
  * The chosen mode is remembered across reloads. Children receive `expanded`
- * (true when showing labels) so they can hide the text and keep just icons.
+ * (true when showing labels) and a `keepOpen` callback so an open dropdown can
+ * keep the sidebar expanded (avoids the flicker of collapsing mid-interaction).
  */
 export function CollapsibleSidebar({
   roleLabel,
@@ -21,29 +23,38 @@ export function CollapsibleSidebar({
   footer,
 }: {
   roleLabel: string
-  children: (args: { expanded: boolean }) => ReactNode
+  children: (args: { expanded: boolean; keepOpen: (open: boolean) => void }) => ReactNode
   /** Fixed footer pinned to the bottom (e.g. the profile + logout menu). */
-  footer?: (args: { expanded: boolean }) => ReactNode
+  footer?: (args: { expanded: boolean; keepOpen: (open: boolean) => void }) => ReactNode
 }) {
   const [fixed, setFixed] = useState<boolean>(() => {
-    if (typeof localStorage === "undefined") return true
-    return localStorage.getItem(STORAGE_KEY) !== "auto"
+    // Auto-hide by default (better on small screens); users can pin it open.
+    if (typeof localStorage === "undefined") return false
+    return localStorage.getItem(STORAGE_KEY) === "fixed"
   })
   const [hovering, setHovering] = useState(false)
+  // An open dropdown/popover must keep the sidebar expanded (no flicker).
+  const [keepOpen, setKeepOpen] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, fixed ? "fixed" : "auto")
   }, [fixed])
 
-  // Expanded when fixed mode, or when auto mode is hovered open.
-  const expanded = fixed || hovering
+  // Expanded when fixed, or when auto is hovered or an inner menu is open.
+  const expanded = fixed || hovering || keepOpen
+
+  // Publish the current width so the layout's main content can pad accordingly
+  // (the sidebar is fixed/overlay, so it never shifts the page).
+  useEffect(() => {
+    document.documentElement.style.setProperty("--sidebar-w", expanded ? "16rem" : "4rem")
+  }, [expanded])
 
   return (
     <aside
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseEnter={() => (fixed ? undefined : setHovering(true))}
+      onMouseLeave={() => (fixed ? undefined : setHovering(false))}
       className={cn(
-        "shrink-0 bg-white border-r border-border flex flex-col h-full overflow-hidden transition-[width] duration-200 ease-in-out",
+        "fixed left-0 inset-y-0 z-40 bg-white border-r border-border flex flex-col overflow-hidden transition-[width] duration-200 ease-in-out",
         expanded ? "w-64" : "w-16"
       )}
     >
@@ -54,14 +65,12 @@ export function CollapsibleSidebar({
         )}
       >
         {expanded ? (
-          <>
-            <div className="min-w-0 leading-tight">
-              <h1 className="font-serif text-2xl text-brand-accent leading-none">Poligiros</h1>
-              <span className="block text-[0.7rem] text-muted-foreground mt-1.5 truncate">
-                {roleLabel}
-              </span>
-            </div>
-          </>
+          <div className="min-w-0 leading-tight">
+            <h1 className="font-serif text-2xl text-brand-accent leading-none">Poligiros</h1>
+            <span className="block text-[0.7rem] text-muted-foreground mt-1.5 truncate">
+              {roleLabel}
+            </span>
+          </div>
         ) : (
           <span className="font-serif text-2xl text-brand-accent leading-none">P.</span>
         )}
@@ -77,7 +86,7 @@ export function CollapsibleSidebar({
 
       {/* Nav is the only scrollable area; the footer stays pinned to the bottom. */}
       <div className={cn("flex-1 overflow-y-auto overflow-x-hidden min-h-0", expanded ? "p-4" : "px-2 py-3")}>
-        {children({ expanded })}
+        {children({ expanded, keepOpen: setKeepOpen })}
       </div>
 
       {footer && (
@@ -87,7 +96,7 @@ export function CollapsibleSidebar({
             expanded ? "p-2.5" : "px-2 py-3"
           )}
         >
-          {footer({ expanded })}
+          {footer({ expanded, keepOpen: setKeepOpen })}
         </div>
       )}
     </aside>
