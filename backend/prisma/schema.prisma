@@ -83,6 +83,7 @@ model User {
   resetRequestsMade   TestResetRequest[]     @relation("ResetRequestedBy")
   resetReviews        TestResetRequest[]     @relation("ResetReviewedBy")
   signupReviews       SignupRequest[]        @relation("SignupReviewedBy")
+  moduleItemComments  ModuleItemComment[]
 }
 
 model Cohort {
@@ -130,6 +131,12 @@ model Module {
   published   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
+  /// Optional cover image uploaded through the app (R2). Shown above the class
+  /// when an item is open. `coverImageKey` is the R2 object key (needed to
+  /// delete the blob); `coverImageUrl` is the public URL to display.
+  coverImageKey String?
+  coverImageUrl String?
+
   items    ModuleItem[]
   progress ModuleProgress[]
   releases ModuleRelease[]
@@ -171,6 +178,7 @@ model ModuleItem {
   links       ModuleLink[]
   progress    ModuleItemProgress[]
   submissions ModuleItemSubmission[]
+  comments    ModuleItemComment[]
 }
 
 /// A link hanging off a card. Nothing is ever uploaded or stored by this app —
@@ -260,6 +268,11 @@ model TestAssignment {
   accessToken          String?   @unique
   completeBy           DateTime?
   resultsViewableUntil DateTime?
+
+  /// Set by the supervisor to block a still-pending test (revoke access). The
+  /// client/coach can no longer open or submit it until it is re-opened (or
+  /// re-assigned). Meaningless once completed.
+  accessRevokedAt DateTime?
 
   response      TestResponse?
   supervision   SupervisionRequest?
@@ -426,4 +439,27 @@ model ModuleItemSubmission {
 
   @@unique([userId, itemId])
   @@index([reviewedAt])
+}
+
+/// A blog-style comment on a card, start a discussion about that card. Both the
+/// coach and the supervisor can post; each comment may carry one photo, uploaded
+/// through the app and stored in R2 (shown flat under the text).
+model ModuleItemComment {
+  id        String     @id @default(cuid())
+  itemId    String
+  item      ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  text String
+
+  /// Photo attached to this comment, if any. `imageKey` is the R2 object key
+  /// (for deletion); `imageUrl` is the public URL to render.
+  imageKey String?
+  imageUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([itemId, createdAt])
 }

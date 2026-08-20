@@ -11,9 +11,21 @@ import { latestTableroIdea } from "./client.js"
 import { getCoachAccess } from "../lib/cohort.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
 import { notifyTarget } from "../lib/notify.js"
+import { isR2Configured, uploadToR2, deleteFromR2 } from "../lib/r2.js"
 import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
+
+/** Max bytes for a comment photo (smaller than the class-material cap). */
+const COMMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+function imageMaxBytes() {
+  return COMMENT_IMAGE_MAX_BYTES
+}
+/** Collision-proof R2 key for a comment photo. */
+function buildCommentImageKey(itemId: string, fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "jpg"
+  return `comments/${itemId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+}
 
 /* ─────────────────────────────────────────
    Clients
@@ -114,10 +126,11 @@ student.post("/clients/:id/assign", async (c) => {
   const assignment = await prisma.testAssignment.upsert({
     where: { testId_clientId: { testId, clientId: id } },
     update: {
-      // Refresh token and windows on re-assign
+      // Refresh token and windows on re-assign, and clear any prior revocation.
       accessToken,
       completeBy,
       resultsViewableUntil,
+      accessRevokedAt: null,
     },
     create: {
       testId,
@@ -631,6 +644,11 @@ student.post("/module-items/:itemId/start", async (c) => {
     create: { testId: full.testId, clientId: myClient.id, assignedBy: myClient.studentId },
   })
 
+  // A revoked, still-pending self-test can't be taken again until re-opened.
+  if (!assignment.completedAt && assignment.accessRevokedAt) {
+    return c.json({ error: "test_revoked" }, 403)
+  }
+
   return c.json({ assignmentId: assignment.id, completed: Boolean(assignment.completedAt) })
 })
 
@@ -711,6 +729,106 @@ student.delete("/module-items/:itemId/complete", async (c) => {
   return c.json({ ok: true, completed: false })
 })
 
+/* ─────────────────────────────────────────
+   Module-item discussions (comments + photo upload). Both the coach and the
+   supervisor post on the same thread; the coach reaches it from their class
+   page.
+───────────────────────────────────────── */
+
+/** GET /student/module-items/:id/comments */
+student.get("/module-items/:id/comments", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("id")
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  const comments = await prisma.moduleItemComment.findMany({
+    where: { itemId },
+    include: { user: { select: { id: true, name: true, role: true } } },
+    orderBy: { createdAt: "asc" },
+  })
+  return c.json(comments)
+})
+
+/**
+ * POST /student/module-items/:id/comments — JSON { text } or multipart with
+ * `text` + optional `image` file. A comment needs at least text or a photo.
+ */
+student.post("/module-items/:id/comments", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("id")
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  const contentType = c.req.header("content-type") ?? ""
+  let text = ""
+  let imageUrl: string | null = null
+  let imageKey: string | null = null
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await c.req.formData()
+    text = String(form.get("text") ?? "").trim()
+    const file = form.get("image")
+    if (file instanceof File) {
+      if (!isR2Configured()) {
+        return c.json({ error: "La subida de imágenes no está configurada." }, 503)
+      }
+      if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+        return c.json({ error: "Solo se aceptan imágenes (png, jpg, webp, gif)." }, 400)
+      }
+      if (file.size > imageMaxBytes()) {
+        return c.json({ error: "La imagen supera el máximo permitido." }, 400)
+      }
+      const key = buildCommentImageKey(itemId, file.name)
+      const buffer = Buffer.from(await file.arrayBuffer())
+      try {
+        imageUrl = await uploadToR2(key, buffer, file.type)
+        imageKey = key
+      } catch {
+        return c.json({ error: "No se pudo subir la imagen. Revisá la configuración." }, 502)
+      }
+    }
+  } else {
+    const body = await c.req.json().catch(() => ({}))
+    text = String(body.text ?? "").trim()
+  }
+
+  if (!text && !imageUrl) {
+    return c.json({ error: "Escribí un comentario o adjuntá una imagen." }, 400)
+  }
+
+  const comment = await prisma.moduleItemComment.create({
+    data: {
+      itemId,
+      userId: user.id,
+      text,
+      imageUrl,
+      imageKey,
+    },
+    include: { user: { select: { id: true, name: true, role: true } } },
+  })
+  return c.json(comment, 201)
+})
+
+/** DELETE /student/module-items/:id/comments/:commentId — only the author may delete. */
+student.delete("/module-items/:id/comments/:commentId", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("id")
+  const commentId = c.req.param("commentId")
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  const comment = await prisma.moduleItemComment.findFirst({ where: { id: commentId, itemId } })
+  if (!comment) return c.json({ error: "Not found" }, 404)
+  if (comment.userId !== user.id) {
+    return c.json({ error: "Solo el autor puede eliminar su comentario" }, 403)
+  }
+
+  await prisma.moduleItemComment.delete({ where: { id: commentId } })
+  if (comment.imageKey) deleteFromR2(comment.imageKey).catch(() => {})
+  return c.json({ ok: true })
+})
+
 
 /* ─────────────────────────────────────────
    Coach self-tests — the coach takes tests logged-in. Their assignments live on
@@ -747,7 +865,11 @@ student.get("/my-tests/:id", async (c) => {
   // Modelo de Negocio pre-fills the idea from the coach's latest Tablero.
   const prefillIdea =
     assignment.test.type === "MODELO_NEGOCIO" ? await latestTableroIdea(assignment.clientId) : undefined
-  return c.json({ ...assignment, prefillIdea })
+  return c.json({
+    ...assignment,
+    revoked: assignment.completedAt === null && Boolean(assignment.accessRevokedAt),
+    prefillIdea,
+  })
 })
 
 /** POST /student/my-tests/:id/submit */
@@ -757,6 +879,7 @@ student.post("/my-tests/:id/submit", async (c) => {
   const assignment = await loadMyAssignment(user.id, id)
   if (!assignment) return c.json({ error: "Not found" }, 404)
   if (assignment.completedAt) return c.json({ error: "already_completed" }, 409)
+  if (assignment.accessRevokedAt) return c.json({ error: "test_revoked" }, 403)
 
   const { responses } = await c.req.json()
   const [testResponse] = await prisma.$transaction([

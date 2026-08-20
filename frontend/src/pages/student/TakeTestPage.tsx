@@ -14,6 +14,7 @@ import { LoadingBadge } from "@/components/LoadingBadge"
 type Assignment = {
   id: string
   completedAt: string | null
+  revoked?: boolean
   test: { type: string; title: string }
   response: { responses: Record<string, unknown> } | null
   prefillIdea?: string
@@ -58,6 +59,20 @@ export default function StudentTakeTestPage() {
           coachFeedback={null}
           completedAt={assignment.completedAt}
         />
+      </div>
+    )
+  }
+
+  // Revoked by Gaby while pending → can't take it until re-opened.
+  if (assignment.revoked) {
+    return (
+      <div className="max-w-md mx-auto text-center space-y-3 py-12">
+        {back}
+        <p className="text-4xl">🚫</p>
+        <h1 className="font-serif text-2xl text-foreground">Este test quedó suspendido</h1>
+        <p className="text-muted-foreground">
+          Gaby revocó tu acceso a este test. Consultá con ella para reabrir el acceso.
+        </p>
       </div>
     )
   }

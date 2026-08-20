@@ -4,13 +4,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
-  ClipboardCheck,
+  ClipboardCheck, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { CommentPanel } from "@/components/modules/CommentPanel"
 import {
   KIND_BADGE, KIND_LABEL, formatBytes,
   type StudentModule, type StudentModuleItem,
@@ -27,6 +28,9 @@ export default function ProgramaPage() {
   const [openModules, setOpenModules] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Selection | null>(null)
   const [saving, setSaving] = useState(false)
+  // Left index panel: pinned open (default) or auto-hidden once an item opens
+  // on large screens, so the item + discussion get more room.
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.
   const [entrega, setEntrega] = useState("")
@@ -201,10 +205,21 @@ export default function ProgramaPage() {
           la cursada.
         </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-          {/* Index. On mobile it hides once an item is open, so the detail gets
-              the full width instead of sitting below a long list. */}
-          <div className={cn("space-y-3", current && "hidden lg:block")}>
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr] xl:grid-cols-[320px_minmax(0,1fr)_380px]">
+          {/* Index. Pinned open (desktop) or auto-hidden once an item opens, so
+              the item + discussion get the width. */}
+          <div className={cn("space-y-3", (current && !sidebarOpen) && "hidden lg:block")}>
+            <div className="flex items-center justify-between bg-white rounded-lg border border-border px-4 py-2.5">
+              <span className="text-sm font-medium text-foreground">Contenido</span>
+              <button
+                onClick={() => setSidebarOpen((v) => !v)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                title={sidebarOpen ? "Plegar el panel al elegir un ítem" : "Mantener el panel siempre abierto"}
+              >
+                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+                {sidebarOpen ? "Auto-ocultar" : "Fijo"}
+              </button>
+            </div>
             {modules.map((mod, idx) => {
               const open = openModules.has(mod.id)
               const done = mod.items.filter((i) => i.completed).length
@@ -280,10 +295,18 @@ export default function ProgramaPage() {
             })}
           </div>
 
-          {/* Detail panel */}
-          <div>
+          {/* Detail + discussion */}
+          <div className="xl:col-span-2">
             {current ? (
-              <div className="bg-white rounded-lg border border-border p-5 space-y-4">
+              <div className="grid gap-6 items-start lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px]">
+                <div className="bg-white rounded-lg border border-border p-5 space-y-4 min-w-0">
+                {current.module.coverImageUrl && (
+                  <img
+                    src={current.module.coverImageUrl}
+                    alt={`Portada de ${current.module.title}`}
+                    className="rounded-lg border border-border w-full h-40 object-cover bg-muted"
+                  />
+                )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <button
@@ -421,6 +444,10 @@ export default function ProgramaPage() {
                       Marcar como completado
                     </Button>
                   )}
+                </div>
+              </div>
+                <div className="bg-white rounded-lg border border-border p-4 xl:h-[calc(100vh-200px)] xl:sticky xl:top-6">
+                  <CommentPanel itemId={current.item.id} />
                 </div>
               </div>
             ) : (

@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Pencil, KeyRound } from "lucide-react"
+import { ArrowLeft, Pencil, KeyRound, Ban, RotateCcw } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost, apiTry } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
@@ -35,7 +35,13 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 type Test = { id: string; type: string; title: string }
-type CoachAssignment = { id: string; completedAt: string | null; test: { type: string } }
+type CoachAssignment = {
+  id: string
+  completedAt: string | null
+  /** True when a still-pending self-test was revoked by the supervisor. */
+  revoked?: boolean
+  test: { type: string }
+}
 
 export default function AlumnoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -59,7 +65,33 @@ export default function AlumnoDetailPage() {
   const [resetError, setResetError] = useState("")
 
   function loadCoachTests() {
-    apiJson<CoachAssignment[]>(`/supervisor/coaches/${id}/tests`).then(setCoachTests).catch(() => {})
+    apiJson<any[]>(`/supervisor/coaches/${id}/tests`)
+      .then((data) =>
+        setCoachTests(
+          data.map((a) => ({
+            id: a.id,
+            completedAt: a.completedAt,
+            test: a.test,
+            revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
+          }))
+        )
+      )
+      .catch(() => {})
+  }
+
+  async function setRevoked(assignment: CoachAssignment, revoked: boolean) {
+    const res = await apiTry(
+      `/supervisor/assignments/${assignment.id}/${revoked ? "revoke" : "reopen"}`,
+      { method: "POST" }
+    )
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      toast({ title: j.error || "No se pudo actualizar el acceso", variant: "destructive" })
+      return
+    }
+    toast({ title: revoked ? "Acceso revocado al test" : "Acceso restablecido al test" })
+    loadCoachTests()
+    loadStudent()
   }
 
   function loadStudent() {
@@ -201,20 +233,45 @@ export default function AlumnoDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap items-center">
                   {["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"].map((type) => {
                     const assignment = client.assignments.find((a: any) => a.test.type === type)
+                    const revoked = assignment && !assignment.completedAt && Boolean(assignment.accessRevokedAt)
                     let status = "unassigned"
-                    if (assignment?.completedAt) status = "completed"
+                    if (revoked) status = "revoked"
+                    else if (assignment?.completedAt) status = "completed"
                     else if (assignment) status = "pending"
+                    const st = revoked
+                      ? "bg-red-100 text-red-700"
+                      : STATUS_COLORS[status]
                     return (
-                      <span
-                        key={type}
-                        className={`text-xs px-2 py-1 rounded font-medium ${STATUS_COLORS[status]}`}
-                      >
-                        {TEST_CODES[type]}
-                        {status === "completed" && " ✓"}
-                        {status === "pending" && " …"}
+                      <span key={type} className="inline-flex items-center gap-1">
+                        <span
+                          className={`text-xs px-2 py-1 rounded font-medium ${st}`}
+                          title={revoked ? "Acceso suspendido" : undefined}
+                        >
+                          {TEST_CODES[type]}
+                          {status === "completed" && " ✓"}
+                          {status === "pending" && " …"}
+                        </span>
+                        {assignment && !assignment.completedAt && !revoked && (
+                          <button
+                            onClick={() => setRevoked(assignment, true)}
+                            className="text-muted-foreground hover:text-destructive"
+                            title="Revocar acceso a este test pendiente"
+                          >
+                            <Ban className="h-3 w-3" />
+                          </button>
+                        )}
+                        {revoked && (
+                          <button
+                            onClick={() => setRevoked(assignment, false)}
+                            className="text-muted-foreground hover:text-brand-accent"
+                            title="Reabrir acceso a este test"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </button>
+                        )}
                       </span>
                     )
                   })}
@@ -247,8 +304,26 @@ export default function AlumnoDetailPage() {
                       {assignment?.completedAt && (
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Completado ✓</Badge>
                       )}
-                      {assignment && !assignment.completedAt && (
+                      {assignment && !assignment.completedAt && assignment.revoked && (
+                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-xs">Suspendido</Badge>
+                      )}
+                      {assignment && !assignment.completedAt && !assignment.revoked && (
                         <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">Pendiente</Badge>
+                      )}
+                      {assignment && !assignment.completedAt && !assignment.revoked && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setRevoked(assignment, true)}
+                        >
+                          <Ban className="h-3 w-3 mr-1" /> Revocar
+                        </Button>
+                      )}
+                      {assignment && !assignment.completedAt && assignment.revoked && (
+                        <Button size="sm" variant="outline" onClick={() => setRevoked(assignment, false)}>
+                          <RotateCcw className="h-3 w-3 mr-1" /> Reabrir
+                        </Button>
                       )}
                       {!assignment && (
                         <Button

@@ -23,6 +23,7 @@ type TokenState =
       completedAt: string
     }
   | { state: "expired" }
+  | { state: "revoked"; error: string }
   | { state: "error"; message: string }
 
 export default function TokenPage() {
@@ -75,6 +76,20 @@ export default function TokenPage() {
           <p className="text-4xl">⏰</p>
           <h1 className="font-serif text-2xl text-foreground">Este enlace caducó</h1>
           <p className="text-muted-foreground">Pedile uno nuevo a tu coach.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (data.state === "revoked") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md text-center space-y-3">
+          <p className="text-4xl">🚫</p>
+          <h1 className="font-serif text-2xl text-foreground">Este test quedó suspendido</h1>
+          <p className="text-muted-foreground">
+            Tu acceso fue revocado. Consultá con tu coach o con la coordinación.
+          </p>
         </div>
       </div>
     )

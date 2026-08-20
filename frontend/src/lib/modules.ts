@@ -51,6 +51,17 @@ export type Module = {
   orderIndex: number
   published: boolean
   items: ModuleItem[]
+  /** Optional cover image (R2 public URL) shown above the class when opened. */
+  coverImageUrl: string | null
+}
+
+/** A blog-style comment on a card, with an optional photo shown flat. */
+export type ModuleItemComment = {
+  id: string
+  text: string
+  imageUrl: string | null
+  createdAt: string
+  user: { id: string; name: string; role: string }
 }
 
 /** Student view adds their own progress, per item and derived per module. */

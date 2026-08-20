@@ -18,6 +18,14 @@ import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
 
+/** Max bytes for images (comment photos + module covers). */
+const COMMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+/** Collision-proof R2 key for an image. */
+function buildCommentImageKey(scopeId: string, fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "jpg"
+  return `images/${scopeId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+}
+
 /* ─────────────────────────────────────────
    Stats
 ───────────────────────────────────────── */
@@ -589,10 +597,57 @@ supervisor.put("/modules/:id", async (c) => {
   return c.json(updated)
 })
 
-/** DELETE /supervisor/modules/:id — cascades to its cards, links, files and releases. */
+/**
+ * POST /supervisor/modules/:id/cover — upload the module's cover image.
+ * Multipart, field `file` (image only). Replaces any previous cover and, if the
+ * old one was uploaded through the app, deletes its blob from R2.
+ */
+supervisor.post("/modules/:id/cover", async (c) => {
+  const id = c.req.param("id")
+  const module = await prisma.module.findUnique({ where: { id } })
+  if (!module) return c.json({ error: "Módulo no encontrado" }, 404)
+
+  if (!isR2Configured()) {
+    return c.json({ error: "La subida de imágenes no está configurada (falta CLOUDFLARE_R2_*)." }, 503)
+  }
+
+  const form = await c.req.formData()
+  const file = form.get("file")
+  if (!(file instanceof File)) return c.json({ error: "No se recibió ningún archivo" }, 400)
+  if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+    return c.json({ error: "La portada debe ser una imagen (png, jpg, webp, gif)." }, 400)
+  }
+  if (file.size > COMMENT_IMAGE_MAX_BYTES) {
+    return c.json({ error: "La portada supera el máximo permitido." }, 400)
+  }
+
+  const key = buildCommentImageKey(id, file.name)
+  const buffer = Buffer.from(await file.arrayBuffer())
+  let url: string
+  try {
+    url = await uploadToR2(key, buffer, file.type)
+  } catch {
+    return c.json({ error: "No se pudo subir la imagen. Revisá la configuración." }, 502)
+  }
+
+  const oldKey = module.coverImageKey
+  const updated = await prisma.module.update({
+    where: { id },
+    data: { coverImageKey: key, coverImageUrl: url },
+  })
+  if (oldKey) await deleteFromR2(oldKey).catch(() => {})
+
+  return c.json({ id: updated.id, coverImageUrl: updated.coverImageUrl })
+})
+
+/**
+ * DELETE /supervisor/modules/:id — cascades to its cards, links, files and
+ * releases. Also removes the module's own cover from R2.
+ */
 supervisor.delete("/modules/:id", async (c) => {
   const id = c.req.param("id")
 
+  const module = await prisma.module.findUnique({ where: { id }, select: { coverImageKey: true } })
   const stored = await prisma.moduleLink.findMany({
     where: { item: { moduleId: id }, storageKey: { not: null } },
     select: { storageKey: true },
@@ -600,6 +655,7 @@ supervisor.delete("/modules/:id", async (c) => {
 
   await prisma.module.delete({ where: { id } })
   await Promise.all(stored.map((l) => deleteFromR2(l.storageKey!).catch(() => {})))
+  if (module?.coverImageKey) await deleteFromR2(module.coverImageKey).catch(() => {})
 
   return c.json({ ok: true })
 })
@@ -867,6 +923,81 @@ supervisor.get("/upload-limits", (c) =>
 )
 
 /* ─────────────────────────────────────────
+   Module-item discussions — the supervisor joins the same thread the coaches see.
+───────────────────────────────────────── */
+
+/** GET /supervisor/module-item-comments/:itemId */
+supervisor.get("/module-item-comments/:itemId", async (c) => {
+  const comments = await prisma.moduleItemComment.findMany({
+    where: { itemId: c.req.param("itemId") },
+    include: { user: { select: { id: true, name: true, role: true } } },
+    orderBy: { createdAt: "asc" },
+  })
+  return c.json(comments)
+})
+
+/** POST /supervisor/module-item-comments/:itemId — JSON { text } or multipart. */
+supervisor.post("/module-item-comments/:itemId", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("itemId")
+
+  const contentType = c.req.header("content-type") ?? ""
+  let text = ""
+  let imageUrl: string | null = null
+  let imageKey: string | null = null
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await c.req.formData()
+    text = String(form.get("text") ?? "").trim()
+    const file = form.get("image")
+    if (file instanceof File) {
+      if (!isR2Configured()) {
+        return c.json({ error: "La subida de imágenes no está configurada." }, 503)
+      }
+      if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+        return c.json({ error: "Solo se aceptan imágenes (png, jpg, webp, gif)." }, 400)
+      }
+      if (file.size > COMMENT_IMAGE_MAX_BYTES) {
+        return c.json({ error: "La imagen supera el máximo permitido." }, 400)
+      }
+      const key = buildCommentImageKey(itemId, file.name)
+      const buffer = Buffer.from(await file.arrayBuffer())
+      try {
+        imageUrl = await uploadToR2(key, buffer, file.type)
+        imageKey = key
+      } catch {
+        return c.json({ error: "No se pudo subir la imagen. Revisá la configuración." }, 502)
+      }
+    }
+  } else {
+    const body = await c.req.json().catch(() => ({}))
+    text = String(body.text ?? "").trim()
+  }
+
+  if (!text && !imageUrl) {
+    return c.json({ error: "Escribí un comentario o adjuntá una imagen." }, 400)
+  }
+
+  const comment = await prisma.moduleItemComment.create({
+    data: { itemId, userId: user.id, text, imageUrl, imageKey },
+    include: { user: { select: { id: true, name: true, role: true } } },
+  })
+  return c.json(comment, 201)
+})
+
+/** DELETE /supervisor/module-item-comments/:itemId/:commentId — author or supervisor. */
+supervisor.delete("/module-item-comments/:itemId/:commentId", async (c) => {
+  const comment = await prisma.moduleItemComment.findFirst({
+    where: { id: c.req.param("commentId"), itemId: c.req.param("itemId") },
+  })
+  if (!comment) return c.json({ error: "Not found" }, 404)
+
+  await prisma.moduleItemComment.delete({ where: { id: comment.id } })
+  if (comment.imageKey) deleteFromR2(comment.imageKey).catch(() => {})
+  return c.json({ ok: true })
+})
+
+/* ─────────────────────────────────────────
    Module releases — per-cohort visibility
 ───────────────────────────────────────── */
 
@@ -1056,11 +1187,46 @@ supervisor.post("/coaches/:userId/assign", async (c) => {
   // Logged-in flow: no magic-link token; the coach takes it in their dashboard.
   const assignment = await prisma.testAssignment.upsert({
     where: { testId_clientId: { testId, clientId: coachClient.id } },
-    update: { assignedBy: supervisorUser.id },
+    update: { assignedBy: supervisorUser.id, accessRevokedAt: null },
     create: { testId, clientId: coachClient.id, assignedBy: supervisorUser.id },
     include: { test: true, response: true },
   })
   return c.json(assignment, 201)
+})
+
+/* ─────────────────────────────────────────
+   Test access revocation — the supervisor can suspend a still-pending test
+   (coachee magic-link or coach self-test) and re-open it later. Works on the
+   assignment's own id, whatever the client owns it.
+───────────────────────────────────────── */
+
+/** POST /supervisor/assignments/:id/revoke — block access to a pending test. */
+supervisor.post("/assignments/:id/revoke", async (c) => {
+  const id = c.req.param("id")
+  const assignment = await prisma.testAssignment.findUnique({ where: { id } })
+  if (!assignment) return c.json({ error: "Asignación no encontrada" }, 404)
+  if (assignment.completedAt) {
+    return c.json({ error: "El test ya fue completado, no se puede revocar" }, 400)
+  }
+  const updated = await prisma.testAssignment.update({
+    where: { id },
+    data: { accessRevokedAt: new Date() },
+    include: { test: true, client: true, response: true },
+  })
+  return c.json(updated)
+})
+
+/** POST /supervisor/assignments/:id/reopen — restore access to a revoked test. */
+supervisor.post("/assignments/:id/reopen", async (c) => {
+  const id = c.req.param("id")
+  const assignment = await prisma.testAssignment.findUnique({ where: { id } })
+  if (!assignment) return c.json({ error: "Asignación no encontrada" }, 404)
+  const updated = await prisma.testAssignment.update({
+    where: { id },
+    data: { accessRevokedAt: null },
+    include: { test: true, client: true, response: true },
+  })
+  return c.json(updated)
 })
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000

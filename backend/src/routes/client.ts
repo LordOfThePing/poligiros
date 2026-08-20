@@ -41,8 +41,12 @@ function getAssignmentState(assignment: {
   completedAt: Date | null
   completeBy: Date | null
   resultsViewableUntil: Date | null
-}): "form" | "results" | "expired" {
+  accessRevokedAt: Date | null
+}): "form" | "results" | "expired" | "revoked" {
   const now = new Date()
+
+  // A pending test whose access was revoked by the supervisor can't be taken.
+  if (assignment.completedAt === null && assignment.accessRevokedAt) return "revoked"
 
   if (assignment.completedAt === null) {
     if (assignment.completeBy && now > assignment.completeBy) return "expired"
@@ -77,6 +81,10 @@ client.get("/t/:token", async (c) => {
 
   if (state === "expired") {
     return c.json({ state: "expired" }, 410)
+  }
+
+  if (state === "revoked") {
+    return c.json({ state: "revoked", error: "Este test quedó suspendido." }, 403)
   }
 
   if (state === "form") {
@@ -119,6 +127,7 @@ client.post("/t/:token/submit", async (c) => {
   const state = getAssignmentState(assignment)
 
   if (state === "expired") return c.json({ state: "expired" }, 410)
+  if (state === "revoked") return c.json({ state: "revoked", error: "Este test quedó suspendido." }, 403)
   if (state === "results") return c.json({ error: "already_completed" }, 409)
 
   const { responses } = await c.req.json()
