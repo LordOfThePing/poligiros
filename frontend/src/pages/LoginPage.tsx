@@ -21,7 +21,9 @@ export default function LoginPage() {
   // If already logged in, redirect appropriately (in an effect, not during render)
   useEffect(() => {
     if (!user) return
-    if (user.role === "SUPERVISOR") navigate("/supervisor/panel", { replace: true })
+    if (user.mustChangePassword) {
+      navigate("/cambiar-password", { replace: true })
+    } else if (user.role === "SUPERVISOR") navigate("/supervisor/panel", { replace: true })
     else navigate("/student/programa", { replace: true })
   }, [user, navigate])
 

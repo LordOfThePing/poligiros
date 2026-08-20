@@ -10,6 +10,7 @@ import { Check, X, Mail, Phone } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 import { SignupLinksPanel } from "@/components/supervisor/SignupLinksPanel"
 
 type SignupStatus = "PENDING" | "APPROVED" | "REJECTED"
@@ -119,7 +120,7 @@ export default function InscripcionesPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <LoadingBadge />
       ) : signups.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
           No hay inscripciones {filter === "PENDING" ? "pendientes" : "en este estado"}.

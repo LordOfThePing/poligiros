@@ -5,6 +5,7 @@ import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, LogOut } from "l
 import { Button } from "@/components/ui/button"
 import { ProfileBanner } from "@/components/ProfileBanner"
 import { useCoachAccess } from "@/lib/useCoachAccess"
+import { useNotifications, badgeForRole } from "@/lib/useNotifications"
 
 const links = [
   { href: "/student/programa", label: "Mi Programa", icon: BookOpen },
@@ -17,8 +18,9 @@ const links = [
 
 export function StudentSidebar() {
   const location = useLocation()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const { access, loading } = useCoachAccess()
+  const { student } = useNotifications()
 
   // While loading, show everything rather than flashing items away.
   const visibleLinks = links.filter(
@@ -33,21 +35,29 @@ export function StudentSidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {visibleLinks.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            to={href}
-            className={cn(
-              "sidebar-link",
-              location.pathname.startsWith(href)
-                ? "sidebar-link-active"
-                : "sidebar-link-inactive"
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            {label}
-          </Link>
-        ))}
+        {visibleLinks.map(({ href, label, icon: Icon }) => {
+          const count = badgeForRole(user?.role, { href, label }, null, student)
+          return (
+            <Link
+              key={href}
+              to={href}
+              className={cn(
+                "sidebar-link",
+                location.pathname.startsWith(href)
+                  ? "sidebar-link-active"
+                  : "sidebar-link-inactive"
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{label}</span>
+              {typeof count === "number" && count > 0 && (
+                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.7rem] font-semibold leading-none text-white">
+                  {count}
+                </span>
+              )}
+            </Link>
+          )
+        })}
       </nav>
 
       <div className="p-4 border-t border-border space-y-2">

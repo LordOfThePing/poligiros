@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiPost } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type Client = { id: string; name: string }
 
@@ -120,7 +121,7 @@ export default function NuevoRegistroPage() {
     navigate("/student/registros")
   }
 
-  if (!loaded) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
+  if (!loaded) return <LoadingBadge />
 
   return (
     <div className="max-w-2xl space-y-6">

@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { api, apiJson, apiPost } from "@/lib/api"
 import { EditableResult } from "@/components/EditableResult"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   ANCLAS_CARRERA: { title: "Test de Anclas de Carrera" },
@@ -146,7 +147,7 @@ export default function ClientDetailPage() {
     }).catch(() => {})
   }
 
-  if (loading) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
+  if (loading) return <LoadingBadge />
   if (!client) return <div className="text-muted-foreground text-sm py-8">Cliente no encontrado</div>
 
   return (

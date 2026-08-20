@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Copy, Check, Ban, Plus } from "lucide-react"
+import { Copy, Check, Ban, Trash2, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
@@ -67,6 +67,29 @@ export function SignupLinksPanel() {
     if (!res.ok) return
     const updated: SignupLink = await res.json()
     setLinks((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+  }
+
+  async function remove(link: SignupLink) {
+    if (
+      !confirm(
+        `¿Eliminar este link para siempre? No se puede deshacer${link._count.requests > 0 ? " (tiene inscripciones asociadas)" : ""}.`
+      )
+    ) {
+      return
+    }
+    const res = await apiTry(`/supervisor/signup-links/${link.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      toast({ title: "No se pudo eliminar el link", variant: "destructive" })
+      return
+    }
+    setLinks((prev) => prev.filter((l) => l.id !== link.id))
+    toast({ title: "Link eliminado" })
+  }
+
+  // Only expired/disabled links are worth deleting; active ones can be disabled.
+  function canDelete(link: SignupLink): boolean {
+    if (link.disabled) return true
+    return new Date(link.expiresAt).getTime() < Date.now()
   }
 
 
@@ -150,6 +173,16 @@ export function SignupLinksPanel() {
                         onClick={() => disable(link)}
                       >
                         <Ban className="h-3 w-3" />
+                      </Button>
+                    )}
+                    {canDelete(link) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-destructive hover:text-destructive"
+                        onClick={() => remove(link)}
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     )}
                   </div>

@@ -9,6 +9,7 @@ import PiramideTest from "@/pages/client/tests/PiramideTest"
 import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
 import PlanVitalTest from "@/pages/client/tests/PlanVitalTest"
 import ResultsView from "@/pages/client/ResultsView"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type Assignment = {
   id: string
@@ -31,7 +32,7 @@ export default function StudentTakeTestPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
+  if (loading) return <LoadingBadge />
   if (!assignment) return <div className="text-muted-foreground text-sm py-8">Test no encontrado.</div>
 
   const back = (

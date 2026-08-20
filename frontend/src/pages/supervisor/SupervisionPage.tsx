@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type SupervisionRequest = {
   id: string
@@ -33,6 +34,7 @@ export default function SupervisorSupervisionPage() {
   const { toast } = useToast()
   const [requests, setRequests] = useState<SupervisionRequest[]>([])
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
+  const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
 
   function loadResetRequests() {
@@ -40,7 +42,10 @@ export default function SupervisorSupervisionPage() {
   }
 
   useEffect(() => {
-    apiJson<SupervisionRequest[]>("/supervisor/supervision").then(setRequests).catch(() => {})
+    apiJson<SupervisionRequest[]>("/supervisor/supervision")
+      .then(setRequests)
+      .catch(() => {})
+      .finally(() => setLoading(false))
     loadResetRequests()
   }, [])
 
@@ -121,7 +126,9 @@ export default function SupervisorSupervisionPage() {
         </TabsList>
 
         <TabsContent value="pendientes" className="mt-4 space-y-3">
-          {pending.length === 0 ? (
+          {loading ? (
+            <LoadingBadge />
+          ) : pending.length === 0 ? (
             <p className="text-muted-foreground text-sm py-8 text-center">No hay solicitudes pendientes</p>
           ) : (
             pending.map((req) => (
@@ -153,7 +160,9 @@ export default function SupervisorSupervisionPage() {
         </TabsContent>
 
         <TabsContent value="revisados" className="mt-4 space-y-3">
-          {reviewed.length === 0 ? (
+          {loading ? (
+            <LoadingBadge />
+          ) : reviewed.length === 0 ? (
             <p className="text-muted-foreground text-sm py-8 text-center">Sin revisiones aún</p>
           ) : (
             reviewed.map((req) => (

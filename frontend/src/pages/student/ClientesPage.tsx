@@ -9,6 +9,7 @@ import { Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { apiJson, apiPost } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"]
 const TEST_CODES: Record<string, string> = {
@@ -46,13 +47,17 @@ function TestDot({ status }: { status: "completed" | "pending" | "unassigned" })
 
 export default function ClientesPage() {
   const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState("")
   const [newEmail, setNewEmail] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
-    apiJson<Client[]>("/student/clients").then(setClients).catch(() => {})
+    apiJson<Client[]>("/student/clients")
+      .then(setClients)
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   async function handleAddClient() {
@@ -107,7 +112,9 @@ export default function ClientesPage() {
           </Link>
         ))}
 
-        {clients.length === 0 && (
+        {loading && <LoadingBadge className="col-span-2" />}
+
+        {!loading && clients.length === 0 && (
           <div className="col-span-2 text-center text-muted-foreground py-12">
             No tenés clientes aún. Agregá el primero.
           </div>

@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import bcrypt from "bcryptjs"
 import { prisma } from "../lib/prisma.js"
 import { ModuleItemKind } from "@prisma/client"
 import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/r2.js"
@@ -8,6 +9,7 @@ import {
   sendCoachInviteEmail,
   sendSignupApprovedEmail,
   sendSubmissionReviewedEmail,
+  sendCoachPasswordResetEmail,
 } from "../lib/email.js"
 import { randomBytes } from "node:crypto"
 import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
@@ -41,6 +43,19 @@ supervisor.get("/stats", async (c) => {
     pendingSupervisions,
     reviewsThisMonth,
   })
+})
+
+/**
+ * GET /supervisor/notifications — badge counts for the supervisor sidebar.
+ * How many items are waiting for her review right now.
+ */
+supervisor.get("/notifications", async (c) => {
+  const [pendingSupervisions, pendingSubmissions, pendingSignups] = await Promise.all([
+    prisma.supervisionRequest.count({ where: { status: "PENDING" } }),
+    prisma.moduleItemSubmission.count({ where: { reviewedAt: null } }),
+    prisma.signupRequest.count({ where: { status: "PENDING" } }),
+  ])
+  return c.json({ pendingSupervisions, pendingSubmissions, pendingSignups })
 })
 
 /* ─────────────────────────────────────────
@@ -189,6 +204,81 @@ supervisor.get("/students/:id", async (c) => {
   // Never leak the password hash / invite token; expose a `pending` flag instead.
   const { password, inviteToken, ...safe } = student
   return c.json({ ...safe, pending: password === null })
+})
+
+/**
+ * PUT /supervisor/students/:id — edit a coach's profile data.
+ * Whitelisted fields only: name, email, phone, especialidad, bio. Email is
+ * unique, so a clash returns 409.
+ */
+supervisor.put("/students/:id", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}) as Record<string, unknown>)
+
+  const existing = await prisma.user.findUnique({ where: { id } })
+  if (!existing || existing.role !== "STUDENT_COACH") {
+    return c.json({ error: "Estudiante no encontrado" }, 404)
+  }
+
+  const data: { name?: string; email?: string; phone?: string | null; especialidad?: string | null; bio?: string | null } = {}
+
+  if (body.name !== undefined) {
+    const name = String(body.name).trim()
+    if (!name) return c.json({ error: "El nombre no puede estar vacío" }, 400)
+    data.name = name
+  }
+  if (body.email !== undefined) {
+    const email = String(body.email).trim().toLowerCase()
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return c.json({ error: "Email inválido" }, 400)
+    }
+    if (email !== existing.email) {
+      const clash = await prisma.user.findUnique({ where: { email } })
+      if (clash) return c.json({ error: "Ya existe un usuario con ese email" }, 409)
+    }
+    data.email = email
+  }
+  if (body.phone !== undefined) data.phone = String(body.phone).trim() || null
+  if (body.especialidad !== undefined) data.especialidad = String(body.especialidad).trim() || null
+  if (body.bio !== undefined) data.bio = String(body.bio).trim() || null
+
+  if (Object.keys(data).length === 0) return c.json({ error: "Nada para actualizar" }, 400)
+
+  const updated = await prisma.user.update({ where: { id }, data })
+  const { password, inviteToken, ...safe } = updated as unknown as Record<string, unknown>
+  return c.json(safe)
+})
+
+/**
+ * POST /supervisor/students/:id/reset-password — body: { password? }
+ * Invalidates the coach's password and forces them to choose a new one at their
+ * next login. If a `password` is given it becomes the temporary one; otherwise a
+ * random one is generated and emailed. Called for a registered coach (one with a
+ * password already set); a pending invite uses resend-invite instead.
+ */
+supervisor.post("/students/:id/reset-password", async (c) => {
+  const id = c.req.param("id")
+  const { password } = await c.req.json().catch(() => ({ password: undefined }))
+
+  const user = await prisma.user.findUnique({ where: { id } })
+  if (!user || user.role !== "STUDENT_COACH") {
+    return c.json({ error: "Estudiante no encontrado" }, 404)
+  }
+  if (!user.password) {
+    return c.json({ error: "Este coach todavía no se registró. Usá reenvío de invitación." }, 400)
+  }
+
+  const temp = password && String(password).trim()
+    ? String(password).trim()
+    : randomBytes(9).toString("base64url")
+
+  await prisma.user.update({
+    where: { id },
+    data: { password: await bcrypt.hash(temp, 12), mustChangePassword: true },
+  })
+
+  sendCoachPasswordResetEmail(user.email, temp).catch(() => {})
+  return c.json({ ok: true, tempPassword: temp })
 })
 
 /* ─────────────────────────────────────────

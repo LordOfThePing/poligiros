@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Pencil } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type SessionRecord = {
   id: string
@@ -47,7 +48,7 @@ export default function RegistrosPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <LoadingBadge />
       ) : Object.keys(byClient).length === 0 ? (
         <p className="text-center text-muted-foreground py-12">No hay registros aún. Creá el primero.</p>
       ) : (

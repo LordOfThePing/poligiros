@@ -8,6 +8,7 @@ import { StudentSidebar } from "@/components/student/Sidebar"
 import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
 import TokenPage from "@/pages/client/TokenPage"
+import ChangePasswordPage from "@/pages/ChangePasswordPage"
 
 // Pages - supervisor
 import SupervisorPanelPage from "@/pages/supervisor/PanelPage"
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/invite/:token" element={<RegisterPage />} />
           <Route path="/t/:token" element={<TokenPage />} />
           <Route path="/inscripcion/:token" element={<InscripcionPage />} />
+          <Route path="/cambiar-password" element={<ChangePasswordPage />} />
 
           {/* Supervisor routes */}
           <Route

@@ -17,6 +17,7 @@ import {
 import { UserPlus, Copy, Check } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 import { useToast } from "@/hooks/use-toast"
 
 type Student = {
@@ -141,7 +142,7 @@ export default function AlumnosPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6}><LoadingBadge compact /></TableCell></TableRow>
               ) : visibleStudents.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay coaches en este CIC</TableCell></TableRow>
               ) : (

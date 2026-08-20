@@ -9,6 +9,7 @@ import { Check, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 
@@ -88,7 +89,7 @@ export default function EntregasPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <LoadingBadge />
       ) : submissions.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
           No hay entregas {filter === "pending" ? "sin devolver" : "en este estado"}.

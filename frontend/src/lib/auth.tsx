@@ -9,6 +9,8 @@ export interface AuthUser {
   name: string
   email: string
   role: Role
+  /** True after the supervisor resets the password; forces the change screen. */
+  mustChangePassword?: boolean
 }
 
 export interface RegisterData {
@@ -24,6 +26,9 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (token: string, data: RegisterData) => Promise<void>
+  changePassword: (newPassword: string, currentPassword?: string) => Promise<void>
+  /** Lets the change-password screen clear the flag without a full reload. */
+  clearMustChange: () => void
   logout: () => Promise<void>
 }
 
@@ -80,6 +85,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user as AuthUser)
   }
 
+  async function changePassword(newPassword: string, currentPassword?: string) {
+    const res = await api("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ newPassword, currentPassword }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || "change_password_failed")
+    }
+    setUser((u) => (u ? { ...u, mustChangePassword: false } : u))
+  }
+
+  function clearMustChange() {
+    setUser((u) => (u ? { ...u, mustChangePassword: false } : u))
+  }
+
   async function logout() {
     try {
       await api("/auth/logout", { method: "POST", body: JSON.stringify({}) })
@@ -90,7 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, changePassword, clearMustChange, logout }}
+    >
       {children}
     </AuthContext.Provider>
   )
@@ -120,6 +143,12 @@ export function ProtectedRoute({ roles, children }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  // A coach who was reset by the supervisor must set a fresh password before
+  // anything else — don't let them see the rest of the app until they do.
+  if (user.mustChangePassword && window.location.pathname !== "/cambiar-password") {
+    return <Navigate to="/cambiar-password" replace />
   }
 
   if (roles && !roles.includes(user.role)) {

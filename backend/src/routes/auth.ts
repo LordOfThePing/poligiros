@@ -53,12 +53,59 @@ auth.get("/me", async (c) => {
   const payload = await verifyJWT(token)
   if (!payload) return c.json({ error: "Unauthorized" }, 401)
 
+  // mustChangePassword lives on the row, not the JWT, so the coach is forced
+  // onto the change-password screen even on the hydration call after a valid
+  // login (loginUser runs DB-free).
+  const dbUser = await prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { mustChangePassword: true },
+  })
+
   return c.json({
     id: payload.id,
     name: payload.name,
     email: payload.email,
     role: payload.role,
+    mustChangePassword: dbUser?.mustChangePassword ?? false,
   })
+})
+
+/**
+ * POST /auth/change-password — body: { currentPassword?, newPassword }
+ * The logged-in coach chooses a fresh password. `currentPassword` is optional:
+ * it is required only when the account was NOT reset by the supervisor, so
+ * somebody else's opened session cannot silently change the password.
+ */
+auth.post("/change-password", async (c) => {
+  const token = getCookie(c, "token")
+  if (!token) return c.json({ error: "Unauthorized" }, 401)
+
+  const payload = await verifyJWT(token)
+  if (!payload) return c.json({ error: "Unauthorized" }, 401)
+
+  const { newPassword, currentPassword } = await c.req.json().catch(() => ({}))
+  const clean = String(newPassword ?? "")
+  if (clean.length < 6) {
+    return c.json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400)
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: payload.id } })
+  if (!user) return c.json({ error: "Not found" }, 404)
+
+  // A coach who was force-reset by the supervisor may change it right away
+  // (they are logging in with the fresh temporary password). Otherwise the
+  // current password must be confirmed.
+  const verified =
+    user.mustChangePassword ||
+    (user.password ? await bcrypt.compare(String(currentPassword ?? ""), user.password) : false)
+  if (!verified) return c.json({ error: "Contraseña actual incorrecta" }, 400)
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: await bcrypt.hash(clean, 12), mustChangePassword: false },
+  })
+
+  return c.json({ ok: true })
 })
 
 /** GET /auth/register/:token — invite info for the registration page. */

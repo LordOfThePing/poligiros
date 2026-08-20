@@ -57,6 +57,10 @@ model User {
   role      Role     @default(STUDENT_COACH)
   createdAt DateTime @default(now())
 
+  /// Set by the supervisor via "Reset password" so a coach must choose a fresh
+  /// password the next time they log in (see POST /auth/change-password).
+  mustChangePassword Boolean @default(false)
+
   // Invite-only registration (pending until the coach sets a password)
   inviteToken     String?   @unique
   inviteExpiresAt DateTime?

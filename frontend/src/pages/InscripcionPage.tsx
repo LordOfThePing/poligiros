@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, Loader2, CalendarX } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiTry } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type PublicCohort = { id: string; name: string }
 
@@ -106,7 +107,7 @@ export default function InscripcionPage() {
 
   if (link.kind === "loading") {
     return shell(
-      <p className="text-center text-muted-foreground text-sm">Cargando...</p>
+      <LoadingBadge />
     )
   }
 

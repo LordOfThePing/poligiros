@@ -4,6 +4,7 @@ import { apiJson } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type MyAssignment = {
   id: string
@@ -22,7 +23,7 @@ export default function StudentMyTestsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
+  if (loading) return <LoadingBadge />
 
   return (
     <div className="space-y-6">

@@ -407,6 +407,26 @@ student.get("/access", async (c) => {
   return c.json(await getCoachAccess(user.id))
 })
 
+/**
+ * GET /student/notifications — badge counts for the coach sidebar. Things
+ * waiting on her: tests still to complete, and supervision feedback awaiting her
+ * on tests she already sent in.
+ */
+student.get("/notifications", async (c) => {
+  const user = c.get("user")
+  const myClient = await prisma.client.findUnique({ where: { userId: user.id } })
+
+  const [pendingTests, pendingFeedback] = await Promise.all([
+    // Self-tests assigned but not yet completed.
+    myClient
+      ? prisma.testAssignment.count({ where: { clientId: myClient.id, completedAt: null } })
+      : Promise.resolve(0),
+    // Supervisions she sent that Gaby has not reviewed yet.
+    prisma.supervisionRequest.count({ where: { studentId: user.id, status: "PENDING" } }),
+  ])
+  return c.json({ pendingTests, pendingFeedback })
+})
+
 /** Module ids released to this coach right now. */
 async function releasedModuleIds(userId: string): Promise<string[]> {
   const access = await getCoachAccess(userId)

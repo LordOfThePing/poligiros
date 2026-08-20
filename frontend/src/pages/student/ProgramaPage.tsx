@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { LoadingBadge } from "@/components/LoadingBadge"
 import {
   KIND_BADGE, KIND_LABEL, formatBytes,
   type StudentModule, type StudentModuleItem,
@@ -193,7 +194,7 @@ export default function ProgramaPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando módulos...</p>
+        <LoadingBadge />
       ) : modules.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           Todavía no hay clases habilitadas para tu CIC. Gaby las va abriendo a medida que avanza

@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress"
 import { Users, ClipboardList, ClipboardCheck, Star } from "lucide-react"
 import { formatDistanceToNow } from "@/lib/date"
 import { apiJson } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type Stats = {
   activeStudents: number
@@ -29,11 +30,14 @@ export default function SupervisorPanelPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [moduleProgress, setModuleProgress] = useState<ModuleProgress[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    apiJson<Stats>("/supervisor/stats").then(setStats).catch(() => {})
-    apiJson<ActivityEvent[]>("/supervisor/activity").then(setActivity).catch(() => {})
-    apiJson<ModuleProgress[]>("/supervisor/module-progress").then(setModuleProgress).catch(() => {})
+    Promise.all([
+      apiJson<Stats>("/supervisor/stats").then(setStats).catch(() => {}),
+      apiJson<ActivityEvent[]>("/supervisor/activity").then(setActivity).catch(() => {}),
+      apiJson<ModuleProgress[]>("/supervisor/module-progress").then(setModuleProgress).catch(() => {}),
+    ]).finally(() => setLoading(false))
   }, [])
 
   const statCards = [
@@ -74,7 +78,9 @@ export default function SupervisorPanelPage() {
             <CardTitle className="font-serif text-lg">Actividad reciente</CardTitle>
           </CardHeader>
           <CardContent>
-            {activity.length === 0 ? (
+            {loading ? (
+              <LoadingBadge compact />
+            ) : activity.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin actividad reciente</p>
             ) : (
               <ul className="space-y-3">
@@ -99,7 +105,9 @@ export default function SupervisorPanelPage() {
             <CardTitle className="font-serif text-lg">Progreso en módulos</CardTitle>
           </CardHeader>
           <CardContent>
-            {moduleProgress.length === 0 ? (
+            {loading ? (
+              <LoadingBadge compact />
+            ) : moduleProgress.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin módulos publicados</p>
             ) : (
               <ul className="space-y-4">

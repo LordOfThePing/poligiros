@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { formatShortDate } from "@/lib/date"
 import { apiJson } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type SessionRecord = {
   id: string
@@ -26,12 +27,16 @@ type SessionRecord = {
 
 export default function SupervisorRegistrosPage() {
   const [records, setRecords] = useState<SessionRecord[]>([])
+  const [loading, setLoading] = useState(true)
   const [filterStudent, setFilterStudent] = useState<string>("all")
   const [filterClient, setFilterClient] = useState<string>("all")
   const [selected, setSelected] = useState<SessionRecord | null>(null)
 
   useEffect(() => {
-    apiJson<SessionRecord[]>("/supervisor/sessions").then(setRecords).catch(() => {})
+    apiJson<SessionRecord[]>("/supervisor/sessions")
+      .then(setRecords)
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   const students = Array.from(new Map(records.map((r) => [r.student.id, r.student])).values())
@@ -89,7 +94,9 @@ export default function SupervisorRegistrosPage() {
       </div>
 
       <div className="space-y-2">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <LoadingBadge />
+        ) : filtered.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-8">No hay registros</p>
         ) : (
           filtered.map((r) => (

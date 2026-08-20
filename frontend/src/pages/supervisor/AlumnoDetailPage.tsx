@@ -3,9 +3,21 @@ import { Link, useParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { ArrowLeft, Pencil, KeyRound } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
-import { apiJson, apiPost } from "@/lib/api"
+import { apiJson, apiPost, apiTry } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 import { useToast } from "@/hooks/use-toast"
 
 const TEST_CODES: Record<string, string> = {
@@ -34,17 +46,93 @@ export default function AlumnoDetailPage() {
   const [coachTests, setCoachTests] = useState<CoachAssignment[]>([])
   const [assigning, setAssigning] = useState<string | null>(null)
 
+  // Edit profile dialog.
+  const [editOpen, setEditOpen] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", especialidad: "", bio: "" })
+
+  // Reset password dialog.
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetPassword, setResetPassword] = useState("")
+  const [resetResult, setResetResult] = useState<string | null>(null)
+  const [resetError, setResetError] = useState("")
+
   function loadCoachTests() {
     apiJson<CoachAssignment[]>(`/supervisor/coaches/${id}/tests`).then(setCoachTests).catch(() => {})
   }
 
-  useEffect(() => {
+  function loadStudent() {
     apiJson<any>(`/supervisor/students/${id}`)
       .then((data) => { setStudent(data); setLoading(false) })
       .catch(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadStudent()
     apiJson<Test[]>("/supervisor/tests").then(setAllTests).catch(() => {})
     loadCoachTests()
   }, [id])
+
+  function openEdit() {
+    if (!student) return
+    setEditForm({
+      name: student.name ?? "",
+      email: student.email ?? "",
+      phone: student.phone ?? "",
+      especialidad: student.especialidad ?? "",
+      bio: student.bio ?? "",
+    })
+    setEditOpen(true)
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingEdit(true)
+    const res = await apiTry(`/supervisor/students/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone || null,
+        especialidad: editForm.especialidad || null,
+        bio: editForm.bio || null,
+      }),
+    })
+    setSavingEdit(false)
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      toast({ title: json.error || "No se pudieron guardar los cambios", variant: "destructive" })
+      return
+    }
+    toast({ title: "Datos actualizados" })
+    setEditOpen(false)
+    loadStudent()
+  }
+
+  function openReset() {
+    setResetPassword("")
+    setResetResult(null)
+    setResetError("")
+    setResetOpen(true)
+  }
+
+  async function handleResetPassword() {
+    setResetting(true)
+    setResetError("")
+    const res = await apiTry(`/supervisor/students/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ password: resetPassword || undefined }),
+    })
+    setResetting(false)
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setResetError(json.error || "No se pudo restablecer la contraseña")
+      return
+    }
+    setResetResult(json.tempPassword)
+    toast({ title: "Contraseña restablecida" })
+  }
 
   async function handleResendInvite() {
     try {
@@ -68,7 +156,7 @@ export default function AlumnoDetailPage() {
     setAssigning(null)
   }
 
-  if (loading) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
+  if (loading) return <LoadingBadge />
   if (!student) return <div className="text-muted-foreground text-sm py-8">Alumno no encontrado</div>
 
   return (
@@ -84,6 +172,14 @@ export default function AlumnoDetailPage() {
           </div>
           <p className="text-muted-foreground text-sm">{student.email}</p>
         </div>
+        {!student.pending && (
+          <Button variant="outline" size="sm" onClick={openReset}>
+            <KeyRound className="h-4 w-4 mr-1" /> Reset contraseña
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={openEdit}>
+          <Pencil className="h-4 w-4 mr-1" /> Editar datos
+        </Button>
         {student.pending && (
           <Button variant="outline" size="sm" onClick={handleResendInvite}>
             Reenviar invitación
@@ -201,6 +297,95 @@ export default function AlumnoDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Edit profile dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar datos del coach</DialogTitle>
+            <DialogDescription>Actualizá los datos de perfil de {student.name}.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Nombre y apellido *</Label>
+              <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email *</Label>
+              <Input id="edit-email" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-phone">Teléfono</Label>
+                <Input id="edit-phone" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-especialidad">Especialidad</Label>
+                <Input id="edit-especialidad" value={editForm.especialidad} onChange={(e) => setEditForm({ ...editForm, especialidad: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-bio">Bio</Label>
+              <Textarea id="edit-bio" value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} className="min-h-[80px]" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={savingEdit} className="bg-brand-accent hover:bg-brand-accent-dark">
+                {savingEdit ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset password dialog */}
+      <Dialog open={resetOpen} onOpenChange={(open) => { setResetOpen(open); if (!open) setResetResult(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restablecer contraseña</DialogTitle>
+            <DialogDescription>
+              {resetResult
+                ? "Guardá esta contraseña temporal y entregásela a " + student.name + "."
+                : "El coach va a tener que elegir una contraseña nueva en su próximo ingreso."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetResult ? (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-brand-accent/10 border border-brand-accent/20 p-4 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Contraseña temporal</p>
+                <p className="font-mono text-xl font-semibold text-brand-accent break-all">{resetResult}</p>
+              </div>
+              <Button className="w-full bg-brand-accent hover:bg-brand-accent-dark" onClick={() => setResetOpen(false)}>
+                Listo
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="reset-password">
+                  Contraseña temporal <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Input
+                  id="reset-password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  placeholder="Si la dejás vacía, generamos una y se la enviamos por email"
+                />
+              </div>
+              {resetError && (
+                <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{resetError}</p>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>Cancelar</Button>
+                <Button onClick={handleResetPassword} disabled={resetting} className="bg-brand-accent hover:bg-brand-accent-dark">
+                  {resetting ? "Restableciendo..." : "Restablecer contraseña"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

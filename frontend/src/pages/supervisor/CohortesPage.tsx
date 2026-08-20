@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost, apiRaw, apiTry } from "@/lib/api"
 import { copyToClipboard, isSignupLinkActive, signupUrl, type SignupLink } from "@/lib/signup"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type Enrollment = { id: string; user: { id: string; name: string; email: string } }
 type Cohort = {
@@ -97,7 +98,7 @@ function ReleasePanel({ cohort, cohorts }: { cohort: Cohort; cohorts: Cohort[] }
     toast({ title: "Liberaciones copiadas" })
   }
 
-  if (loading) return <p className="text-sm text-muted-foreground">Cargando módulos...</p>
+  if (loading) return <LoadingBadge />
   if (releases.length === 0) {
     return <p className="text-sm text-muted-foreground">No hay módulos creados todavía.</p>
   }
@@ -169,6 +170,7 @@ function ReleasePanel({ cohort, cohorts }: { cohort: Cohort; cohorts: Cohort[] }
 
 export default function CohortesPage() {
   const [cohorts, setCohorts] = useState<Cohort[]>([])
+  const [cohortsLoading, setCohortsLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDate, setNewDate] = useState("")
@@ -187,7 +189,10 @@ export default function CohortesPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
+    apiJson<Cohort[]>("/supervisor/cohorts")
+      .then(setCohorts)
+      .catch(() => {})
+      .finally(() => setCohortsLoading(false))
   }, [])
 
   // When the Inscribir dialog opens, look for a usable public signup link bound
@@ -445,7 +450,8 @@ export default function CohortesPage() {
             </CardContent>
           </Card>
         ))}
-        {cohorts.length === 0 && (
+        {cohortsLoading && <LoadingBadge />}
+        {!cohortsLoading && cohorts.length === 0 && (
           <p className="text-center text-muted-foreground py-12">No hay CIC aún.</p>
         )}
       </div>

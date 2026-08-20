@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type Assignment = {
   id: string
@@ -32,6 +33,7 @@ export default function StudentSupervisionPage() {
   const { toast } = useToast()
   const [toSend, setToSend] = useState<Assignment[]>([])
   const [history, setHistory] = useState<SupervisionRequest[]>([])
+  const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<{ assignmentId: string; title: string } | null>(null)
   const [notes, setNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -40,6 +42,7 @@ export default function StudentSupervisionPage() {
     apiJson<{ toSend: Assignment[]; history: SupervisionRequest[] }>("/student/supervision")
       .then(({ toSend, history }) => { setToSend(toSend); setHistory(history) })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => { loadData() }, [])
@@ -71,7 +74,9 @@ export default function StudentSupervisionPage() {
         </TabsList>
 
         <TabsContent value="para-enviar" className="mt-4 space-y-3">
-          {toSend.length === 0 ? (
+          {loading ? (
+            <LoadingBadge />
+          ) : toSend.length === 0 ? (
             <p className="text-muted-foreground text-sm py-8 text-center">
               No tenés tests pendientes de enviar a supervisión
             </p>
@@ -99,7 +104,9 @@ export default function StudentSupervisionPage() {
         </TabsContent>
 
         <TabsContent value="historial" className="mt-4 space-y-3">
-          {history.length === 0 ? (
+          {loading ? (
+            <LoadingBadge />
+          ) : history.length === 0 ? (
             <p className="text-muted-foreground text-sm py-8 text-center">No hay supervisiones en historial</p>
           ) : (
             history.map((req) => (

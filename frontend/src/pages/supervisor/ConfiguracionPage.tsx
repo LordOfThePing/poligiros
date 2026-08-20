@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Mail, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiTry } from "@/lib/api"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 type Settings = {
   testCompleteDays: number
@@ -78,7 +79,7 @@ export default function ConfiguracionPage() {
   }
 
   if (!settings) {
-    return <p className="text-muted-foreground text-sm py-8">Cargando...</p>
+    return <LoadingBadge />
   }
 
   return (

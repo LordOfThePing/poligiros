@@ -30,6 +30,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { LoadingBadge } from "@/components/LoadingBadge"
 import {
   ITEM_KINDS, KIND_BADGE, KIND_LABEL, stripMarkdown, formatBytes,
   type Module, type ModuleItem, type ModuleItemKind, type ModuleLink, type LinkedTest,
@@ -564,6 +565,7 @@ function SortableModule({ mod, onEdit, onDelete, onTogglePublish, onModuleChange
 
 export default function ModulosPage() {
   const [modules, setModules] = useState<Module[]>([])
+  const [loadingModules, setLoadingModules] = useState(true)
   const [editingModule, setEditingModule] = useState<Partial<Module> | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
@@ -574,7 +576,10 @@ export default function ModulosPage() {
   )
 
   useEffect(() => {
-    apiJson<Module[]>("/supervisor/modules").then(setModules).catch(() => {})
+    apiJson<Module[]>("/supervisor/modules")
+      .then(setModules)
+      .catch(() => {})
+      .finally(() => setLoadingModules(false))
   }, [])
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -683,9 +688,11 @@ export default function ModulosPage() {
         </SortableContext>
       </DndContext>
 
-      {modules.length === 0 && (
+      {loadingModules ? (
+        <LoadingBadge />
+      ) : modules.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">No hay módulos aún. Creá el primero.</p>
-      )}
+      ) : null}
 
       <Dialog open={!!editingModule} onOpenChange={(open) => !open && setEditingModule(null)}>
         <DialogContent className="max-w-lg">

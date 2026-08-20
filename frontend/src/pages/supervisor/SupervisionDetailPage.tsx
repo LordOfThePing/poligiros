@@ -14,6 +14,7 @@ import { RawDataView } from "@/components/RawDataView"
 import { EditableResult } from "@/components/EditableResult"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 import { PV_SECTIONS } from "@/lib/planVital"
+import { LoadingBadge } from "@/components/LoadingBadge"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -200,7 +201,7 @@ export default function SupervisionDetailPage() {
     setSaving(false)
   }
 
-  if (!req) return <div className="text-muted-foreground text-sm py-8">Cargando...</div>
+  if (!req) return <LoadingBadge />
 
   const responses = req.assignment?.response?.responses
   // Modelo de Negocio needs room for the wide canvas.
