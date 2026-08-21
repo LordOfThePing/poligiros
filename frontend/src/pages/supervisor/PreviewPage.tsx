@@ -190,7 +190,7 @@ export default function PreviewPage() {
                   )}
                 </div>
                 {discussionOpen && (
-                  <div className="bg-white rounded-lg border border-border p-4 h-[min(60vh,520px)]">
+                  <div className="bg-white rounded-lg border border-border p-4 h-[min(75vh,700px)]">
                     <CommentPanel itemId={selectedItem.id} />
                   </div>
                 )}

@@ -190,7 +190,7 @@ export function CommentPanel({ itemId }: { itemId: string }) {
                     <img
                       src={c.imageUrl}
                       alt="Imagen del comentario"
-                      className="rounded-lg w-full h-auto object-cover bg-muted/50"
+                      className="rounded-lg max-w-[40%] h-auto object-cover bg-muted/50"
                     />
                   )}
                 </div>
