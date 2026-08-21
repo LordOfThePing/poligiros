@@ -28,6 +28,8 @@
     "@radix-ui/react-toast": "^1.2.15",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.414.0",
     "poligiros": "file:..",
     "react": "^18.3.1",
