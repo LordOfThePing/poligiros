@@ -155,8 +155,8 @@ export default function PreviewPage() {
           {/* Item + discussion */}
           <div className="min-w-0">
             {selectedItem ? (
-              <div className="flex items-start gap-6">
-                <div className="shrink-0 w-[min(100%,600px)] bg-white rounded-lg border border-border p-5 space-y-4">
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg border border-border p-5 space-y-4">
                   {selectedItem.coverImageUrl && (
                     <img src={selectedItem.coverImageUrl} alt="Portada" className="rounded-lg border border-border w-full aspect-[2/1] object-cover bg-muted" />
                   )}
@@ -190,7 +190,7 @@ export default function PreviewPage() {
                   )}
                 </div>
                 {discussionOpen && (
-                  <div className="shrink-0 w-[360px] max-w-[360px] bg-white rounded-lg border border-border p-4 xl:h-[calc(100vh-260px)] xl:sticky xl:top-6">
+                  <div className="bg-white rounded-lg border border-border p-4 h-[min(60vh,520px)]">
                     <CommentPanel itemId={selectedItem.id} />
                   </div>
                 )}

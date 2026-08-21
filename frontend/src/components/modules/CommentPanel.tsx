@@ -23,6 +23,8 @@ export function CommentPanel({ itemId }: { itemId: string }) {
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
+  // The thread scroll area; we keep it anchored to the bottom (latest message).
+  const threadRef = useRef<HTMLDivElement | null>(null)
 
   const isSupervisor = user?.role === "SUPERVISOR"
   const basePath = isSupervisor
@@ -38,6 +40,17 @@ export function CommentPanel({ itemId }: { itemId: string }) {
   }, [basePath])
 
   useEffect(() => { load() }, [load])
+
+  // Always start at the bottom: the discussion is a chat, so the latest message
+  // is what matters on open, and it stays at the bottom as comments arrive.
+  const scrollToBottom = useCallback(() => {
+    const el = threadRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [])
+
+  useEffect(() => {
+    if (!loading) scrollToBottom()
+  }, [loading, comments, scrollToBottom])
 
   function pickFile(f: File | null) {
     setFile(f)
@@ -118,8 +131,8 @@ export function CommentPanel({ itemId }: { itemId: string }) {
         )}
       </div>
 
-      {/* Thread */}
-      <div className="flex-1 overflow-y-auto py-3 space-y-4 min-h-0">
+      {/* Thread — scrolls to the latest message on open and when new ones land. */}
+      <div ref={threadRef} className="flex-1 overflow-y-auto py-3 space-y-4 min-h-0">
         {loading ? (
           <div className="flex items-center justify-center text-muted-foreground py-8">
             <Loader2 className="h-4 w-4 animate-spin mr-2" /> Cargando...

@@ -400,8 +400,8 @@ export default function ProgramaPage() {
               the modules rail and the discussion are what give way. */}
           <div className="min-w-0">
             {current ? (
-              <div className="flex items-start gap-6">
-                <div className="shrink-0 w-[min(100%,600px)] bg-white rounded-lg border border-border p-5 space-y-4">
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg border border-border p-5 space-y-4">
                 {current.item.coverImageUrl && (
                   <img
                     src={current.item.coverImageUrl}
@@ -574,7 +574,7 @@ export default function ProgramaPage() {
                 </div>
                 </div>
                 {discussionOpen && (
-                  <div className="shrink-0 w-[360px] xl:max-w-[360px] bg-white rounded-lg border border-border p-4 xl:h-[calc(100vh-200px)] xl:sticky xl:top-6">
+                  <div className="bg-white rounded-lg border border-border p-4 h-[min(60vh,520px)]">
                     <CommentPanel itemId={current.item.id} />
                   </div>
                 )}
