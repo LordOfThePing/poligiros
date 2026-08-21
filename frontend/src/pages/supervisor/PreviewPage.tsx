@@ -31,8 +31,20 @@ export default function PreviewPage() {
   const [openModules, setOpenModules] = useState<Set<string>>(new Set())
   const [discussionOpen, setDiscussionOpen] = useState(true)
 
+  // Remember the last CIC viewed so re-opening the page lands on it.
+  const STORAGE_KEY = "poligiros.preview-cohort"
+
   useEffect(() => {
-    apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
+    apiJson<Cohort[]>("/supervisor/cohorts").then((list) => {
+      setCohorts(list)
+      // Restore the last selected CIC if it still exists.
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && list.some((c) => c.id === saved)) {
+        setCohortId(saved)
+        loadModules(saved)
+      }
+    }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function loadModules(id: string) {
@@ -50,6 +62,7 @@ export default function PreviewPage() {
 
   function selectCohort(id: string) {
     setCohortId(id)
+    localStorage.setItem(STORAGE_KEY, id)
     loadModules(id)
   }
 
@@ -190,7 +203,7 @@ export default function PreviewPage() {
                   )}
                 </div>
                 {discussionOpen && (
-                  <div className="bg-white rounded-lg border border-border p-4 h-[min(75vh,700px)]">
+                  <div className="bg-white rounded-lg border border-border p-4 h-[min(80vh,760px)]">
                     <CommentPanel itemId={selectedItem.id} />
                   </div>
                 )}

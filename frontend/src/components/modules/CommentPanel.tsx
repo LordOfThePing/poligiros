@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Eraser, ImagePlus, Loader2, Send, Trash2, X, MessageSquare } from "lucide-react"
+import { ImagePlus, Loader2, Send, Trash2, X, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/lib/auth"
@@ -23,6 +23,8 @@ export function CommentPanel({ itemId }: { itemId: string }) {
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
+  // Which comment image is open in the lightbox (full-size view).
+  const [lightbox, setLightbox] = useState<string | null>(null)
   // The thread scroll area; we keep it anchored to the bottom (latest message).
   const threadRef = useRef<HTMLDivElement | null>(null)
 
@@ -103,15 +105,6 @@ export function CommentPanel({ itemId }: { itemId: string }) {
     setComments((prev) => prev.filter((c) => c.id !== id))
   }
 
-  /** The supervisor can wipe the whole discussion at once. */
-  async function clearAll() {
-    if (!isSupervisor || comments.length === 0) return
-    if (!confirm("¿Eliminar todos los comentarios de esta discusión?")) return
-    const res = await apiTry(`/supervisor/module-item-comments/${itemId}`, { method: "DELETE" })
-    if (!res.ok) return
-    setComments([])
-  }
-
   return (
     <div className="flex flex-col h-full min-h-[320px]">
       <div className="flex items-center gap-2 pb-3 border-b border-border">
@@ -119,15 +112,6 @@ export function CommentPanel({ itemId }: { itemId: string }) {
         <h3 className="font-serif text-base font-medium">Discusión</h3>
         {comments.length > 0 && (
           <span className="text-xs text-muted-foreground">({comments.length})</span>
-        )}
-        {isSupervisor && comments.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-            title="Eliminar todos los comentarios"
-          >
-            <Eraser className="h-3.5 w-3.5" /> Limpiar
-          </button>
         )}
       </div>
 
@@ -187,11 +171,18 @@ export function CommentPanel({ itemId }: { itemId: string }) {
                     </p>
                   )}
                   {c.imageUrl && (
-                    <img
-                      src={c.imageUrl}
-                      alt="Imagen del comentario"
-                      className="rounded-lg max-w-[40%] h-auto object-cover bg-muted/50"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setLightbox(c.imageUrl)}
+                      className="block rounded-lg overflow-hidden w-fit cursor-zoom-in"
+                      title="Ampliar imagen"
+                    >
+                      <img
+                        src={c.imageUrl}
+                        alt="Imagen del comentario"
+                        className="max-h-24 w-auto max-w-[40%] h-auto object-cover rounded-lg bg-muted/50"
+                      />
+                    </button>
                   )}
                 </div>
               </div>
@@ -248,6 +239,28 @@ export function CommentPanel({ itemId }: { itemId: string }) {
           </Button>
         </div>
       </div>
+
+      {/* Lightbox: expand an image to full size on click. */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setLightbox(null)}
+        >
+          <img
+            src={lightbox}
+            alt="Imagen ampliada"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            aria-label="Cerrar"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

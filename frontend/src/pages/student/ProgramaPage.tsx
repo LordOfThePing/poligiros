@@ -574,7 +574,7 @@ export default function ProgramaPage() {
                 </div>
                 </div>
                 {discussionOpen && (
-                  <div className="bg-white rounded-lg border border-border p-4 h-[min(75vh,700px)]">
+                  <div className="bg-white rounded-lg border border-border p-4 h-[min(80vh,760px)]">
                     <CommentPanel itemId={current.item.id} />
                   </div>
                 )}
