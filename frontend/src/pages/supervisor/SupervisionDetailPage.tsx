@@ -17,6 +17,7 @@ import { PV_SECTIONS } from "@/lib/planVital"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Eye } from "lucide-react"
+import { cn } from "@/lib/utils"
 import ResultsView from "@/pages/client/ResultsView"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
@@ -168,6 +169,75 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
   return <pre className="text-xs text-muted-foreground overflow-auto">{JSON.stringify(responses, null, 2)}</pre>
 }
 
+/** The supervisor's feedback card (internal notes + client feedback + review). */
+function FeedbackBox({
+  notes,
+  setNotes,
+  coachFeedback,
+  setCoachFeedback,
+  reviewed,
+  reviewedAt,
+  saving,
+  onReview,
+  sticky = false,
+}: {
+  notes: string
+  setNotes: (v: string) => void
+  coachFeedback: string
+  setCoachFeedback: (v: string) => void
+  reviewed: boolean
+  reviewedAt: string | null
+  saving: boolean
+  onReview: () => void
+  sticky?: boolean
+}) {
+  return (
+    <Card className={cn("bg-white", sticky && "lg:sticky lg:top-6")}>
+      <CardHeader>
+        <CardTitle className="font-serif text-lg">Feedback</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Notas de supervisión (internas)</Label>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            placeholder="Feedback interno para el alumno..."
+            disabled={reviewed}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Feedback para el cliente (visible en el enlace de resultados)</Label>
+          <Textarea
+            value={coachFeedback}
+            onChange={(e) => setCoachFeedback(e.target.value)}
+            rows={3}
+            placeholder="Mensaje visible para el cliente cuando vea sus resultados..."
+            disabled={reviewed}
+          />
+        </div>
+
+        {reviewed ? (
+          <p className="text-sm text-indigo-700 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Revisado el {reviewedAt ? formatShortDate(reviewedAt) : ""}
+          </p>
+        ) : (
+          <Button
+            onClick={onReview}
+            disabled={saving}
+            className="bg-brand-accent hover:bg-brand-accent-dark"
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            {saving ? "Guardando..." : "Marcar como revisado"}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SupervisionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -178,6 +248,9 @@ export default function SupervisionDetailPage() {
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState(false)
   const [fullView, setFullView] = useState(false)
+  // For Anclas, the full view is the default but the raw/compressed view stays
+  // one click away.
+  const [showRaw, setShowRaw] = useState(false)
 
   function load() {
     apiJson<any[]>("/supervisor/supervision")
@@ -208,11 +281,14 @@ export default function SupervisionDetailPage() {
   if (!req) return <LoadingBadge />
 
   const responses = req.assignment?.response?.responses
+  const testType = req.assignment?.test?.type
   // Modelo de Negocio needs room for the wide canvas.
-  const wide = req.assignment?.test?.type === "MODELO_NEGOCIO"
+  const wide = testType === "MODELO_NEGOCIO"
+  // Anclas gets the full pretty view with a floating feedback box on the right.
+  const isAnclas = testType === "ANCLAS_CARRERA"
 
   return (
-    <div className={`space-y-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
+    <div className={cn("space-y-6", wide || isAnclas ? "max-w-6xl" : "max-w-3xl")}>
       <div className="flex items-center gap-3">
         <Link to="/supervisor/supervision" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
@@ -237,102 +313,183 @@ export default function SupervisionDetailPage() {
         </Card>
       )}
 
-      {responses && (
-        <Card className="bg-white">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setFullView(true)}>
-                <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
-                {editing ? "Cancelar" : "Editar"}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {editing ? (
-              <EditableResult
-                testType={req.assignment.test.type}
-                responses={responses}
-                onSave={async (updated) => {
-                  await api(`/supervisor/responses/${req.assignment.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ responses: updated }),
-                  })
-                  toast({ title: "Resultado actualizado" })
-                  setEditing(false)
-                  load()
-                }}
-              />
-            ) : (
-              <ResponseViewer testType={req.assignment.test.type} responses={responses} />
+      {isAnclas ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
+          <div className="min-w-0">
+            {responses && (
+              <Card className="bg-white">
+                <CardHeader className="flex-row items-center justify-between space-y-0">
+                  <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowRaw((v) => !v)}>
+                      {showRaw ? "Ver vista completa" : "Ver vista cruda"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
+                      {editing ? "Cancelar" : "Editar"}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {editing ? (
+                    <EditableResult
+                      testType={req.assignment.test.type}
+                      responses={responses}
+                      onSave={async (updated) => {
+                        await api(`/supervisor/responses/${req.assignment.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ responses: updated }),
+                        })
+                        toast({ title: "Resultado actualizado" })
+                        setEditing(false)
+                        load()
+                      }}
+                    />
+                  ) : showRaw ? (
+                    <ResponseViewer testType={testType!} responses={responses} />
+                  ) : (
+                    <ResultsView
+                      testType={testType!}
+                      responses={responses}
+                      coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
+                      completedAt={req.assignment.completedAt}
+                    />
+                  )}
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="min-w-0">
+            <FeedbackBox
+              notes={notes}
+              setNotes={setNotes}
+              coachFeedback={coachFeedback}
+              setCoachFeedback={setCoachFeedback}
+              reviewed={req.status === "REVIEWED"}
+              reviewedAt={req.reviewedAt}
+              saving={saving}
+              onReview={handleReview}
+              sticky
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          {responses && (
+            <Card className="bg-white">
+              <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setFullView(true)}>
+                    <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
+                    {editing ? "Cancelar" : "Editar"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {editing ? (
+                  <EditableResult
+                    testType={req.assignment.test.type}
+                    responses={responses}
+                    onSave={async (updated) => {
+                      await api(`/supervisor/responses/${req.assignment.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ responses: updated }),
+                      })
+                      toast({ title: "Resultado actualizado" })
+                      setEditing(false)
+                      load()
+                    }}
+                  />
+                ) : (
+                  <ResponseViewer testType={req.assignment.test.type} responses={responses} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <FeedbackBox
+            notes={notes}
+            setNotes={setNotes}
+            coachFeedback={coachFeedback}
+            setCoachFeedback={setCoachFeedback}
+            reviewed={req.status === "REVIEWED"}
+            reviewedAt={req.reviewedAt}
+            saving={saving}
+            onReview={handleReview}
+          />
+        </>
       )}
 
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle className="font-serif text-lg">Tu feedback</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Notas de supervisión (internas)</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              placeholder="Feedback interno para el alumno..."
-              disabled={req.status === "REVIEWED"}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Feedback para el cliente (visible en el enlace de resultados)</Label>
-            <Textarea
-              value={coachFeedback}
-              onChange={(e) => setCoachFeedback(e.target.value)}
-              rows={3}
-              placeholder="Mensaje visible para el cliente cuando vea sus resultados..."
-              disabled={req.status === "REVIEWED"}
-            />
-          </div>
-
-          {req.status === "PENDING" ? (
-            <Button
-              onClick={handleReview}
-              disabled={saving}
-              className="bg-brand-accent hover:bg-brand-accent-dark"
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              {saving ? "Guardando..." : "Marcar como revisado"}
-            </Button>
-          ) : (
-            <p className="text-sm text-indigo-700 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" />
-              Revisado el {req.reviewedAt ? formatShortDate(req.reviewedAt) : ""}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Full (nice) result view, same as what the coach/coachee sees. */}
+      {/* Full (nice) result view. Anclas shows the full view with a floating feedback box. */}
       <Dialog open={fullView} onOpenChange={setFullView}>
-        <DialogContent className="w-[min(1200px,95vw)] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[min(1200px,96vw)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-serif">
               {req.assignment.test.title} — vista completa
             </DialogTitle>
           </DialogHeader>
-          {responses && (
-            <ResultsView
-              testType={req.assignment.test.type}
-              responses={responses}
-              coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
-              completedAt={req.assignment.completedAt}
-            />
-          )}
+          {responses &&
+            (isAnclas ? (
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
+                <div className="min-w-0">
+                  <ResultsView
+                    testType={testType!}
+                    responses={responses}
+                    coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
+                    completedAt={req.assignment.completedAt}
+                  />
+                </div>
+                {/* Floating feedback box: stays visible while the dialog scrolls. */}
+                <div className="lg:sticky lg:top-0 bg-white rounded-xl border border-border p-5 space-y-3">
+                  <h4 className="font-serif text-lg">Feedback</h4>
+                  <div className="space-y-1.5">
+                    <Label>Notas de supervisión (internas)</Label>
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      disabled={req.status === "REVIEWED"}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Feedback para el cliente</Label>
+                    <Textarea
+                      value={coachFeedback}
+                      onChange={(e) => setCoachFeedback(e.target.value)}
+                      rows={2}
+                      disabled={req.status === "REVIEWED"}
+                    />
+                  </div>
+                  {req.status === "PENDING" ? (
+                    <Button
+                      onClick={() => { handleReview(); setFullView(false) }}
+                      disabled={saving}
+                      className="w-full bg-brand-accent hover:bg-brand-accent-dark"
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      {saving ? "Guardando..." : "Marcar como revisado"}
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-indigo-700 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Revisado el {req.reviewedAt ? formatShortDate(req.reviewedAt) : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <ResultsView
+                testType={testType!}
+                responses={responses}
+                coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
+                completedAt={req.assignment.completedAt}
+              />
+            ))}
         </DialogContent>
       </Dialog>
     </div>
