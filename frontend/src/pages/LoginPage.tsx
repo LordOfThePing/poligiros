@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react"
 export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { login, user } = useAuth()
+  const { login, user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -44,6 +44,19 @@ export default function LoginPage() {
       )
       setLoading(false)
     }
+  }
+
+  // While the app pings /auth/me on load, show a brief loading screen instead of
+  // flashing the form and then redirecting.
+  if (authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+          <p className="text-sm">Cargando usuario...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

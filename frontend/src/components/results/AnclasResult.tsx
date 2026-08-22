@@ -92,7 +92,6 @@ export function AnclasResult({
                       return (
                         <div key={anchor} className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {isPodium && <span className="text-base">🏆</span>}
                             <span className="text-lg">{info.icon}</span>
                             <span className="font-semibold text-foreground">{info.name}</span>
                             <Badge variant="outline" className="text-xs">{anchor}</Badge>

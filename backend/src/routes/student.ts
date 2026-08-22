@@ -487,9 +487,12 @@ async function syncModuleProgress(userId: string, moduleId: string) {
       create: { userId, moduleId },
     })
   } else {
-    await prisma.moduleProgress
-      .delete({ where: { userId_moduleId: { userId, moduleId } } })
-      .catch(() => {}) // not there is the desired state anyway
+    // deleteMany never throws when there is no matching row, so this does not
+    // spam the logs (plain `.delete` would raise "Record to delete does not
+    // exist", which Prisma logs even when caught).
+    await prisma.moduleProgress.deleteMany({
+      where: { userId, moduleId },
+    })
   }
 }
 

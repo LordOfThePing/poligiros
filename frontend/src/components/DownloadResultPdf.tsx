@@ -38,6 +38,7 @@ export function DownloadResultPdf({
           responses={responses}
           coachFeedback={coachFeedback}
           completedAt={completedAt}
+          hideExport
         />
       </div>
     </div>
@@ -50,7 +51,14 @@ export function DownloadResultPdf({
       await new Promise((r) => setTimeout(r, 200))
       const el = captureRef.current
       if (!el) throw new Error("no capture")
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff" })
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        imageTimeout: 15000,
+        backgroundColor: "#ffffff",
+      })
       const imgData = canvas.toDataURL("image/jpeg", 0.92)
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" })
       const pageW = pdf.internal.pageSize.getWidth()

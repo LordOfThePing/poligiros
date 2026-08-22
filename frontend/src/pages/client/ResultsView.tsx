@@ -14,6 +14,8 @@ interface ResultsViewProps {
   coachFeedback: string | null
   completedAt: string
   footer?: React.ReactNode
+  /** Skip the download/print bar — used when this view is itself the exported copy. */
+  hideExport?: boolean
 }
 
 const TABLERO_COLUMNS = [
@@ -22,7 +24,7 @@ const TABLERO_COLUMNS = [
   { key: "sonar", rankKey: "sonarRanking", title: "SOÑAR", subtitle: "Aspiraciones a futuro", header: "bg-indigo-600" },
 ] as const
 
-export default function ResultsView({ testType, responses, coachFeedback, completedAt, footer }: ResultsViewProps) {
+export default function ResultsView({ testType, responses, coachFeedback, completedAt, footer, hideExport }: ResultsViewProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -240,14 +242,16 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
       )}
 
       {/* Download as PDF */}
-      <div className="no-print flex justify-end pt-2">
-        <DownloadResultPdf
-          testType={testType}
-          responses={responses}
-          coachFeedback={coachFeedback}
-          completedAt={completedAt}
-        />
-      </div>
+      {!hideExport && (
+        <div className="no-print flex justify-end pt-2">
+          <DownloadResultPdf
+            testType={testType}
+            responses={responses}
+            coachFeedback={coachFeedback}
+            completedAt={completedAt}
+          />
+        </div>
+      )}
     </div>
   )
 }
