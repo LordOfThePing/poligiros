@@ -26,8 +26,11 @@ type Student = {
   email: string
   cohort: string
   clientCount: number
-  testsSubmitted: number
-  modulesCompleted: number
+  modulesDone: number
+  modulesTotal: number
+  itemsDone: number
+  itemsTotal: number
+  ownTestsSubmitted: number
   pending: boolean
   lastActivity: string
 }
@@ -134,36 +137,56 @@ export default function AlumnosPage() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>CIC</TableHead>
-                <TableHead className="text-center">Clientes</TableHead>
-                <TableHead className="text-center">Tests enviados</TableHead>
-                <TableHead className="text-center">Módulos</TableHead>
+                <TableHead className="text-center">Coachees</TableHead>
+                <TableHead className="text-center">Progreso de contenidos</TableHead>
+                <TableHead className="text-center">Módulos completos</TableHead>
+                <TableHead className="text-center">Tests propios enviados</TableHead>
                 <TableHead>Última actividad</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6}><LoadingBadge compact /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7}><LoadingBadge compact /></TableCell></TableRow>
               ) : visibleStudents.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay coaches en este CIC</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay coaches en este CIC</TableCell></TableRow>
               ) : (
-                visibleStudents.map((s) => (
-                  <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <Link to={`/supervisor/alumnos/${s.id}`} className="block">
-                        <div className="font-medium text-foreground flex items-center gap-2">
-                          {s.name}
-                          {s.pending && <Badge variant="secondary" className="text-[0.65rem]">Pendiente</Badge>}
+                visibleStudents.map((s) => {
+                  const itemsPct = s.itemsTotal > 0 ? Math.round((s.itemsDone / s.itemsTotal) * 100) : 0
+                  const modsPct = s.modulesTotal > 0 ? Math.round((s.modulesDone / s.modulesTotal) * 100) : 0
+                  return (
+                    <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <Link to={`/supervisor/alumnos/${s.id}`} className="block">
+                          <div className="font-medium text-foreground flex items-center gap-2">
+                            {s.name}
+                            {s.pending && <Badge variant="secondary" className="text-[0.65rem]">Pendiente</Badge>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{s.email}</div>
+                        </Link>
+                      </TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{s.cohort}</Badge></TableCell>
+                      <TableCell className="text-center">{s.clientCount}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-xs text-muted-foreground">{s.itemsDone}/{s.itemsTotal} ítems</span>
+                          <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full bg-brand-accent rounded-full" style={{ width: `${itemsPct}%` }} />
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">{s.email}</div>
-                      </Link>
-                    </TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs">{s.cohort}</Badge></TableCell>
-                    <TableCell className="text-center">{s.clientCount}</TableCell>
-                    <TableCell className="text-center">{s.testsSubmitted}</TableCell>
-                    <TableCell className="text-center">{s.modulesCompleted}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatShortDate(s.lastActivity)}</TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-xs text-muted-foreground">{s.modulesDone}/{s.modulesTotal}</span>
+                          <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full bg-brand-secondary rounded-full" style={{ width: `${modsPct}%` }} />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">{s.ownTestsSubmitted}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatShortDate(s.lastActivity)}</TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

@@ -60,21 +60,12 @@ export function DownloadResultPdf({
         backgroundColor: "#ffffff",
       })
       const imgData = canvas.toDataURL("image/jpeg", 0.92)
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" })
-      const pageW = pdf.internal.pageSize.getWidth()
-      const pageH = pdf.internal.pageSize.getHeight()
+      // Build a single PDF page that grows to the full content height, so there
+      // are no page cuts in the middle of results.
+      const pageW = 794 // ~A4 width in pt
       const imgH = (canvas.height * pageW) / canvas.width
-      let heightLeft = imgH
-      let position = 0
-      pdf.addImage(imgData, "JPEG", 0, position, pageW, imgH)
-      heightLeft -= pageH
-      // Paginate when the capture is taller than one page.
-      while (heightLeft > 0) {
-        position -= pageH
-        pdf.addPage()
-        pdf.addImage(imgData, "JPEG", 0, position, pageW, imgH)
-        heightLeft -= pageH
-      }
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [pageW, Math.ceil(imgH)] })
+      pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH)
       pdf.save(`anclas-de-carrera.pdf`)
     } catch (e) {
       console.error(e)

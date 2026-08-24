@@ -360,7 +360,7 @@ export default function SupervisionDetailPage() {
             )}
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 lg:self-start lg:sticky lg:top-6">
             <FeedbackBox
               notes={notes}
               setNotes={setNotes}
@@ -370,7 +370,6 @@ export default function SupervisionDetailPage() {
               reviewedAt={req.reviewedAt}
               saving={saving}
               onReview={handleReview}
-              sticky
             />
           </div>
         </div>

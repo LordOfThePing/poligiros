@@ -137,39 +137,69 @@ supervisor.get("/students", async (c) => {
     where: { role: "STUDENT_COACH" },
     include: {
       enrollments: { include: { cohort: true } },
+      coacheeProfile: {
+        include: { assignments: { select: { completedAt: true } } },
+      },
       clients: {
         include: {
           assignments: { include: { response: true } },
         },
       },
       moduleProgress: true,
+      moduleItemProgress: true,
       sessionRecords: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { name: "asc" },
   })
 
-  const result = students.map((s) => {
-    const totalTests = s.clients.reduce((sum, cl) => sum + cl.assignments.length, 0)
-    const completedTests = s.clients.reduce(
-      (sum, cl) => sum + cl.assignments.filter((a) => a.completedAt).length,
-      0
-    )
+  const result = await Promise.all(
+    students.map(async (s) => {
+      const cohortIds = s.enrollments.map((e) => e.cohortId)
+      // Released module ids for the coach's cohorts → how many modules/items they can work through.
+      const releases = cohortIds.length
+        ? await prisma.moduleRelease.findMany({
+            where: {
+              cohortId: { in: cohortIds },
+              released: true,
+              OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
+            },
+            select: { moduleId: true },
+          })
+        : []
+      const moduleIds = [...new Set(releases.map((r) => r.moduleId))]
+      const modules = moduleIds.length
+        ? await prisma.module.findMany({
+            where: { id: { in: moduleIds }, published: true },
+            select: { _count: { select: { items: true } } },
+          })
+        : []
+      const modulesTotal = modules.length
+      const itemsTotal = modules.reduce((sum, m) => sum + m._count.items, 0)
+      const itemsDone = s.moduleItemProgress.length
 
-    return {
-      id: s.id,
-      name: s.name,
-      email: s.email,
-      cohort: s.enrollments[0]?.cohort?.name ?? "Sin CIC",
-      clientCount: s.clients.length,
-      testsSubmitted: completedTests,
-      modulesCompleted: s.moduleProgress.length,
-      pending: s.password === null, // invited but not yet registered
-      lastActivity:
-        s.sessionRecords[0]?.createdAt ??
-        s.enrollments[0]?.enrolledAt ??
-        s.createdAt,
-    }
-  })
+      // The coach's OWN self-tests submitted to Gaby (on their coachee profile).
+      const ownTestsSubmitted =
+        s.coacheeProfile?.assignments.filter((a) => a.completedAt).length ?? 0
+
+      return {
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        cohort: s.enrollments[0]?.cohort?.name ?? "Sin CIC",
+        clientCount: s.clients.length,
+        modulesDone: s.moduleProgress.length,
+        modulesTotal,
+        itemsDone,
+        itemsTotal,
+        ownTestsSubmitted,
+        pending: s.password === null, // invited but not yet registered
+        lastActivity:
+          s.sessionRecords[0]?.createdAt ??
+          s.enrollments[0]?.enrolledAt ??
+          s.createdAt,
+      }
+    })
+  )
 
   return c.json(result)
 })
