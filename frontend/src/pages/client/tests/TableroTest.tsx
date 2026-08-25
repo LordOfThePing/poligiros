@@ -31,7 +31,7 @@ const COLUMNS: Record<
   querer: {
     title: "QUERER",
     subtitle: "Acciones en las que fluyo",
-    hint: "Todo lo que te gusta hacer y disfrutás, tanto de tu vida personal como laboral: hobbies, deportes, actividades informales. Pensá en aquello que cuando lo hacés perdés la noción del tiempo.",
+    hint: "Todo lo que te gusta hacer y disfrutás, tanto de tu vida personal como laboral: hobbies, deportes, actividades informales. Pensá en aquello que cuando lo hacés perdés la noción del tiempo. La condición es que ya lo hayas hecho o probado alguna vez — lo que nunca hiciste va en SOÑAR.",
     header: "bg-brand-secondary",
     placeholder: "Ej: Cocinar / tocar el piano",
   },
@@ -117,6 +117,9 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   const { toast } = useToast()
 
   const [stageIndex, setStageIndex] = useState(0)
+  // The consigna screen, shown once before the stages. Skipped when a draft
+  // is restored — somebody mid-test does not need the briefing again.
+  const [showIntro, setShowIntro] = useState(true)
 
   // ── Write inputs (variable length, start with 5 rows) ───────────────────────
   const [saber, setSaber] = useState<string[]>(Array(5).fill(""))
@@ -199,6 +202,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     if (typeof src.stageIndex === "number") {
       setStageIndex(Math.min(Math.max(0, src.stageIndex), STAGES.length - 1))
     }
+    setShowIntro(false)
   }
 
   // ── Draft load (tolerant of the old {saber,querer,sonar,brainstorming} shape) ─
@@ -457,6 +461,69 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
         <p className="text-4xl">✓</p>
         <h2 className="font-serif text-2xl text-foreground">¡Tablero enviado!</h2>
         <p className="text-muted-foreground">Tus respuestas fueron guardadas correctamente.</p>
+      </div>
+    )
+  }
+
+  if (showIntro) {
+    return (
+      <div className="space-y-6 pb-24">
+        <div>
+          <h1 className="font-serif text-3xl text-foreground mb-1">Tablero de Ideas</h1>
+          <p className="text-sm text-muted-foreground">Tomate unos 30 minutos</p>
+        </div>
+
+        <div className="rounded-xl bg-brand-accent/5 border border-brand-accent/20 p-4 text-sm leading-relaxed text-foreground">
+          <p className="font-medium mb-1">Antes de empezar</p>
+          <p className="text-muted-foreground">
+            Agendate <strong className="text-foreground">30 minutos a solas</strong>, en un lugar
+            que te genere armonía — un rincón de tu casa, un bar, un parque. Es un ejercicio de
+            conexión con vos: la información fluye mejor sin apuro y sin interrupciones.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-5 space-y-4 text-sm leading-relaxed">
+          <p className="text-foreground">El ejercicio tiene tres fases:</p>
+
+          <div className="space-y-3">
+            <div>
+              <p className="font-medium text-foreground">1 · Completar</p>
+              <p className="text-muted-foreground">
+                Llenás tres columnas: <strong className="text-foreground">SABER</strong> (lo que
+                sabés hacer), <strong className="text-foreground">QUERER</strong> (lo que disfrutás
+                y ya probaste alguna vez) y{" "}
+                <strong className="text-foreground">SOÑAR</strong> (lo que nunca hiciste y te
+                gustaría). Cuanto más detallado, mejor.
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">2 · Filtrar</p>
+              <p className="text-muted-foreground">
+                Marcás lo que realmente te apasiona y ordenás cada columna por cuánto te mueve. No
+                por lo que te sale fácil ni por lo que conviene.
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">3 · Conectar</p>
+              <p className="text-muted-foreground">
+                Cruzás lo mejor de las tres columnas para generar ideas de proyectos, trabajos o
+                emprendimientos. Sin filtro: ninguna idea se descarta por parecer inviable.
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-4 text-muted-foreground">
+            Se guarda solo a medida que avanzás, así que podés cortar y seguir después.
+          </div>
+        </div>
+
+        <Button
+          onClick={() => setShowIntro(false)}
+          size="lg"
+          className="w-full bg-brand-accent hover:bg-brand-accent-dark"
+        >
+          Comenzar
+        </Button>
       </div>
     )
   }

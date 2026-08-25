@@ -13,9 +13,13 @@ import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { AnclasResult } from "@/components/results/AnclasResult"
 import type { DuplaCandidate, StudentModuleItem } from "@/lib/modules"
 
-type PartnerAnclas =
-  | { completed: false }
-  | { completed: true; completedAt: string; scores: Record<string, number> | null }
+type PartnerAnclas = {
+  coach: { id: string; name: string }
+  completed: boolean
+  completedAt?: string
+  scores?: Record<string, number> | null
+  aiInsight?: string | null
+}
 
 /**
  * A kind = REGISTRO card: the coach picks their dupla partner, reviews that
@@ -54,6 +58,7 @@ export function RegistroCard({
       .catch(() => {})
   }, [item.id])
 
+
   // Reset whenever the partner changes: showing anchors from the previous pick
   // next to a different name would be worse than showing nothing.
   useEffect(() => {
@@ -69,7 +74,7 @@ export function RegistroCard({
     try {
       setAnclas(await apiJson<PartnerAnclas>(`/student/coaches/${coacheeId}/anclas`))
     } catch {
-      setAnclas({ completed: false })
+      setAnclas(null)
     }
     setLoadingAnclas(false)
   }
@@ -166,9 +171,13 @@ export function RegistroCard({
                   ) : anclas?.completed && anclas.scores ? (
                     <AnclasResult
                       scores={anclas.scores}
-                      aiInsight={null}
+                      aiInsight={anclas.aiInsight ?? null}
                       title={`Anclas de ${partnerName ?? "tu dupla"}`}
-                      subtitle={`Test completado el ${formatShortDate(anclas.completedAt)}`}
+                      subtitle={
+                        anclas.completedAt
+                          ? `Test completado el ${formatShortDate(anclas.completedAt)}`
+                          : "Resultados según la metodología de Edgar Schein"
+                      }
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground">

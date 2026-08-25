@@ -830,13 +830,16 @@ student.get("/coaches/:coachId/anclas", async (c) => {
   const coachId = c.req.param("coachId")
 
   const peers = await duplaCandidates(user.id)
-  if (!peers.some((p) => p.id === coachId)) {
+  const peer = peers.find((p) => p.id === coachId)
+  if (!peer) {
     return c.json({ error: "No podés ver los resultados de esta persona" }, 403)
   }
 
   // The coach takes their own tests against their coach-as-coachee Client.
+  const coach = { id: peer.id, name: peer.name }
+
   const theirClient = await prisma.client.findUnique({ where: { userId: coachId } })
-  if (!theirClient) return c.json({ completed: false })
+  if (!theirClient) return c.json({ coach, completed: false })
 
   const assignment = await prisma.testAssignment.findFirst({
     where: {
@@ -846,13 +849,15 @@ student.get("/coaches/:coachId/anclas", async (c) => {
     },
     include: { response: true },
   })
-  if (!assignment?.response) return c.json({ completed: false })
+  if (!assignment?.response) return c.json({ coach, completed: false })
 
   const responses = assignment.response.responses as Record<string, unknown>
   return c.json({
+    coach,
     completed: true,
     completedAt: assignment.completedAt,
     scores: responses.scores ?? null,
+    aiInsight: (responses.aiInsight as string | undefined) ?? null,
   })
 })
 

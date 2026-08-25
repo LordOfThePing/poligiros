@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
-  ClipboardCheck, PanelLeftClose, PanelLeftOpen, MessageSquare,
+  ClipboardCheck, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
@@ -53,7 +53,6 @@ export default function ProgramaPage() {
   const [indexPinned, setIndexPinned] = useState(true)
   const [indexHover, setIndexHover] = useState(false)
   // Discussion panel is collapsible, shown by default, closable on demand.
-  const [discussionOpen, setDiscussionOpen] = useState(true)
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.
@@ -425,19 +424,6 @@ export default function ProgramaPage() {
                     >
                       {KIND_LABEL[current.item.kind]}
                     </span>
-                    <button
-                      onClick={() => setDiscussionOpen((v) => !v)}
-                      className={cn(
-                        "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors",
-                        discussionOpen
-                          ? "bg-brand-accent/10 border-brand-accent/30 text-brand-accent"
-                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
-                      )}
-                      title={discussionOpen ? "Ocultar la discusión" : "Abrir la discusión"}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      Discusión
-                    </button>
                   </span>
                 </div>
 
@@ -581,11 +567,9 @@ export default function ProgramaPage() {
                   )}
                 </div>
                 </div>
-                {discussionOpen && (
-                  <div className="bg-white rounded-lg border border-border p-4 h-[min(80vh,760px)]">
-                    <CommentPanel itemId={current.item.id} />
-                  </div>
-                )}
+                <div className="bg-white rounded-lg border border-border p-4 h-[min(80vh,760px)]">
+                  <CommentPanel itemId={current.item.id} />
+                </div>
               </div>
             ) : (
               <div className="hidden lg:flex items-center justify-center h-full min-h-[240px] bg-white rounded-lg border border-dashed border-border">
