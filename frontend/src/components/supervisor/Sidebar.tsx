@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { CollapsibleSidebar } from "@/components/CollapsibleSidebar"
 import { ProfileMenu } from "@/components/ProfileMenu"
+import { HelpLauncher } from "@/components/HelpGuide"
 import { useNotifications, badgeForRole } from "@/lib/useNotifications"
 
 type NavItem = { href: string; label: string; icon: LucideIcon }
@@ -94,7 +95,10 @@ export function SupervisorSidebar() {
     <CollapsibleSidebar
       roleLabel="Supervisora"
       footer={({ expanded, keepOpen }) => (
-        <ProfileMenu collapsed={!expanded} keepOpen={keepOpen} />
+        <div className="space-y-1">
+          <HelpLauncher collapsed={!expanded} />
+          <ProfileMenu collapsed={!expanded} keepOpen={keepOpen} />
+        </div>
       )}
     >
       {({ expanded }) =>

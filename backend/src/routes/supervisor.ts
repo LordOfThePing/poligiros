@@ -1863,4 +1863,73 @@ supervisor.post("/submissions/:id/review", async (c) => {
   return c.json({ ok: true })
 })
 
+/* ─────────────────────────────────────────
+   Practice records — sessions coaches ran on each other
+───────────────────────────────────────── */
+
+/** GET /supervisor/practice-records?status=pending|reviewed|all */
+supervisor.get("/practice-records", async (c) => {
+  const status = c.req.query("status") ?? "pending"
+  const where =
+    status === "pending"
+      ? { reviewedAt: null }
+      : status === "reviewed"
+        ? { reviewedAt: { not: null } }
+        : {}
+
+  const records = await prisma.practiceRecord.findMany({
+    where,
+    orderBy: { submittedAt: "desc" },
+    include: {
+      coach: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          enrollments: { include: { cohort: { select: { name: true } } } },
+        },
+      },
+      coachee: { select: { id: true, name: true } },
+      item: { select: { id: true, title: true, module: { select: { id: true, title: true } } } },
+    },
+  })
+
+  return c.json(
+    records.map((r) => ({
+      id: r.id,
+      coach: { id: r.coach.id, name: r.coach.name, email: r.coach.email },
+      coachee: r.coachee,
+      cohorts: r.coach.enrollments.map((e) => e.cohort.name),
+      item: { id: r.item.id, title: r.item.title },
+      module: { id: r.item.module.id, title: r.item.module.title },
+      sessionDate: r.sessionDate,
+      mainOutputs: r.mainOutputs,
+      toolsAndResults: r.toolsAndResults,
+      conclusions: r.conclusions,
+      submittedAt: r.submittedAt,
+      feedback: r.feedback,
+      reviewedAt: r.reviewedAt,
+    }))
+  )
+})
+
+/** POST /supervisor/practice-records/:id/review — body: { feedback } */
+supervisor.post("/practice-records/:id/review", async (c) => {
+  const user = c.get("user")
+  const { feedback } = await c.req.json().catch(() => ({}))
+
+  const clean = String(feedback ?? "").trim()
+  if (!clean) return c.json({ error: "Escribí la devolución" }, 400)
+
+  const record = await prisma.practiceRecord.update({
+    where: { id: c.req.param("id") },
+    data: { feedback: clean, reviewedAt: new Date(), reviewedById: user.id },
+    include: { coach: { select: { email: true } }, item: { select: { title: true } } },
+  })
+
+  sendSubmissionReviewedEmail(record.coach.email, record.item.title, clean).catch(() => {})
+
+  return c.json({ ok: true })
+})
+
 export default supervisor

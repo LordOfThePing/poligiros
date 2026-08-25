@@ -35,6 +35,9 @@ enum ModuleItemKind {
   TEST
   /// The card asks the coach to hand something in (see ModuleItemSubmission).
   ENTREGA
+  /// The card is a practice session between two coaches of the same CIC, written
+  /// up as a structured record (see PracticeRecord).
+  REGISTRO
 }
 
 enum SignupStatus {
@@ -77,6 +80,9 @@ model User {
   moduleItemProgress  ModuleItemProgress[]
   submissions         ModuleItemSubmission[] @relation("SubmissionAuthor")
   submissionReviews   ModuleItemSubmission[] @relation("SubmissionReviewedBy")
+  practicesAsCoach    PracticeRecord[]       @relation("PracticeCoach")
+  practicesAsCoachee  PracticeRecord[]       @relation("PracticeCoachee")
+  practiceReviews     PracticeRecord[]       @relation("PracticeReviewedBy")
   supervisionRequests SupervisionRequest[]   @relation("StudentRequests")
   supervisionReviews  SupervisionRequest[]   @relation("SupervisorReviews")
   sessionRecords      SessionRecord[]
@@ -175,10 +181,11 @@ model ModuleItem {
   coverImageKey String?
   coverImageUrl String?
 
-  links       ModuleLink[]
-  progress    ModuleItemProgress[]
-  submissions ModuleItemSubmission[]
-  comments    ModuleItemComment[]
+  links          ModuleLink[]
+  progress       ModuleItemProgress[]
+  submissions    ModuleItemSubmission[]
+  comments       ModuleItemComment[]
+  PracticeRecord PracticeRecord[]
 }
 
 /// A link hanging off a card. Nothing is ever uploaded or stored by this app —
@@ -449,11 +456,11 @@ model ModuleItemSubmission {
 /// coach and the supervisor can post; each comment may carry one photo, uploaded
 /// through the app and stored in R2 (shown flat under the text).
 model ModuleItemComment {
-  id        String     @id @default(cuid())
-  itemId    String
-  item      ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String     @id @default(cuid())
+  itemId String
+  item   ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   text String
 
@@ -466,4 +473,43 @@ model ModuleItemComment {
   updatedAt DateTime @updatedAt
 
   @@index([itemId, createdAt])
+}
+
+/// A practice session one coach ran on another coach of the same CIC, for a
+/// kind = REGISTRO card.
+///
+/// Deliberately NOT a SessionRecord: that one hangs off a `Client`, which would
+/// force the cohort's `practiceEnabled` open just to let coaches practise on
+/// each other inside a class. Here both sides are Users, so the exercise lives
+/// entirely within the module.
+model PracticeRecord {
+  id     String     @id @default(cuid())
+  itemId String
+  item   ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Who ran the session and writes the record.
+  coachId   String
+  coach     User   @relation("PracticeCoach", fields: [coachId], references: [id], onDelete: Cascade)
+  /// The dupla partner they interviewed. Also a coach of the same CIC.
+  coacheeId String
+  coachee   User   @relation("PracticeCoachee", fields: [coacheeId], references: [id], onDelete: Cascade)
+
+  sessionDate     DateTime?
+  mainOutputs     String
+  toolsAndResults String
+  conclusions     String
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  /// Supervisor review. The coach may keep editing until this is set.
+  feedback     String?
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("PracticeReviewedBy", fields: [reviewedById], references: [id])
+
+  /// One record per coach per card — a coach writes up the session they ran.
+  @@unique([itemId, coachId])
+  @@index([reviewedAt])
+  @@index([coacheeId])
 }

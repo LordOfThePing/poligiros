@@ -520,6 +520,20 @@ student.get("/modules", async (c) => {
   })
 
   // The coach takes tests against their own coach-as-coachee Client.
+  const [myPractices, practicesAboutMe] = await Promise.all([
+    prisma.practiceRecord.findMany({
+      where: { coachId: user.id, item: { moduleId: { in: moduleIds } } },
+      include: { coachee: { select: { id: true, name: true } } },
+    }),
+    prisma.practiceRecord.findMany({
+      where: { coacheeId: user.id, item: { moduleId: { in: moduleIds } } },
+      include: { coach: { select: { id: true, name: true } } },
+    }),
+  ])
+  const practiceByItem = new Map(myPractices.map((r) => [r.itemId, r]))
+  // What my dupla partner wrote about me, for the same card.
+  const practiceAboutMeByItem = new Map(practicesAboutMe.map((r) => [r.itemId, r]))
+
   const mySubmissions = await prisma.moduleItemSubmission.findMany({
     where: { userId: user.id, item: { moduleId: { in: moduleIds } } },
   })
@@ -561,6 +575,8 @@ student.get("/modules", async (c) => {
       const items = m.items.map((i) => {
         const assignment = i.testId ? assignmentByTest.get(i.testId) : undefined
         const submission = submissionByItem.get(i.id)
+        const practice = practiceByItem.get(i.id)
+        const practiceAboutMe = practiceAboutMeByItem.get(i.id)
         // The coach's own test supervision feedback, if any (read from the item).
         const ownSupervision = assignment ? supervisionByAssignment.get(assignment.id) : undefined
         return {
@@ -586,6 +602,33 @@ student.get("/modules", async (c) => {
                 submittedAt: submission.submittedAt,
                 feedback: submission.feedback,
                 reviewedAt: submission.reviewedAt,
+              }
+            : null,
+          // Only meaningful for kind = REGISTRO: the session I ran.
+          practice: practice
+            ? {
+                id: practice.id,
+                coachee: practice.coachee,
+                sessionDate: practice.sessionDate,
+                mainOutputs: practice.mainOutputs,
+                toolsAndResults: practice.toolsAndResults,
+                conclusions: practice.conclusions,
+                submittedAt: practice.submittedAt,
+                feedback: practice.feedback,
+                reviewedAt: practice.reviewedAt,
+              }
+            : null,
+          // The session my dupla partner ran on ME. Read-only, and without the
+          // feedback Gaby wrote for THEM — that devolución is not mine to read.
+          practiceAboutMe: practiceAboutMe
+            ? {
+                id: practiceAboutMe.id,
+                coach: practiceAboutMe.coach,
+                sessionDate: practiceAboutMe.sessionDate,
+                mainOutputs: practiceAboutMe.mainOutputs,
+                toolsAndResults: practiceAboutMe.toolsAndResults,
+                conclusions: practiceAboutMe.conclusions,
+                submittedAt: practiceAboutMe.submittedAt,
               }
             : null,
         }
@@ -619,7 +662,7 @@ student.post("/module-items/:itemId/complete", async (c) => {
 
   const item = await findReleasedItem(user.id, itemId)
   if (!item) return c.json({ error: "Contenido no disponible" }, 403)
-  if (item.kind === "TEST" || item.kind === "ENTREGA") {
+  if (item.kind === "TEST" || item.kind === "ENTREGA" || item.kind === "REGISTRO") {
     return c.json({ error: "Este ítem se completa enviándolo, no a mano" }, 400)
   }
 
@@ -741,6 +784,148 @@ student.put("/module-items/:itemId/submission", async (c) => {
   return c.json(submission)
 })
 
+/* ─────────────────────────────────────────
+   Practice records (kind = REGISTRO)
+
+   Two coaches of the same CIC practise on each other inside a class. Both sides
+   are Users, so this never touches `Client` and therefore does not need the
+   cohort's practiceEnabled — that flag is about working with real coachees.
+───────────────────────────────────────── */
+
+/** The coaches this one may pick as a dupla partner: same CIC, not themselves. */
+async function duplaCandidates(userId: string) {
+  const access = await getCoachAccess(userId)
+  if (access.cohortIds.length === 0) return []
+
+  const peers = await prisma.user.findMany({
+    where: {
+      id: { not: userId },
+      role: "STUDENT_COACH",
+      enrollments: { some: { cohortId: { in: access.cohortIds } } },
+    },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  })
+  return peers
+}
+
+/** GET /student/module-items/:itemId/dupla — who can be picked as coachee. */
+student.get("/module-items/:itemId/dupla", async (c) => {
+  const user = c.get("user")
+  const item = await findReleasedItem(user.id, c.req.param("itemId"))
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  return c.json({ candidates: await duplaCandidates(user.id) })
+})
+
+/**
+ * GET /student/coaches/:coachId/anclas
+ * The dupla partner's Anclas result, so the coach can prepare the devolución.
+ *
+ * Scoped to peers of the same CIC — a coach may only read the result of someone
+ * they could legitimately have as a practice coachee.
+ */
+student.get("/coaches/:coachId/anclas", async (c) => {
+  const user = c.get("user")
+  const coachId = c.req.param("coachId")
+
+  const peers = await duplaCandidates(user.id)
+  if (!peers.some((p) => p.id === coachId)) {
+    return c.json({ error: "No podés ver los resultados de esta persona" }, 403)
+  }
+
+  // The coach takes their own tests against their coach-as-coachee Client.
+  const theirClient = await prisma.client.findUnique({ where: { userId: coachId } })
+  if (!theirClient) return c.json({ completed: false })
+
+  const assignment = await prisma.testAssignment.findFirst({
+    where: {
+      clientId: theirClient.id,
+      completedAt: { not: null },
+      test: { type: "ANCLAS_CARRERA" },
+    },
+    include: { response: true },
+  })
+  if (!assignment?.response) return c.json({ completed: false })
+
+  const responses = assignment.response.responses as Record<string, unknown>
+  return c.json({
+    completed: true,
+    completedAt: assignment.completedAt,
+    scores: responses.scores ?? null,
+  })
+})
+
+/**
+ * PUT /student/module-items/:itemId/registro
+ * Write up (or correct) the session this coach ran. Frozen once reviewed, so the
+ * feedback keeps matching the text it was written about.
+ */
+student.put("/module-items/:itemId/registro", async (c) => {
+  const user = c.get("user")
+  const itemId = c.req.param("itemId")
+
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+  if (item.kind !== "REGISTRO") return c.json({ error: "Este ítem no pide un registro" }, 400)
+
+  const body = await c.req.json().catch(() => ({}))
+  const coacheeId = String(body.coacheeId ?? "")
+  const mainOutputs = String(body.mainOutputs ?? "").trim()
+  const toolsAndResults = String(body.toolsAndResults ?? "").trim()
+  const conclusions = String(body.conclusions ?? "").trim()
+
+  const peers = await duplaCandidates(user.id)
+  if (!peers.some((p) => p.id === coacheeId)) {
+    return c.json({ error: "Elegí un compañero/a de tu CIC" }, 400)
+  }
+  if (!mainOutputs || !toolsAndResults || !conclusions) {
+    return c.json({ error: "Completá los tres campos del registro" }, 400)
+  }
+
+  let sessionDate: Date | null = null
+  if (body.sessionDate) {
+    const parsed = new Date(body.sessionDate)
+    if (Number.isNaN(parsed.getTime())) return c.json({ error: "Fecha inválida" }, 400)
+    sessionDate = parsed
+  }
+
+  const existing = await prisma.practiceRecord.findUnique({
+    where: { itemId_coachId: { itemId, coachId: user.id } },
+  })
+  if (existing?.reviewedAt) {
+    return c.json({ error: "Gaby ya devolvió este registro, no se puede editar" }, 409)
+  }
+
+  const record = await prisma.practiceRecord.upsert({
+    where: { itemId_coachId: { itemId, coachId: user.id } },
+    update: { coacheeId, sessionDate, mainOutputs, toolsAndResults, conclusions },
+    create: { itemId, coachId: user.id, coacheeId, sessionDate, mainOutputs, toolsAndResults, conclusions },
+  })
+
+  await prisma.moduleItemProgress.upsert({
+    where: { userId_itemId: { userId: user.id, itemId } },
+    update: {},
+    create: { userId: user.id, itemId },
+  })
+  await syncModuleProgress(user.id, item.moduleId)
+
+  // Only announce the first hand-in; edits before review are not news.
+  if (!existing) {
+    const card = await prisma.moduleItem.findUnique({
+      where: { id: itemId },
+      select: { title: true, module: { select: { title: true } } },
+    })
+    if (card) {
+      for (const to of await notifyTarget("submission")) {
+        sendSubmissionReceivedEmail(to, user.name, card.module.title, card.title).catch(() => {})
+      }
+    }
+  }
+
+  return c.json(record)
+})
+
 /** DELETE /student/module-items/:itemId/complete — untick it. */
 student.delete("/module-items/:itemId/complete", async (c) => {
   const user = c.get("user")
@@ -749,7 +934,7 @@ student.delete("/module-items/:itemId/complete", async (c) => {
   const item = await findReleasedItem(user.id, itemId)
   if (!item) return c.json({ error: "Contenido no disponible" }, 403)
 
-  if (item.kind === "TEST" || item.kind === "ENTREGA") {
+  if (item.kind === "TEST" || item.kind === "ENTREGA" || item.kind === "REGISTRO") {
     return c.json({ error: "Este ítem se completa enviándolo, no a mano" }, 400)
   }
 

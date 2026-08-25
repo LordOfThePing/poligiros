@@ -9,6 +9,7 @@ export type ModuleItemKind =
   | "RECURSO"
   | "TEST"
   | "ENTREGA"
+  | "REGISTRO"
 
 export type ModuleLink = {
   id: string
@@ -80,6 +81,33 @@ export type OwnSupervision = {
   reviewedAt: string | null
 }
 
+/** A peer of the same CIC, pickable as a dupla partner. */
+export type DuplaCandidate = { id: string; name: string; email: string }
+
+/** kind = REGISTRO only: the session THIS coach ran on their partner. */
+export type OwnPractice = {
+  id: string
+  coachee: { id: string; name: string }
+  sessionDate: string | null
+  mainOutputs: string
+  toolsAndResults: string
+  conclusions: string
+  submittedAt: string
+  feedback: string | null
+  reviewedAt: string | null
+}
+
+/** The session a partner ran on ME. No feedback: that devolución is theirs. */
+export type PracticeAboutMe = {
+  id: string
+  coach: { id: string; name: string }
+  sessionDate: string | null
+  mainOutputs: string
+  toolsAndResults: string
+  conclusions: string
+  submittedAt: string
+}
+
 export type StudentModuleItem = ModuleItem & {
   completed: boolean
   /** kind = TEST only: the coach own assignment, created on first open. */
@@ -88,6 +116,8 @@ export type StudentModuleItem = ModuleItem & {
   /** kind = TEST only: feedback from Gaby on the coach's own test. */
   supervision: OwnSupervision | null
   submission: OwnSubmission | null
+  practice: OwnPractice | null
+  practiceAboutMe: PracticeAboutMe | null
 }
 
 export type StudentModule = Omit<Module, "items"> & {
@@ -104,6 +134,7 @@ export const ITEM_KINDS: ModuleItemKind[] = [
   "RECURSO",
   "TEST",
   "ENTREGA",
+  "REGISTRO",
 ]
 
 export const KIND_LABEL: Record<ModuleItemKind, string> = {
@@ -114,6 +145,7 @@ export const KIND_LABEL: Record<ModuleItemKind, string> = {
   RECURSO: "Recurso",
   TEST: "Test",
   ENTREGA: "Entrega",
+  REGISTRO: "Registro de sesión",
 }
 
 /** Tailwind classes per kind, so a class page is scannable at a glance. */
@@ -125,6 +157,7 @@ export const KIND_BADGE: Record<ModuleItemKind, string> = {
   RECURSO: "bg-slate-100 text-slate-700",
   TEST: "bg-rose-100 text-rose-800",
   ENTREGA: "bg-indigo-100 text-indigo-800",
+  REGISTRO: "bg-teal-100 text-teal-800",
 }
 
 /**

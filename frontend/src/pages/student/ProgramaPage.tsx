@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { RegistroCard } from "@/components/modules/RegistroCard"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { CommentPanel } from "@/components/modules/CommentPanel"
 import {
@@ -42,7 +43,9 @@ export default function ProgramaPage() {
   // The CICs this coach belongs to + which one is currently being viewed.
   const [cohorts, setCohorts] = useState<CoachAccess["cohorts"]>([])
   const [selectedCohortId, setSelectedCohortId] = useState<string>("")
-  const [openModules, setOpenModules] = useState<Set<string>>(new Set())
+  // Accordion: at most one module open at a time, so the index stays short
+  // enough to scan instead of turning into one long scroll.
+  const [openModuleId, setOpenModuleId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Selection | null>(null)
   const [saving, setSaving] = useState(false)
   // Left modules index: pinned open (fixed) or a thin rail that only expands on
@@ -65,7 +68,7 @@ export default function ProgramaPage() {
         setModules(data)
         // Open the first module that still has something pending.
         const next = data.find((m) => !m.completed) ?? data[0]
-        setOpenModules(next ? new Set([next.id]) : new Set())
+        setOpenModuleId(next?.id ?? null)
       })
       .catch(() => setModules([]))
       .finally(() => setLoading(false))
@@ -125,13 +128,9 @@ export default function ProgramaPage() {
     apiJson<StudentModule[]>("/student/modules").then(setModules).catch(() => {})
   }
 
+  /** Opening one closes whichever was open; clicking the open one collapses it. */
   function toggleModule(id: string) {
-    setOpenModules((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setOpenModuleId((prev) => (prev === id ? null : id))
   }
 
   async function toggleItemDone(item: StudentModuleItem) {
@@ -302,7 +301,7 @@ export default function ProgramaPage() {
             {indexExpanded ? (
               <div className="space-y-3">
                 {modules.map((mod, idx) => {
-                  const open = openModules.has(mod.id)
+                  const open = openModuleId === mod.id
                   const done = mod.items.filter((i) => i.completed).length
                   return (
                     <div key={mod.id} className="bg-white rounded-lg border border-border">
@@ -471,7 +470,16 @@ export default function ProgramaPage() {
                 )}
 
                 <div className="border-t border-border pt-4">
-                  {current.item.kind === "ENTREGA" ? (
+                  {current.item.kind === "REGISTRO" ? (
+                    <RegistroCard
+                      item={current.item}
+                      onSaved={() =>
+                        apiJson<StudentModule[]>("/student/modules")
+                          .then(setModules)
+                          .catch(() => {})
+                      }
+                    />
+                  ) : current.item.kind === "ENTREGA" ? (
                     <div className="space-y-3">
                       {current.item.submission?.reviewedAt ? (
                         <>

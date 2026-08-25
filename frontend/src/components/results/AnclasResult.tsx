@@ -30,11 +30,17 @@ export function AnclasResult({
   scores,
   aiInsight,
   loadingInsight = false,
+  title = "Tus Anclas de Carrera",
+  subtitle = "Resultados según la metodología de Edgar Schein",
 }: {
   scores: Record<string, number>
   aiInsight: string | null
   /** Only while the test is being finished; on a stored result it is never true. */
   loadingInsight?: boolean
+  /** Overridable so a coach can read a dupla partner's result without it
+   *  addressing them in second person. */
+  title?: string
+  subtitle?: string
 }) {
   // The average can exceed 6 (bonus items add +4), so bars scale to the top
   // anchor rather than to a fixed /6 max.
@@ -45,10 +51,8 @@ export function AnclasResult({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-serif text-3xl text-foreground mb-1">Tus Anclas de Carrera</h2>
-        <p className="text-sm text-muted-foreground">
-          Resultados según la metodología de Edgar Schein
-        </p>
+        <h2 className="font-serif text-3xl text-foreground mb-1">{title}</h2>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
 
       <div className="space-y-3">
