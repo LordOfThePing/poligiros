@@ -7,6 +7,7 @@ import TableroTest from "./tests/TableroTest"
 import PiramideTest from "./tests/PiramideTest"
 import { ModeloNegocioTest } from "./tests/ModeloNegocioTest"
 import PlanVitalTest from "./tests/PlanVitalTest"
+import TareasExploracionTest from "./tests/TareasExploracionTest"
 import ResultsView from "./ResultsView"
 import { tokenTestApi, type TestApi } from "@/lib/testApi"
 
@@ -191,7 +192,10 @@ export default function TokenPage() {
           {data.testType === "PLAN_VITAL" && (
             <PlanVitalTest api={api} assignmentId={data.assignmentId} />
           )}
-          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL"].includes(data.testType) && (
+          {data.testType === "TAREAS_EXPLORACION" && (
+            <TareasExploracionTest api={api} assignmentId={data.assignmentId} />
+          )}
+          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION"].includes(data.testType) && (
             <div className="text-center py-16">
               <h2 className="font-serif text-2xl">{data.title}</h2>
               <p className="text-muted-foreground mt-2">Este tipo de test no está disponible en este momento.</p>

@@ -199,6 +199,28 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
       {/* Modelo de Negocio — read-only canvas / job research */}
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioResult responses={responses} />}
 
+      {/* Tareas de exploración — post-Tablero tasks */}
+      {testType === "TAREAS_EXPLORACION" && (
+        <div className="bg-white rounded-xl border border-border p-5 space-y-3">
+          <h2 className="font-serif text-2xl text-foreground">Tareas de exploración</h2>
+          {(() => {
+            const tasks = (responses.tasks as string[] | undefined)?.filter(Boolean) ?? []
+            return tasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">Sin tareas registradas.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {tasks.map((t, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <span className="text-brand-accent shrink-0 mt-0.5">○</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+          })()}
+        </div>
+      )}
+
       {testType === "PLAN_VITAL" && (
         <div className="space-y-4">
           <h2 className="font-serif text-2xl text-foreground">Plan Vital Integral</h2>

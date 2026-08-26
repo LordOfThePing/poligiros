@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { formatShortDate } from "@/lib/date"
 import { apiJson } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { SessionRecordPdf } from "@/components/SessionRecordPdf"
 
 type SessionRecord = {
   id: string
@@ -123,6 +124,11 @@ export default function SupervisorRegistrosPage() {
             <DialogTitle className="font-serif">
               Sesión #{selected?.sessionNum} — {selected?.client.name}
             </DialogTitle>
+            {selected && (
+              <div className="mt-2">
+                <SessionRecordPdf record={selected} clientName={selected.client.name} coachName={selected.student.name} />
+              </div>
+            )}
           </DialogHeader>
           {selected && (
             <div className="space-y-4 text-sm">

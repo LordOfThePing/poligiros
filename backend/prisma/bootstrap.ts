@@ -53,6 +53,12 @@ const TEST_CATALOG = [
       "Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.",
     orderIndex: 5,
   },
+  {
+    type: TestType.TAREAS_EXPLORACION,
+    title: "Tareas de Exploración",
+    description: "Anotá qué tareas de exploración te llevás para investigar después del Tablero de Ideas.",
+    orderIndex: 6,
+  },
 ]
 
 async function main() {

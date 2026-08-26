@@ -12,6 +12,8 @@ import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { RegistroCard } from "@/components/modules/RegistroCard"
+import { DuplaAnclas } from "@/components/results/DuplaAnclas"
+import { GroupEntregas } from "@/components/modules/GroupEntregas"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { CommentPanel } from "@/components/modules/CommentPanel"
 import {
@@ -467,6 +469,7 @@ export default function ProgramaPage() {
                     />
                   ) : current.item.kind === "ENTREGA" ? (
                     <div className="space-y-3">
+                      <DuplaAnclas itemId={current.item.id} />
                       {current.item.submission?.reviewedAt ? (
                         <>
                           <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
@@ -509,6 +512,7 @@ export default function ProgramaPage() {
                           </Button>
                         </>
                       )}
+                      <GroupEntregas itemId={current.item.id} />
                     </div>
                   ) : current.item.kind === "TEST" ? (
                     <>

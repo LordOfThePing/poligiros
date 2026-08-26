@@ -8,6 +8,7 @@ import TableroTest from "@/pages/client/tests/TableroTest"
 import PiramideTest from "@/pages/client/tests/PiramideTest"
 import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
 import PlanVitalTest from "@/pages/client/tests/PlanVitalTest"
+import TareasExploracionTest from "@/pages/client/tests/TareasExploracionTest"
 import ResultsView from "@/pages/client/ResultsView"
 import { LoadingBadge } from "@/components/LoadingBadge"
 
@@ -90,7 +91,8 @@ export default function StudentTakeTestPage() {
         <ModeloNegocioTest api={api} assignmentId={assignment.id} prefillIdeas={assignment.prefillIdeas ?? (assignment.prefillIdea ? [assignment.prefillIdea] : [])} />
       )}
       {t === "PLAN_VITAL" && <PlanVitalTest api={api} assignmentId={assignment.id} />}
-      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL"].includes(t) && (
+      {t === "TAREAS_EXPLORACION" && <TareasExploracionTest api={api} assignmentId={assignment.id} />}
+      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION"].includes(t) && (
         <p className="text-muted-foreground text-sm">Este tipo de test no está disponible.</p>
       )}
     </div>

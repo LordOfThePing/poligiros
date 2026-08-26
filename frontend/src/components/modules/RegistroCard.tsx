@@ -144,6 +144,11 @@ export function RegistroCard({
                 Todavía no hay otros coaches en tu CIC para elegir.
               </p>
             )}
+            {coacheeId && (
+              <p className="text-xs text-muted-foreground">
+                Tu dupla: <strong className="text-foreground">{partnerName}</strong>
+              </p>
+            )}
           </div>
 
           {/* Preparing the devolución: the partner's own Anclas result. */}

@@ -6,17 +6,27 @@ import { Plus, Pencil } from "lucide-react"
 import { formatShortDate } from "@/lib/date"
 import { apiJson } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { SessionRecordPdf } from "@/components/SessionRecordPdf"
+import { useAuth } from "@/lib/auth"
 
 type SessionRecord = {
   id: string
   sessionNum: number
   sessionDate: string
   coacheeName: string
+  coacheeAge: string
+  coacheeSex: string
+  coacheeWorks: boolean
+  coacheePosition: string | null
+  mainOutputs: string
+  toolsAndResults: string
+  conclusions: string
   client: { id: string; name: string }
   createdAt: string
 }
 
 export default function RegistrosPage() {
+  const { user } = useAuth()
   const [records, setRecords] = useState<SessionRecord[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -58,18 +68,22 @@ export default function RegistrosPage() {
               <h2 className="font-serif text-lg text-foreground">{clientName}</h2>
               <div className="space-y-2">
                 {sessions.map((s) => (
-                  <Link
+                  <div
                     key={s.id}
-                    to={`/student/registros/${s.id}/editar`}
                     className="bg-white rounded-lg border border-border px-4 py-3 flex items-center gap-3 text-sm hover:shadow-sm hover:border-brand-accent/40 transition-all"
                   >
-                    <Badge variant="outline">Sesión #{s.sessionNum}</Badge>
-                    <span className="text-foreground">{s.coacheeName}</span>
-                    <span className="text-muted-foreground">{formatShortDate(s.sessionDate)}</span>
-                    <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <Pencil className="h-3 w-3" /> Editar
+                    <Link
+                      to={`/student/registros/${s.id}/editar`}
+                      className="flex items-center gap-3 flex-1 min-w-0"
+                    >
+                      <Badge variant="outline">Sesión #{s.sessionNum}</Badge>
+                      <span className="text-foreground">{s.coacheeName}</span>
+                      <span className="text-muted-foreground">{formatShortDate(s.sessionDate)}</span>
+                    </Link>
+                    <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                      <SessionRecordPdf record={s} clientName={s.client.name} coachName={user?.name} />
                     </span>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </div>

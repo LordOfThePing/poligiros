@@ -41,6 +41,7 @@ async function main() {
       { type: TestType.PLAN_VITAL, title: "Plan Vital Integral®", description: "Próximamente disponible.", orderIndex: 3 },
       { type: TestType.PIRAMIDE_PROPOSITO, title: "Pirámide del Propósito", description: "Construí tu propósito profesional de forma estructurada.", orderIndex: 4 },
       { type: TestType.MODELO_NEGOCIO, title: "Exploración", description: "Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.", orderIndex: 5 },
+      { type: TestType.TAREAS_EXPLORACION, title: "Tareas de Exploración", description: "Anotá qué tareas de exploración te llevás para investigar después del Tablero de Ideas.", orderIndex: 6 },
     ],
   })
 

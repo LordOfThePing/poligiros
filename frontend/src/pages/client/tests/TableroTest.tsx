@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
@@ -149,6 +149,8 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   const [selectedIdea, setSelectedIdea] = useState<string | null>(null) // the chosen one
 
   const [hydrated, setHydrated] = useState(false)
+  // Guards auto-generation of AI ideas so it only fires once per brainstorm.
+  const autoAiFired = useRef(false)
 
   // Seed the whole flow from either a localStorage draft (write strings + ranks
   // + stage) or, later, a stored `responses` object (item 11 — re-enter to
@@ -225,6 +227,18 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     setHydrated(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId])
+
+  // Item 8 (opción B): al llegar al brainstorming, se generan las ideas con IA
+  // automáticamente (una sola vez por sesión) si el usuario ya tiene ideas propias.
+  useEffect(() => {
+    if (done || !hydrated) return
+    if (STAGES[stageIndex]?.phase !== "brainstorm") return
+    if (autoAiFired.current) return
+    if (ideaCards.length === 0) return
+    autoAiFired.current = true
+    generateAiIdeas()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageIndex, hydrated, done])
 
   // Position #1 in ideaCards is the default "chosen idea". Fires when the
   // user reorders cards (drag) so the selection always follows the top spot
@@ -355,6 +369,10 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     }
     if (stage.phase === "select" && passionIds.size === 0) {
       toast({ title: "Marcá al menos una idea que te apasione", variant: "destructive" })
+      return
+    }
+    if (stage.phase === "brainstorm" && ideaCards.length < 2) {
+      toast({ title: "Agregá al menos 2 ideas (2 o más) para poder continuar", variant: "destructive" })
       return
     }
     if (stage.phase === "brainstorm" && !selectedIdea) {
@@ -506,7 +524,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
             <div>
               <p className="font-medium text-foreground">3 · Conectar</p>
               <p className="text-muted-foreground">
-                Cruzás lo mejor de las tres columnas para generar ideas de proyectos, trabajos o
+                Cruzás las primeras 3 de cada columna para generar ideas de proyectos, trabajos o
                 emprendimientos. Sin filtro: ninguna idea se descarta por parecer inviable.
               </p>
             </div>
@@ -670,6 +688,14 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
               <h2 className="font-serif text-xl text-foreground">{COLUMNS[stage.col].title}: ordená tu top 3</h2>
               <p className="text-sm text-muted-foreground">{RANK_CONSIGNA[stage.col]}</p>
             </div>
+            <div className="flex items-start gap-2 rounded-lg border border-brand-accent/20 bg-brand-accent/5 px-3 py-2.5 text-sm text-foreground">
+              <span className="text-brand-accent shrink-0 mt-0.5">↕</span>
+              <p>
+                <strong>Cómo ordenar:</strong> tocá el ícono de <strong>manito (⠿)</strong> que está a la
+                izquierda de cada tarjeta y, sin soltarlo, arrastralo hacia arriba o hacia abajo para
+                acomodar tu top 3. Podés reordenar las veces que quieras.
+              </p>
+            </div>
             <SortableList
               items={rankState(stage.col)[0]}
               onReorder={rankState(stage.col)[1]}
@@ -721,7 +747,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
               <div className="flex flex-col min-h-0">
                 <div className="bg-gray-800 text-white rounded-lg px-4 py-2.5 shrink-0">
                   <h2 className="font-serif text-base font-medium">Tus ideas</h2>
-                  <p className="text-xs opacity-90">Conectá las tres columnas: negocios, trabajos o proyectos. Ordená de más a menos atractiva.</p>
+                  <p className="text-xs opacity-90">Conectá las tres columnas: negocios, trabajos o proyectos. Agregá 2 o más y arrastrá la manito (⠿) de cada tarjeta para ordenarlas de más a menos atractiva.</p>
                 </div>
                 <div className="flex gap-2 mt-3 shrink-0">
                   <Input
@@ -737,7 +763,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                 </div>
                 <div className="mt-3 flex-1 lg:overflow-y-auto lg:pr-1">
                   {ideaCards.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">Agregá al menos una idea para continuar.</p>
+                    <p className="text-xs text-muted-foreground italic">Agregá 2 o más ideas para poder continuar.</p>
                   ) : (
                     <SortableList
                       items={ideaCards}
@@ -780,7 +806,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 shrink-0">
                   {ideasGenerated
-                    ? "Ordenalas por atractivo y descartá las que no apliquen."
+                    ? "Arrastrá la manito (⠿) para ordenarlas por atractivo y descartá las que no te sirvan."
                     : "Generá ideas conectando tu Saber, Querer y Soñar. Podés ordenarlas y descartar las que no te representen."}
                 </p>
                 <Button
@@ -864,7 +890,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
 
           <StepBar step={stepNum} total={totalSteps} pct={stepPct}>
             <Button variant="outline" onClick={goBack}>← Atrás</Button>
-            <Button onClick={goNext} disabled={!selectedIdea} className="bg-brand-accent hover:bg-brand-accent-dark flex-1">
+            <Button onClick={goNext} disabled={!selectedIdea || ideaCards.length < 2} className="bg-brand-accent hover:bg-brand-accent-dark flex-1">
               Continuar →
             </Button>
           </StepBar>

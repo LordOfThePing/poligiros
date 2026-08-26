@@ -785,6 +785,44 @@ student.put("/module-items/:itemId/submission", async (c) => {
 })
 
 /* ─────────────────────────────────────────
+   Group submissions (item 1): every coach of the same CIC can see their
+   peers' entregas on an ENTREGA card. Scoped to coaches sharing a cohort
+   with the requester — peers are never leaked to the whole platform.
+───────────────────────────────────────── */
+
+/** GET /student/module-items/:itemId/group-submissions */
+student.get("/module-items/:itemId/group-submissions", async (c) => {
+  const user = c.get("user")
+  const item = await findReleasedItem(user.id, c.req.param("itemId"))
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+  if (item.kind !== "ENTREGA") return c.json([])
+
+  const access = await getCoachAccess(user.id)
+  if (access.cohortIds.length === 0) return c.json([])
+
+  const submissions = await prisma.moduleItemSubmission.findMany({
+    where: {
+      itemId: item.id,
+      user: {
+        id: { not: user.id },
+        enrollments: { some: { cohortId: { in: access.cohortIds } } },
+      },
+    },
+    include: { user: { select: { id: true, name: true } } },
+    orderBy: { submittedAt: "asc" },
+  })
+
+  return c.json(
+    submissions.map((s) => ({
+      id: s.id,
+      text: s.text,
+      submittedAt: s.submittedAt,
+      coach: s.user,
+    }))
+  )
+})
+
+/* ─────────────────────────────────────────
    Practice records (kind = REGISTRO)
 
    Two coaches of the same CIC practise on each other inside a class. Both sides

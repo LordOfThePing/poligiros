@@ -18,6 +18,8 @@ enum TestType {
   PLAN_VITAL
   PIRAMIDE_PROPOSITO
   MODELO_NEGOCIO
+  /// "Tareas de exploración" — a separate post-Tablero task (item 9).
+  TAREAS_EXPLORACION
 }
 
 enum SupervisionStatus {
