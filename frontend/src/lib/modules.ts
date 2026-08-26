@@ -10,6 +10,7 @@ export type ModuleItemKind =
   | "TEST"
   | "ENTREGA"
   | "REGISTRO"
+  | "DUPLA"
 
 export type ModuleLink = {
   id: string
@@ -135,6 +136,7 @@ export const ITEM_KINDS: ModuleItemKind[] = [
   "TEST",
   "ENTREGA",
   "REGISTRO",
+  "DUPLA",
 ]
 
 export const KIND_LABEL: Record<ModuleItemKind, string> = {
@@ -146,6 +148,7 @@ export const KIND_LABEL: Record<ModuleItemKind, string> = {
   TEST: "Test",
   ENTREGA: "Entrega",
   REGISTRO: "Registro de sesión",
+  DUPLA: "Ver anclas de mi dupla",
 }
 
 /** Tailwind classes per kind, so a class page is scannable at a glance. */
@@ -158,6 +161,7 @@ export const KIND_BADGE: Record<ModuleItemKind, string> = {
   TEST: "bg-rose-100 text-rose-800",
   ENTREGA: "bg-indigo-100 text-indigo-800",
   REGISTRO: "bg-teal-100 text-teal-800",
+  DUPLA: "bg-fuchsia-100 text-fuchsia-800",
 }
 
 /**

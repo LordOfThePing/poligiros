@@ -469,7 +469,6 @@ export default function ProgramaPage() {
                     />
                   ) : current.item.kind === "ENTREGA" ? (
                     <div className="space-y-3">
-                      <DuplaAnclas itemId={current.item.id} />
                       {current.item.submission?.reviewedAt ? (
                         <>
                           <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
@@ -545,11 +544,34 @@ export default function ProgramaPage() {
                       </div>
                     )}
                     </>
-                  ) : current.item.completed ? (
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
-                        <CheckCircle2 className="h-4 w-4" /> Completado
-                      </span>
+                    ) : current.item.kind === "DUPLA" ? (
+                      <div className="space-y-4">
+                        <DuplaAnclas itemId={current.item.id} />
+                        {current.item.completed ? (
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                              <CheckCircle2 className="h-4 w-4" /> Completado
+                            </span>
+                            <Button variant="outline" size="sm" disabled={saving} onClick={() => toggleItemDone(current.item)}>
+                              Desmarcar
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            className="bg-brand-accent hover:bg-brand-accent-dark"
+                            disabled={saving}
+                            onClick={() => toggleItemDone(current.item)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Marcar como completado
+                          </Button>
+                        )}
+                      </div>
+                    ) : current.item.completed ? (
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                          <CheckCircle2 className="h-4 w-4" /> Completado
+                        </span>
                       <Button
                         variant="outline"
                         size="sm"

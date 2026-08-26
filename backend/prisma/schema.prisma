@@ -40,6 +40,9 @@ enum ModuleItemKind {
   /// The card is a practice session between two coaches of the same CIC, written
   /// up as a structured record (see PracticeRecord).
   REGISTRO
+  /// A helper card: pick your dupla partner of the same CIC and view their
+  /// Anclas result to prepare the devolución (item 2).
+  DUPLA
 }
 
 enum SignupStatus {
