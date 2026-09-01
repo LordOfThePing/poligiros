@@ -38,10 +38,11 @@ enum ModuleItemKind {
   /// The card asks the coach to hand something in (see ModuleItemSubmission).
   ENTREGA
   /// The card is a practice session between two coaches of the same CIC, written
-  /// up as a structured record (see PracticeRecord).
+  /// up as a structured record (see PracticeRecord). Also shows the dupla
+  /// partner's result for `ModuleItem.testId` to prepare la devolución.
   REGISTRO
   /// A helper card: pick your dupla partner of the same CIC and view their
-  /// Anclas result to prepare the devolución (item 2).
+  /// result for `ModuleItem.testId` to prepare the devolución.
   DUPLA
 }
 
@@ -173,7 +174,8 @@ model ModuleItem {
   kind        ModuleItemKind @default(RECURSO)
   orderIndex  Int            @default(0)
 
-  /// Only for kind = TEST: which test the coach has to complete. Releasing the
+  /// For kind = TEST, which test the coach has to complete. For kind = DUPLA or
+  /// REGISTRO, which test's result is shown for the dupla partner. Releasing the
   /// module to a cohort is what makes it available — there is no separate
   /// per-test release.
   testId    String?

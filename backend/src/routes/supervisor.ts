@@ -856,6 +856,12 @@ const ITEM_KINDS = Object.values(ModuleItemKind)
 type ItemKind = ModuleItemKind
 
 /**
+ * Kinds whose card points at a Test row: TEST is the test itself, DUPLA and
+ * REGISTRO show the dupla partner's result for that same test.
+ */
+const TESTABLE_KINDS: ItemKind[] = ["TEST", "DUPLA", "REGISTRO"]
+
+/**
  * PLAN_VITAL is a permanent placeholder with no form, so it can never be the
  * test behind a card.
  */
@@ -886,8 +892,8 @@ supervisor.post("/modules/:id/items", async (c) => {
   // Absent kind defaults; a kind that was sent but is not valid is an error.
   const resolvedKind = kind === undefined ? ModuleItemKind.RECURSO : asKind(kind)
   if (!resolvedKind) return c.json({ error: `Tipo de ítem inválido: ${kind}` }, 400)
-  const linkedTestId = resolvedKind === "TEST" ? await validTestId(testId) : null
-  if (resolvedKind === "TEST" && !linkedTestId) {
+  const linkedTestId = TESTABLE_KINDS.includes(resolvedKind) ? await validTestId(testId) : null
+  if (TESTABLE_KINDS.includes(resolvedKind) && !linkedTestId) {
     return c.json({ error: "Elegí un test válido para este ítem" }, 400)
   }
 
@@ -917,10 +923,10 @@ supervisor.put("/module-items/:itemId", async (c) => {
     return c.json({ error: `Tipo de ítem inválido: ${kind}` }, 400)
   }
 
-  // Keep kind and testId consistent: a TEST card must point at a test, and a
-  // card that stops being a TEST drops the link.
+  // Keep kind and testId consistent: a TESTABLE_KINDS card must point at a
+  // test, and a card that stops being one drops the link.
   let testPatch: { testId?: string | null } = {}
-  if (parsedKind === "TEST") {
+  if (parsedKind && TESTABLE_KINDS.includes(parsedKind)) {
     const linked = await validTestId(testId)
     if (!linked) return c.json({ error: "Elegí un test válido para este ítem" }, 400)
     testPatch = { testId: linked }

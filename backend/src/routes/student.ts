@@ -857,15 +857,29 @@ student.get("/module-items/:itemId/dupla", async (c) => {
 })
 
 /**
- * GET /student/coaches/:coachId/anclas
- * The dupla partner's Anclas result, so the coach can prepare the devolución.
+ * GET /student/module-items/:itemId/dupla/:coachId
+ * The dupla partner's result for the test tied to this card (kind DUPLA or
+ * REGISTRO), so the coach can prepare the devolución. Generic across test
+ * types — the card's `testId` says which test to look up.
  *
  * Scoped to peers of the same CIC — a coach may only read the result of someone
  * they could legitimately have as a practice coachee.
  */
-student.get("/coaches/:coachId/anclas", async (c) => {
+student.get("/module-items/:itemId/dupla/:coachId", async (c) => {
   const user = c.get("user")
+  const itemId = c.req.param("itemId")
   const coachId = c.req.param("coachId")
+
+  const item = await findReleasedItem(user.id, itemId)
+  if (!item) return c.json({ error: "Contenido no disponible" }, 403)
+
+  const full = await prisma.moduleItem.findUnique({
+    where: { id: itemId },
+    select: { kind: true, testId: true },
+  })
+  if (!full || (full.kind !== "DUPLA" && full.kind !== "REGISTRO") || !full.testId) {
+    return c.json({ error: "Este ítem no tiene un test asociado" }, 400)
+  }
 
   const peers = await duplaCandidates(user.id)
   const peer = peers.find((p) => p.id === coachId)
@@ -880,22 +894,17 @@ student.get("/coaches/:coachId/anclas", async (c) => {
   if (!theirClient) return c.json({ coach, completed: false })
 
   const assignment = await prisma.testAssignment.findFirst({
-    where: {
-      clientId: theirClient.id,
-      completedAt: { not: null },
-      test: { type: "ANCLAS_CARRERA" },
-    },
-    include: { response: true },
+    where: { clientId: theirClient.id, completedAt: { not: null }, testId: full.testId },
+    include: { response: true, test: { select: { type: true } } },
   })
   if (!assignment?.response) return c.json({ coach, completed: false })
 
-  const responses = assignment.response.responses as Record<string, unknown>
   return c.json({
     coach,
     completed: true,
     completedAt: assignment.completedAt,
-    scores: responses.scores ?? null,
-    aiInsight: (responses.aiInsight as string | undefined) ?? null,
+    testType: assignment.test.type,
+    responses: assignment.response.responses,
   })
 })
 

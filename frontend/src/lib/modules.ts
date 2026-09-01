@@ -127,6 +127,12 @@ export type StudentModule = Omit<Module, "items"> & {
   completed: boolean
 }
 
+/**
+ * Kinds whose card points at a Test row: TEST is the test itself, DUPLA and
+ * REGISTRO show the dupla partner's result for that same test.
+ */
+export const TESTABLE_KINDS: ModuleItemKind[] = ["TEST", "DUPLA", "REGISTRO"]
+
 export const ITEM_KINDS: ModuleItemKind[] = [
   "TAREA",
   "BIBLIOGRAFIA",
@@ -148,7 +154,7 @@ export const KIND_LABEL: Record<ModuleItemKind, string> = {
   TEST: "Test",
   ENTREGA: "Entrega",
   REGISTRO: "Registro de sesión",
-  DUPLA: "Ver anclas de mi dupla",
+  DUPLA: "Ver resultado de mi dupla",
 }
 
 /** Tailwind classes per kind, so a class page is scannable at a glance. */

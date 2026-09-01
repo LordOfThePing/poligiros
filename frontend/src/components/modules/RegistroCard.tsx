@@ -10,22 +10,23 @@ import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
-import { AnclasResult } from "@/components/results/AnclasResult"
+import ResultsView from "@/pages/client/ResultsView"
 import type { DuplaCandidate, StudentModuleItem } from "@/lib/modules"
 
-type PartnerAnclas = {
+type PartnerResult = {
   coach: { id: string; name: string }
   completed: boolean
   completedAt?: string
-  scores?: Record<string, number> | null
-  aiInsight?: string | null
+  testType?: string
+  responses?: Record<string, unknown> | null
 }
 
 /**
  * A kind = REGISTRO card: the coach picks their dupla partner, reviews that
- * partner's Anclas result to prepare the devolución, and writes up the session
- * they ran. Both sides are coaches of the same CIC — this never touches the
- * `Client` model, so it does not depend on the cohort's practice permission.
+ * partner's result for the card's test (`ModuleItem.testId`) to prepare the
+ * devolución, and writes up the session they ran. Both sides are coaches of
+ * the same CIC — this never touches the `Client` model, so it does not depend
+ * on the cohort's practice permission.
  */
 export function RegistroCard({
   item,
@@ -43,10 +44,10 @@ export function RegistroCard({
   const [conclusions, setConclusions] = useState(item.practice?.conclusions ?? "")
   const [saving, setSaving] = useState(false)
 
-  // The partner's Anclas, loaded on demand once a partner is picked.
-  const [anclas, setAnclas] = useState<PartnerAnclas | null>(null)
-  const [loadingAnclas, setLoadingAnclas] = useState(false)
-  const [showAnclas, setShowAnclas] = useState(false)
+  // The partner's test result, loaded on demand once a partner is picked.
+  const [result, setResult] = useState<PartnerResult | null>(null)
+  const [loadingResult, setLoadingResult] = useState(false)
+  const [showResult, setShowResult] = useState(false)
 
   const [showAboutMe, setShowAboutMe] = useState(false)
 
@@ -59,24 +60,24 @@ export function RegistroCard({
   }, [item.id])
 
 
-  // Reset whenever the partner changes: showing anchors from the previous pick
+  // Reset whenever the partner changes: showing a result from the previous pick
   // next to a different name would be worse than showing nothing.
   useEffect(() => {
-    setAnclas(null)
-    setShowAnclas(false)
+    setResult(null)
+    setShowResult(false)
   }, [coacheeId])
 
-  async function loadAnclas() {
+  async function loadResult() {
     if (!coacheeId) return
-    setShowAnclas(true)
-    if (anclas) return
-    setLoadingAnclas(true)
+    setShowResult(true)
+    if (result) return
+    setLoadingResult(true)
     try {
-      setAnclas(await apiJson<PartnerAnclas>(`/student/coaches/${coacheeId}/anclas`))
+      setResult(await apiJson<PartnerResult>(`/student/module-items/${item.id}/dupla/${coacheeId}`))
     } catch {
-      setAnclas(null)
+      setResult(null)
     }
-    setLoadingAnclas(false)
+    setLoadingResult(false)
   }
 
   async function save() {
@@ -151,43 +152,40 @@ export function RegistroCard({
             )}
           </div>
 
-          {/* Preparing the devolución: the partner's own Anclas result. */}
+          {/* Preparing the devolución: the partner's own result for this card's test. */}
           {coacheeId && (
             <div className="rounded-lg border border-border bg-muted/30 p-3">
               <button
-                onClick={() => (showAnclas ? setShowAnclas(false) : loadAnclas())}
+                onClick={() => (showResult ? setShowResult(false) : loadResult())}
                 className="flex items-center gap-2 text-sm text-foreground"
               >
-                {showAnclas ? (
+                {showResult ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
                   <ChevronRight className="h-4 w-4" />
                 )}
                 <Users className="h-4 w-4 text-brand-accent" />
-                Ver las anclas de {partnerName ?? "tu dupla"}
+                Ver el resultado de {partnerName ?? "tu dupla"}
               </button>
 
-              {showAnclas && (
+              {showResult && (
                 <div className="mt-3">
-                  {loadingAnclas ? (
+                  {loadingResult ? (
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin" /> Cargando...
                     </p>
-                  ) : anclas?.completed && anclas.scores ? (
-                    <AnclasResult
-                      scores={anclas.scores}
-                      aiInsight={anclas.aiInsight ?? null}
-                      title={`Anclas de ${partnerName ?? "tu dupla"}`}
-                      subtitle={
-                        anclas.completedAt
-                          ? `Test completado el ${formatShortDate(anclas.completedAt)}`
-                          : "Resultados según la metodología de Edgar Schein"
-                      }
+                  ) : result?.completed && result.responses && result.testType ? (
+                    <ResultsView
+                      testType={result.testType}
+                      responses={result.responses}
+                      coachFeedback={null}
+                      completedAt={result.completedAt ?? new Date().toISOString()}
+                      hideExport
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Todavía no completó el Test de Anclas de Carrera. Pedile que lo haga antes de
-                      la sesión: sin eso no vas a poder darle la devolución.
+                      Todavía no completó ese test. Pedile que lo haga antes de la sesión: sin eso
+                      no vas a poder darle la devolución.
                     </p>
                   )}
                 </div>

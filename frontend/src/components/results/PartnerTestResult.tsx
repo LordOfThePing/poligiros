@@ -1,48 +1,50 @@
 import { useEffect, useState } from "react"
 import { ChevronDown, ChevronRight, Loader2, Users } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { formatShortDate } from "@/lib/date"
 import { apiJson } from "@/lib/api"
-import { AnclasResult } from "@/components/results/AnclasResult"
+import ResultsView from "@/pages/client/ResultsView"
+import type { DuplaCandidate } from "@/lib/modules"
 
-type PartnerAnclasData = {
+type PartnerResult = {
   coach: { id: string; name: string }
   completed: boolean
   completedAt?: string
-  scores?: Record<string, number> | null
-  aiInsight?: string | null
+  testType?: string
+  responses?: Record<string, unknown> | null
 }
 
 /**
- * Reusable "ver las anclas de mi dupla" widget. Picks a partner of the same CIC
- * (or takes one preselected by the caller) and lets the user open their Anclas
- * result to prepare a devolución. Can be embedded in any card that references a
- * dupla partner.
+ * Reusable "ver el resultado de mi dupla" widget. Picks a partner of the same
+ * CIC (or takes one preselected by the caller) and shows that partner's result
+ * for the test tied to this card (`ModuleItem.testId`) to prepare a devolución.
+ * Generic across test types via `ResultsView`.
  */
-export function DuplaAnclas({
+export function PartnerTestResult({
   itemId,
   partnerId,
   partnerLabel,
+  triggerLabel = "Ver el resultado de",
 }: {
-  /** The released module item this lives on (used to fetch candidate partners). */
+  /** The released module item this lives on (used to fetch candidates + result). */
   itemId: string
   /** Optional preselected dupla partner. When omitted, a picker is shown. */
   partnerId?: string
   /** Optional static label for the button (e.g. the partner's name). */
   partnerLabel?: string
+  triggerLabel?: string
 }) {
   const { toast } = useToast()
-  const [candidates, setCandidates] = useState<{ id: string; name: string }[]>([])
+  const [candidates, setCandidates] = useState<DuplaCandidate[]>([])
   const [coacheeId, setCoacheeId] = useState(partnerId ?? "")
-  const [anclas, setAnclas] = useState<PartnerAnclasData | null>(null)
-  const [loadingAnclas, setLoadingAnclas] = useState(false)
-  const [showAnclas, setShowAnclas] = useState(false)
+  const [result, setResult] = useState<PartnerResult | null>(null)
+  const [loadingResult, setLoadingResult] = useState(false)
+  const [showResult, setShowResult] = useState(false)
   const [loadingCandidates, setLoadingCandidates] = useState(false)
 
   useEffect(() => {
     if (partnerId) return // preselected, no list needed
     setLoadingCandidates(true)
-    apiJson<{ candidates: { id: string; name: string }[] }>(`/student/module-items/${itemId}/dupla`)
+    apiJson<{ candidates: DuplaCandidate[] }>(`/student/module-items/${itemId}/dupla`)
       .then((r) => setCandidates(r.candidates))
       .catch(() => {})
       .finally(() => setLoadingCandidates(false))
@@ -50,22 +52,22 @@ export function DuplaAnclas({
 
   // Reset whenever the partner changes.
   useEffect(() => {
-    setAnclas(null)
-    setShowAnclas(false)
+    setResult(null)
+    setShowResult(false)
   }, [coacheeId])
 
-  async function loadAnclas() {
+  async function loadResult() {
     if (!coacheeId) return
-    setShowAnclas(true)
-    if (anclas) return
-    setLoadingAnclas(true)
+    setShowResult(true)
+    if (result) return
+    setLoadingResult(true)
     try {
-      setAnclas(await apiJson<PartnerAnclasData>(`/student/coaches/${coacheeId}/anclas`))
+      setResult(await apiJson<PartnerResult>(`/student/module-items/${itemId}/dupla/${coacheeId}`))
     } catch {
-      setAnclas(null)
-      toast({ title: "No se pudieron ver las anclas de tu dupla", variant: "destructive" })
+      setResult(null)
+      toast({ title: "No se pudo ver el resultado de tu dupla", variant: "destructive" })
     }
-    setLoadingAnclas(false)
+    setLoadingResult(false)
   }
 
   const partnerName = partnerLabel ?? candidates.find((c) => c.id === coacheeId)?.name
@@ -88,36 +90,33 @@ export function DuplaAnclas({
 
       <div className="rounded-lg border border-border bg-muted/30 p-3">
         <button
-          onClick={() => (showAnclas ? setShowAnclas(false) : loadAnclas())}
+          onClick={() => (showResult ? setShowResult(false) : loadResult())}
           className="flex items-center gap-2 text-sm text-foreground"
           disabled={!coacheeId}
         >
-          {showAnclas ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {showResult ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           <Users className="h-4 w-4 text-brand-accent" />
-          Ver las anclas de {partnerName ?? "tu dupla"}
+          {triggerLabel} {partnerName ?? "tu dupla"}
         </button>
 
-        {showAnclas && (
+        {showResult && (
           <div className="mt-3">
-            {loadingAnclas ? (
+            {loadingResult ? (
               <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <Loader2 className="h-3 w-3 animate-spin" /> Cargando...
               </p>
-            ) : anclas?.completed && anclas.scores ? (
-              <AnclasResult
-                scores={anclas.scores}
-                aiInsight={anclas.aiInsight ?? null}
-                title={`Anclas de ${partnerName ?? "tu dupla"}`}
-                subtitle={
-                  anclas.completedAt
-                    ? `Test completado el ${formatShortDate(anclas.completedAt)}`
-                    : "Resultados según la metodología de Edgar Schein"
-                }
+            ) : result?.completed && result.responses && result.testType ? (
+              <ResultsView
+                testType={result.testType}
+                responses={result.responses}
+                coachFeedback={null}
+                completedAt={result.completedAt ?? new Date().toISOString()}
+                hideExport
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                Todavía no completó el Test de Anclas de Carrera. Pedile que lo haga
-                antes de la sesión: sin eso no vas a poder darle la devolución.
+                Todavía no completó ese test. Pedile que lo haga antes de la sesión: sin eso no vas a
+                poder darle la devolución.
               </p>
             )}
           </div>

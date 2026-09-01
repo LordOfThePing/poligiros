@@ -12,7 +12,7 @@ import { apiJson, apiTry } from "@/lib/api"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { RegistroCard } from "@/components/modules/RegistroCard"
-import { DuplaAnclas } from "@/components/results/DuplaAnclas"
+import { PartnerTestResult } from "@/components/results/PartnerTestResult"
 import { GroupEntregas } from "@/components/modules/GroupEntregas"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { CommentPanel } from "@/components/modules/CommentPanel"
@@ -546,7 +546,7 @@ export default function ProgramaPage() {
                     </>
                     ) : current.item.kind === "DUPLA" ? (
                       <div className="space-y-4">
-                        <DuplaAnclas itemId={current.item.id} />
+                        <PartnerTestResult itemId={current.item.id} />
                         {current.item.completed ? (
                           <div className="flex items-center justify-between gap-3 flex-wrap">
                             <span className="flex items-center gap-2 text-green-700 text-sm font-medium">

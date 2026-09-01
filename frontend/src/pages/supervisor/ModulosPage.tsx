@@ -33,7 +33,7 @@ import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { CoverCropDialog } from "@/components/CoverCropDialog"
 import {
-  ITEM_KINDS, KIND_BADGE, KIND_LABEL, stripMarkdown, formatBytes,
+  ITEM_KINDS, KIND_BADGE, KIND_LABEL, TESTABLE_KINDS, stripMarkdown, formatBytes,
   type Module, type ModuleItem, type ModuleItemKind, type ModuleLink, type LinkedTest,
 } from "@/lib/modules"
 
@@ -160,7 +160,7 @@ function ModuleContentEditor({
           title: draft.title,
           description: draft.description || null,
           kind: draft.kind,
-          testId: draft.kind === "TEST" ? draft.testId : null,
+          testId: TESTABLE_KINDS.includes(draft.kind) ? draft.testId : null,
         }),
       }
     )
@@ -466,7 +466,7 @@ function ModuleContentEditor({
                 </SelectContent>
               </Select>
             </div>
-            {draft?.kind === "TEST" && (
+            {draft?.kind && TESTABLE_KINDS.includes(draft.kind) && (
               <div className="space-y-2">
                 <Label>Test *</Label>
                 <Select
@@ -481,8 +481,9 @@ function ModuleContentEditor({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Los coaches del CIC lo hacen cuando liberás esta clase, y al enviarlo te llega a
-                  Supervisión.
+                  {draft.kind === "TEST"
+                    ? "Los coaches del CIC lo hacen cuando liberás esta clase, y al enviarlo te llega a Supervisión."
+                    : "El coach va a ver el resultado de este test de su compañero/a de dupla, para preparar la devolución."}
                 </p>
               </div>
             )}
