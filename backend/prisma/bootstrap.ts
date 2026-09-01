@@ -37,7 +37,7 @@ const TEST_CATALOG = [
   {
     type: TestType.PLAN_VITAL,
     title: "Plan Vital Integral®",
-    description: "Próximamente disponible.",
+    description: "Un recorrido guiado por 8 áreas de tu vida (salud, familia, finanzas, trabajo, vocación, etc.) más un ejercicio de Estímulos.",
     orderIndex: 3,
   },
   {
@@ -72,7 +72,6 @@ async function main() {
 
   const count = await prisma.test.count()
   console.log(`✅ Catálogo de tests listo (${count} tests).`)
-  console.log("   PLAN_VITAL es un placeholder permanente — la ruta de asignación lo saltea.")
 
   const supervisors = await prisma.user.count({ where: { role: "SUPERVISOR" } })
   if (supervisors === 0) {

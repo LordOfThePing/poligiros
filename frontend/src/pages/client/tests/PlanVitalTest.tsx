@@ -143,6 +143,7 @@ const ESTIMULOS_STEP = SECTION_DEFS.length   // index 8
 
 export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; assignmentId: string }) {
   const { toast } = useToast()
+  const [showIntro, setShowIntro] = useState(true)
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>(
     Object.fromEntries(SECTION_DEFS.map((s) => [s.key, ""]))
@@ -224,6 +225,61 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
         <p className="text-4xl">✓</p>
         <h2 className="font-serif text-2xl text-foreground">¡Plan Vital enviado!</h2>
         <p className="text-muted-foreground">Tus respuestas fueron guardadas. Las revisamos juntos en la próxima sesión.</p>
+      </div>
+    )
+  }
+
+  if (showIntro) {
+    return (
+      <div className="space-y-6 pb-24">
+        <div>
+          <h1 className="font-serif text-3xl text-foreground mb-1">Plan Vital Integral</h1>
+          <p className="text-sm text-muted-foreground">Instrucciones generales</p>
+        </div>
+
+        <div className="rounded-xl bg-brand-accent/5 border border-brand-accent/20 p-4 text-sm leading-relaxed text-foreground">
+          <p className="font-medium mb-1">Antes de empezar</p>
+          <p className="text-muted-foreground">
+            Completá este cuestionario de manera <strong className="text-foreground">honesta, reflexiva y con el mayor nivel de detalle posible</strong>. Cuanto más específicas sean tus respuestas, más valiosa será la información para tu proceso de autoconocimiento y diseño de carrera.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-5 space-y-4 text-sm leading-relaxed">
+          <p className="text-foreground">Este cuestionario tiene dos etapas:</p>
+
+          <div className="space-y-3">
+            <div>
+              <p className="font-medium text-foreground">Etapa 1 · Preguntas</p>
+              <p className="text-muted-foreground">
+                Respondé las 8 secciones (salud física, familia, finanzas, realización personal,
+                redes, trabajo, vocación y misión personal) por escrito, con la mayor honestidad y
+                detalle posible.
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Etapa 2 · Ejercicio de Estímulos</p>
+              <p className="text-muted-foreground">
+                Un listado que funciona como espejo de tus motivadores internos — aquello que te
+                genera FLOW. Es una pieza clave para descubrir conexiones entre tu esencia y tus
+                futuras elecciones de carrera.
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-4 text-muted-foreground">
+            Se guarda solo a medida que avanzás, así que podés cortar y seguir después. En la sesión,
+            tu coach conversará sobre tus respuestas y podrá darte sugerencias o nuevas tareas de
+            exploración.
+          </div>
+        </div>
+
+        <Button
+          onClick={() => setShowIntro(false)}
+          size="lg"
+          className="w-full bg-brand-accent hover:bg-brand-accent-dark"
+        >
+          Comenzar
+        </Button>
       </div>
     )
   }

@@ -88,7 +88,10 @@ Supervisor reviews             →  SupervisionRequest (REVIEWED)
                                    + supervisorNotes (INTERNAL) + coachFeedback (CLIENT-VISIBLE)
 ```
 
-`PLAN_VITAL` is a permanent placeholder — the assign route skips it.
+`PLAN_VITAL` ("Plan Vital Integral") is a fully implemented 8-section
+self-assessment (`frontend/src/pages/client/tests/PlanVitalTest.tsx`) plus an
+Estímulos exercise, with its own consigna intro screen — assignable like any
+other test, including as a module item (kind `TEST`, `DUPLA` or `REGISTRO`).
 `POST /student/assignments/:id/resend` mints a fresh token + resets `completeBy`.
 
 `MODELO_NEGOCIO` ("Modelo de Negocio") is a normal assignable test like the others

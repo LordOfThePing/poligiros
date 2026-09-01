@@ -108,9 +108,8 @@ function ModuleContentEditor({
   const [cropSource, setCropSource] = useState<File | string | null>(null)
 
   useEffect(() => {
-    // PLAN_VITAL is a permanent placeholder with no form — never offer it.
     apiJson<LinkedTest[]>("/tests")
-      .then((all) => setTests(all.filter((t) => t.type !== "PLAN_VITAL")))
+      .then(setTests)
       .catch(() => {})
   }, [])
 

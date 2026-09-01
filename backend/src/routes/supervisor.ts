@@ -861,15 +861,10 @@ type ItemKind = ModuleItemKind
  */
 const TESTABLE_KINDS: ItemKind[] = ["TEST", "DUPLA", "REGISTRO"]
 
-/**
- * PLAN_VITAL is a permanent placeholder with no form, so it can never be the
- * test behind a card.
- */
 async function validTestId(raw: unknown): Promise<string | null> {
   if (typeof raw !== "string" || !raw) return null
-  const test = await prisma.test.findUnique({ where: { id: raw }, select: { id: true, type: true } })
-  if (!test || test.type === "PLAN_VITAL") return null
-  return test.id
+  const test = await prisma.test.findUnique({ where: { id: raw }, select: { id: true } })
+  return test?.id ?? null
 }
 
 function asKind(value: unknown): ItemKind | undefined {
