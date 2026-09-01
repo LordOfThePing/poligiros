@@ -191,6 +191,9 @@ function FeedbackBox({
   onReview: () => void
   sticky?: boolean
 }) {
+  const [editingReviewed, setEditingReviewed] = useState(false)
+  const locked = reviewed && !editingReviewed
+
   return (
     <Card className={cn("bg-white", sticky && "lg:sticky lg:top-6")}>
       <CardHeader>
@@ -204,7 +207,7 @@ function FeedbackBox({
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
             placeholder="Feedback interno para el alumno..."
-            disabled={reviewed}
+            disabled={locked}
           />
         </div>
         <div className="space-y-2">
@@ -214,15 +217,36 @@ function FeedbackBox({
             onChange={(e) => setCoachFeedback(e.target.value)}
             rows={3}
             placeholder="Mensaje visible para el cliente cuando vea sus resultados..."
-            disabled={reviewed}
+            disabled={locked}
           />
         </div>
 
         {reviewed ? (
-          <p className="text-sm text-indigo-700 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4" />
-            Revisado el {reviewedAt ? formatShortDate(reviewedAt) : ""}
-          </p>
+          editingReviewed ? (
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => { onReview(); setEditingReviewed(false) }}
+                disabled={saving}
+                className="bg-brand-accent hover:bg-brand-accent-dark"
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditingReviewed(false)} disabled={saving}>
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-indigo-700 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Revisado el {reviewedAt ? formatShortDate(reviewedAt) : ""}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setEditingReviewed(true)}>
+                Editar
+              </Button>
+            </div>
+          )
         ) : (
           <Button
             onClick={onReview}
@@ -444,41 +468,17 @@ export default function SupervisionDetailPage() {
                   />
                 </div>
                 {/* Floating feedback box: stays visible while the dialog scrolls. */}
-                <div className="lg:sticky lg:top-0 bg-white rounded-xl border border-border p-5 space-y-3">
-                  <h4 className="font-serif text-lg">Feedback</h4>
-                  <div className="space-y-1.5">
-                    <Label>Notas de supervisión (internas)</Label>
-                    <Textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      disabled={req.status === "REVIEWED"}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Feedback para el cliente</Label>
-                    <Textarea
-                      value={coachFeedback}
-                      onChange={(e) => setCoachFeedback(e.target.value)}
-                      rows={2}
-                      disabled={req.status === "REVIEWED"}
-                    />
-                  </div>
-                  {req.status === "PENDING" ? (
-                    <Button
-                      onClick={() => { handleReview(); setFullView(false) }}
-                      disabled={saving}
-                      className="w-full bg-brand-accent hover:bg-brand-accent-dark"
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      {saving ? "Guardando..." : "Marcar como revisado"}
-                    </Button>
-                  ) : (
-                    <p className="text-sm text-indigo-700 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Revisado el {req.reviewedAt ? formatShortDate(req.reviewedAt) : ""}
-                    </p>
-                  )}
+                <div className="lg:sticky lg:top-0">
+                  <FeedbackBox
+                    notes={notes}
+                    setNotes={setNotes}
+                    coachFeedback={coachFeedback}
+                    setCoachFeedback={setCoachFeedback}
+                    reviewed={req.status === "REVIEWED"}
+                    reviewedAt={req.reviewedAt}
+                    saving={saving}
+                    onReview={handleReview}
+                  />
                 </div>
               </div>
             ) : (

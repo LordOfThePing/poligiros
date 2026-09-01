@@ -462,6 +462,9 @@ supervisor.post("/supervision/:id/review", async (c) => {
   const id = c.req.param("id")
   const { supervisorNotes, coachFeedback } = await c.req.json()
 
+  const existing = await prisma.supervisionRequest.findUnique({ where: { id } })
+  const alreadyReviewed = existing?.status === "REVIEWED"
+
   const request = await prisma.supervisionRequest.update({
     where: { id },
     data: {
@@ -469,7 +472,7 @@ supervisor.post("/supervision/:id/review", async (c) => {
       supervisorNotes,
       coachFeedback,
       status: "REVIEWED",
-      reviewedAt: new Date(),
+      reviewedAt: alreadyReviewed ? existing!.reviewedAt : new Date(),
     },
     include: {
       student: true,
@@ -477,13 +480,16 @@ supervisor.post("/supervision/:id/review", async (c) => {
     },
   })
 
-  // Fire-and-forget email to student
-  sendSupervisionReviewedEmail(
-    request.student.email,
-    request.assignment.client.name,
-    request.assignment.test.title,
-    supervisorNotes ?? ""
-  ).catch(() => {})
+  // Fire-and-forget email to student — only the first time it's reviewed,
+  // so editing a typo afterwards doesn't re-notify.
+  if (!alreadyReviewed) {
+    sendSupervisionReviewedEmail(
+      request.student.email,
+      request.assignment.client.name,
+      request.assignment.test.title,
+      supervisorNotes ?? ""
+    ).catch(() => {})
+  }
 
   return c.json(request)
 })
