@@ -67,9 +67,8 @@ export default function ProgramaPage() {
     apiJson<StudentModule[]>(`/student/modules${qs}`)
       .then((data) => {
         setModules(data)
-        // Open the first module that still has something pending.
-        const next = data.find((m) => !m.completed) ?? data[0]
-        setOpenModuleId(next?.id ?? null)
+        // Default to the last available (most recently released) module.
+        setOpenModuleId(data[data.length - 1]?.id ?? null)
       })
       .catch(() => setModules([]))
       .finally(() => setLoading(false))

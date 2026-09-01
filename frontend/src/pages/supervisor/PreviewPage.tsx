@@ -28,7 +28,9 @@ export default function PreviewPage() {
   const [modules, setModules] = useState<StudentModule[]>([])
   const [loading, setLoading] = useState(false)
   const [selection, setSelection] = useState<{ moduleId: string; itemId: string } | null>(null)
-  const [openModules, setOpenModules] = useState<Set<string>>(new Set())
+  // Accordion: at most one module open at a time, same as the coach's own
+  // Mi Programa.
+  const [openModuleId, setOpenModuleId] = useState<string | null>(null)
   const [discussionOpen, setDiscussionOpen] = useState(true)
 
   // Remember the last CIC viewed so re-opening the page lands on it.
@@ -54,7 +56,8 @@ export default function PreviewPage() {
       .then((data) => {
         setModules(data)
         setSelection(null)
-        setOpenModules(data.length > 0 ? new Set([data[0].id]) : new Set())
+        // Default to the last available (most recently released) module.
+        setOpenModuleId(data[data.length - 1]?.id ?? null)
       })
       .catch(() => setModules([]))
       .finally(() => setLoading(false))
@@ -73,11 +76,7 @@ export default function PreviewPage() {
   }, [selection, modules])
 
   function toggleModule(id: string) {
-    setOpenModules((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      return next
-    })
+    setOpenModuleId((prev) => (prev === id ? null : id))
   }
 
   return (
@@ -120,7 +119,7 @@ export default function PreviewPage() {
           {/* Modules index */}
           <div className="space-y-3">
             {modules.map((mod) => {
-              const open = openModules.has(mod.id)
+              const open = openModuleId === mod.id
               return (
                 <div key={mod.id} className="bg-white rounded-lg border border-border">
                   <button
