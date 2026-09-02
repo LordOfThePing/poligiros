@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
-  CheckCircle2, Circle, ChevronDown, ChevronRight, ExternalLink, FileText, MessageSquare,
+  CheckCircle2, Circle, ChevronDown, ChevronRight, ExternalLink, FileText, MessageSquare, ListChecks,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson } from "@/lib/api"
@@ -32,6 +33,9 @@ export default function PreviewPage() {
   // Mi Programa.
   const [openModuleId, setOpenModuleId] = useState<string | null>(null)
   const [discussionOpen, setDiscussionOpen] = useState(true)
+  // Mobile: the module/item index lives in a floating bottom sheet instead of
+  // being printed above the content.
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Remember the last CIC viewed so re-opening the page lands on it.
   const STORAGE_KEY = "poligiros.preview-cohort"
@@ -79,6 +83,59 @@ export default function PreviewPage() {
     setOpenModuleId((prev) => (prev === id ? null : id))
   }
 
+  // Shared module/item accordion — the desktop rail and the mobile floating
+  // menu (a Sheet) both render this so they never drift apart.
+  function ModulesAccordion({ onSelect }: { onSelect: (moduleId: string, itemId: string) => void }) {
+    return (
+      <div className="space-y-3">
+        {modules.map((mod) => {
+          const open = openModuleId === mod.id
+          return (
+            <div key={mod.id} className="bg-white rounded-lg border border-border">
+              <button
+                onClick={() => toggleModule(mod.id)}
+                className="w-full flex items-center gap-3 p-4 text-left"
+              >
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-brand-accent/10 text-brand-accent text-sm font-bold">
+                  {mod.orderIndex}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-foreground">{mod.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {mod.items.length === 0 ? "Sin contenido" : `${mod.items.length} ítems`}
+                  </p>
+                </div>
+                {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              </button>
+              {open && mod.items.length > 0 && (
+                <div className="border-t border-border p-2 space-y-1">
+                  {mod.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => onSelect(mod.id, item.id)}
+                      className={cn(
+                        "w-full flex items-start gap-2 rounded-md px-2 py-2 text-left",
+                        selection?.itemId === item.id ? "bg-brand-accent/10" : "hover:bg-muted"
+                      )}
+                    >
+                      <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm text-foreground">{item.title}</span>
+                        <span className={cn("inline-block mt-1 text-xs px-2 py-0.5 rounded-full", KIND_BADGE[item.kind])}>
+                          {KIND_LABEL[item.kind]}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="max-w-5xl mx-auto w-full space-y-4">
@@ -116,52 +173,9 @@ export default function PreviewPage() {
 
       {cohortId && !loading && modules.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          {/* Modules index */}
-          <div className="space-y-3">
-            {modules.map((mod) => {
-              const open = openModuleId === mod.id
-              return (
-                <div key={mod.id} className="bg-white rounded-lg border border-border">
-                  <button
-                    onClick={() => toggleModule(mod.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left"
-                  >
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-brand-accent/10 text-brand-accent text-sm font-bold">
-                      {mod.orderIndex}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground">{mod.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {mod.items.length === 0 ? "Sin contenido" : `${mod.items.length} ítems`}
-                      </p>
-                    </div>
-                    {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                  </button>
-                  {open && mod.items.length > 0 && (
-                    <div className="border-t border-border p-2 space-y-1">
-                      {mod.items.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setSelection({ moduleId: mod.id, itemId: item.id })}
-                          className={cn(
-                            "w-full flex items-start gap-2 rounded-md px-2 py-2 text-left",
-                            selection?.itemId === item.id ? "bg-brand-accent/10" : "hover:bg-muted"
-                          )}
-                        >
-                          <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                          <span className="flex-1 min-w-0">
-                            <span className="block text-sm text-foreground">{item.title}</span>
-                            <span className={cn("inline-block mt-1 text-xs px-2 py-0.5 rounded-full", KIND_BADGE[item.kind])}>
-                              {KIND_LABEL[item.kind]}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+          {/* Modules index — desktop only; mobile uses the floating sheet below. */}
+          <div className="hidden lg:block">
+            <ModulesAccordion onSelect={(moduleId, itemId) => setSelection({ moduleId, itemId })} />
           </div>
 
           {/* Item + discussion */}
@@ -208,14 +222,43 @@ export default function PreviewPage() {
                 )}
               </div>
             ) : (
-              <div className="hidden lg:flex items-center justify-center h-full min-h-[240px] bg-white rounded-lg border border-dashed border-border">
-                <p className="text-sm text-muted-foreground">
-                  Elegí un contenido de la izquierda para verlo acá.
-                </p>
-              </div>
+              <>
+                <div className="hidden lg:flex items-center justify-center h-full min-h-[240px] bg-white rounded-lg border border-dashed border-border">
+                  <p className="text-sm text-muted-foreground">
+                    Elegí un contenido de la izquierda para verlo acá.
+                  </p>
+                </div>
+                <div className="lg:hidden text-center py-16 text-sm text-muted-foreground">
+                  Tocá "Contenido" para elegir una clase.
+                </div>
+              </>
             )}
           </div>
         </div>
+      )}
+
+      {/* Mobile-only: floating trigger + bottom sheet stand in for the desktop
+          rail so the module/item picker doesn't eat the top of the screen. */}
+      {cohortId && !loading && modules.length > 0 && (
+        <>
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="lg:hidden fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full bg-brand-accent px-4 py-3 text-sm font-medium text-white shadow-lg active:scale-95 transition-transform"
+          >
+            <ListChecks className="h-4 w-4" /> Contenido
+          </button>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
+              <SheetTitle className="mb-3 font-serif text-lg font-normal">Contenido del CIC</SheetTitle>
+              <ModulesAccordion
+                onSelect={(moduleId, itemId) => {
+                  setSelection({ moduleId, itemId })
+                  setMobileMenuOpen(false)
+                }}
+              />
+            </SheetContent>
+          </Sheet>
+        </>
       )}
     </div>
   )

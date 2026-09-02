@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
-  ClipboardCheck, PanelLeftClose, PanelLeftOpen,
+  ClipboardCheck, PanelLeftClose, PanelLeftOpen, ListChecks,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
@@ -54,6 +55,8 @@ export default function ProgramaPage() {
   // hover ("auto"), so the item + discussion get more room.
   const [indexPinned, setIndexPinned] = useState(true)
   const [indexHover, setIndexHover] = useState(false)
+  // Mobile: the module/item picker lives in a floating bottom sheet instead.
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   // Discussion panel is collapsible, shown by default, closable on demand.
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
@@ -185,6 +188,88 @@ export default function ProgramaPage() {
   const circumference = 2 * Math.PI * 40
   const strokeDash = (pct / 100) * circumference
 
+  // Shared module/item accordion — rendered in the desktop rail and, unchanged,
+  // inside the mobile floating menu (a Sheet) so the two never drift apart.
+  function ModulesAccordion({ onSelect }: { onSelect: (moduleId: string, itemId: string) => void }) {
+    return (
+      <div className="space-y-3">
+        {modules.map((mod, idx) => {
+          const open = openModuleId === mod.id
+          const done = mod.items.filter((i) => i.completed).length
+          return (
+            <div key={mod.id} className="bg-white rounded-lg border border-border">
+              <button
+                onClick={() => toggleModule(mod.id)}
+                className="w-full flex items-center gap-3 p-4 text-left"
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
+                  mod.completed
+                    ? "bg-brand-accent text-white"
+                    : "bg-brand-accent/10 text-brand-accent"
+                )}>
+                  {mod.completed ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-foreground">{mod.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {mod.items.length === 0
+                      ? "Sin contenido"
+                      : `${done} de ${mod.items.length} completados`}
+                  </p>
+                </div>
+                {open ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+              </button>
+
+              {open && mod.items.length > 0 && (
+                <div className="border-t border-border p-2 space-y-1">
+                  {mod.items.map((item) => {
+                    const active = selected?.itemId === item.id
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onSelect(mod.id, item.id)}
+                        className={cn(
+                          "w-full flex items-start gap-2 rounded-md px-2 py-2 text-left transition-colors",
+                          active ? "bg-brand-accent/10" : "hover:bg-muted"
+                        )}
+                      >
+                        {item.completed ? (
+                          <CheckCircle2 className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                        )}
+                        <span className="flex-1 min-w-0">
+                          <span
+                            className={cn(
+                              "block text-sm",
+                              item.completed ? "text-muted-foreground" : "text-foreground"
+                            )}
+                          >
+                            {item.title}
+                          </span>
+                          <span
+                            className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[item.kind]}`}
+                          >
+                            {KIND_LABEL[item.kind]}
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header stays centered; the modules/discussion below use full width. */}
@@ -263,13 +348,15 @@ export default function ProgramaPage() {
         </p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
-          {/* Modules index: a thin rail by default that expands on hover, or
-              stays pinned open. The pin button fixes/auto-hides it. */}
+          {/* Modules index: desktop-only — a thin rail by default that expands
+              on hover, or stays pinned open. On mobile it would just print the
+              whole accordion above the content, so it's swapped for the
+              floating "Contenido" button + sheet below instead. */}
           <div
             onMouseEnter={() => setIndexHover(true)}
             onMouseLeave={() => setIndexHover(false)}
             className={cn(
-              "transition-[width] duration-200 ease-in-out overflow-hidden w-full",
+              "hidden lg:block transition-[width] duration-200 ease-in-out overflow-hidden",
               indexExpanded ? "lg:w-[320px]" : "lg:w-14"
             )}
           >
@@ -299,81 +386,7 @@ export default function ProgramaPage() {
             </div>
 
             {indexExpanded ? (
-              <div className="space-y-3">
-                {modules.map((mod, idx) => {
-                  const open = openModuleId === mod.id
-                  const done = mod.items.filter((i) => i.completed).length
-                  return (
-                    <div key={mod.id} className="bg-white rounded-lg border border-border">
-                      <button
-                        onClick={() => toggleModule(mod.id)}
-                        className="w-full flex items-center gap-3 p-4 text-left"
-                      >
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
-                          mod.completed
-                            ? "bg-brand-accent text-white"
-                            : "bg-brand-accent/10 text-brand-accent"
-                        )}>
-                          {mod.completed ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-foreground">{mod.title}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {mod.items.length === 0
-                              ? "Sin contenido"
-                              : `${done} de ${mod.items.length} completados`}
-                          </p>
-                        </div>
-                        {open ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                        )}
-                      </button>
-
-                      {open && mod.items.length > 0 && (
-                        <div className="border-t border-border p-2 space-y-1">
-                          {mod.items.map((item) => {
-                            const active = selected?.itemId === item.id
-                            return (
-                              <button
-                                key={item.id}
-                                onClick={() => setSelected({ moduleId: mod.id, itemId: item.id })}
-                                className={cn(
-                                  "w-full flex items-start gap-2 rounded-md px-2 py-2 text-left transition-colors",
-                                  active ? "bg-brand-accent/10" : "hover:bg-muted"
-                                )}
-                              >
-                                {item.completed ? (
-                                  <CheckCircle2 className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
-                                ) : (
-                                  <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                )}
-                                <span className="flex-1 min-w-0">
-                                  <span
-                                    className={cn(
-                                      "block text-sm",
-                                      item.completed ? "text-muted-foreground" : "text-foreground"
-                                    )}
-                                  >
-                                    {item.title}
-                                  </span>
-                                  <span
-                                    className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${KIND_BADGE[item.kind]}`}
-                                  >
-                                    {KIND_LABEL[item.kind]}
-                                  </span>
-                                </span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+              <ModulesAccordion onSelect={(moduleId, itemId) => setSelected({ moduleId, itemId })} />
             ) : (
               /* Collapsed rail: numbered module chips only. */
               <div className="space-y-2">
@@ -600,14 +613,43 @@ export default function ProgramaPage() {
                 </div>
               </div>
             ) : (
-              <div className="hidden lg:flex items-center justify-center h-full min-h-[240px] bg-white rounded-lg border border-dashed border-border">
-                <p className="text-sm text-muted-foreground">
-                  Elegí un contenido de la izquierda para verlo acá.
-                </p>
-              </div>
+              <>
+                <div className="hidden lg:flex items-center justify-center h-full min-h-[240px] bg-white rounded-lg border border-dashed border-border">
+                  <p className="text-sm text-muted-foreground">
+                    Elegí un contenido de la izquierda para verlo acá.
+                  </p>
+                </div>
+                <div className="lg:hidden text-center py-16 text-sm text-muted-foreground">
+                  Tocá "Contenido" para elegir una clase.
+                </div>
+              </>
             )}
           </div>
         </div>
+      )}
+
+      {/* Mobile-only: floating trigger + bottom sheet replace the desktop rail
+          above so the module/item picker never eats screen space up top. */}
+      {modules.length > 0 && (
+        <>
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="lg:hidden fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full bg-brand-accent px-4 py-3 text-sm font-medium text-white shadow-lg active:scale-95 transition-transform"
+          >
+            <ListChecks className="h-4 w-4" /> Contenido
+          </button>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
+              <SheetTitle className="mb-3 font-serif text-lg font-normal">Contenido del programa</SheetTitle>
+              <ModulesAccordion
+                onSelect={(moduleId, itemId) => {
+                  setSelected({ moduleId, itemId })
+                  setMobileMenuOpen(false)
+                }}
+              />
+            </SheetContent>
+          </Sheet>
+        </>
       )}
     </div>
   )

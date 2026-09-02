@@ -332,8 +332,8 @@ export default function AnclasTest({ api }: AnclasTestProps) {
           <p className="text-sm text-muted-foreground">Respondé las 40 afirmaciones según cuánto te representan</p>
         </div>
 
-        {/* Keyboard-fast instructions */}
-        <div className="flex items-start gap-2.5 rounded-lg bg-brand-accent/5 border border-brand-accent/20 px-3.5 py-2.5 text-xs text-muted-foreground">
+        {/* Keyboard-fast instructions — only relevant with a physical keyboard */}
+        <div className="hidden sm:flex items-start gap-2.5 rounded-lg bg-brand-accent/5 border border-brand-accent/20 px-3.5 py-2.5 text-xs text-muted-foreground">
           <Keyboard className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
           <span className="leading-relaxed">
             Tip: respondé con el teclado. <Kbd>Tab</Kbd> pasa a la siguiente afirmación y las teclas{" "}

@@ -36,14 +36,19 @@ import StudentSupervisionPage from "@/pages/student/SupervisionPage"
 import StudentRegistrosPage from "@/pages/student/RegistrosPage"
 import StudentNuevoRegistroPage from "@/pages/student/NuevoRegistroPage"
 
+// Below lg the sidebar is a hidden drawer (see CollapsibleSidebar) reached via
+// its own top bar, so main content clears that bar (pt-14) and drops the rail
+// offset (lg:pl-16). The inner wrapper also trims to a tighter, edge-to-edge
+// gutter on phones — max-w-7xl's centering padding reads as wasted margin on
+// a narrow screen — and only grows into the padded, centered card at sm+.
 function SupervisorLayout() {
   return (
-    <div className="h-screen overflow-hidden bg-brand-bg">
+    <div className="h-dvh overflow-hidden bg-brand-bg">
       <SupervisorSidebar />
       {/* pl-16 reserves the collapsed rail; the expanded sidebar overlays over
           the content instead of shifting it. */}
-      <main className="h-full overflow-y-auto pl-16">
-        <div className="p-6 max-w-7xl mx-auto">
+      <main className="h-full overflow-y-auto pt-14 lg:pt-0 lg:pl-16">
+        <div className="p-3 sm:p-6 lg:max-w-7xl lg:mx-auto">
           <Outlet />
         </div>
       </main>
@@ -53,10 +58,10 @@ function SupervisorLayout() {
 
 function StudentLayout() {
   return (
-    <div className="h-screen overflow-hidden bg-brand-bg">
+    <div className="h-dvh overflow-hidden bg-brand-bg">
       <StudentSidebar />
-      <main className="h-full overflow-y-auto pl-16">
-        <div className="p-6 max-w-7xl mx-auto">
+      <main className="h-full overflow-y-auto pt-14 lg:pt-0 lg:pl-16">
+        <div className="p-3 sm:p-6 lg:max-w-7xl lg:mx-auto">
           <Outlet />
         </div>
       </main>

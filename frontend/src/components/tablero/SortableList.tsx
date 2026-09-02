@@ -3,7 +3,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -40,12 +41,12 @@ function SortableRow({ id, children }: { id: string; children: ReactNode }) {
     <div ref={setNodeRef} style={style} className="flex items-center gap-2">
       <button
         type="button"
-        className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+        className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground hover:text-foreground active:text-brand-accent -my-3.5 -ml-2"
         aria-label="Reordenar"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-5 w-5" />
       </button>
       <div className="flex-1">{children}</div>
     </div>
@@ -62,7 +63,12 @@ export function SortableList<T extends { id: string }>({
   renderItem: (item: T, index: number) => ReactNode
 }) {
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    // A small move threshold on mouse keeps clicks crisp; a short hold delay on
+    // touch lets the same gesture still be read as a tap or a page scroll
+    // before it commits to a drag (MouseSensor + TouchSensor, not PointerSensor,
+    // so each gets its own activation constraint).
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 

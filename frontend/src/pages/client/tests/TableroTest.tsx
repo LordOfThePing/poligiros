@@ -553,7 +553,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   const subtitle = stageSubtitle(stage)
 
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-8 pb-32 sm:pb-24">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Tablero de Ideas</h1>
         <p className="text-sm text-muted-foreground">
@@ -691,8 +691,8 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
             <div className="flex items-start gap-2 rounded-lg border border-brand-accent/20 bg-brand-accent/5 px-3 py-2.5 text-sm text-foreground">
               <span className="text-brand-accent shrink-0 mt-0.5">↕</span>
               <p>
-                <strong>Cómo ordenar:</strong> tocá el ícono de <strong>manito (⠿)</strong> que está a la
-                izquierda de cada tarjeta y, sin soltarlo, arrastralo hacia arriba o hacia abajo para
+                <strong>Cómo ordenar:</strong> mantené presionado el ícono de <strong>manito (⠿)</strong> que
+                está a la izquierda de cada tarjeta y arrastrala hacia arriba o hacia abajo para
                 acomodar tu top 3. Podés reordenar las veces que quieras.
               </p>
             </div>
@@ -976,13 +976,16 @@ function StepBar({
   children: React.ReactNode
 }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur px-4 py-3 z-10">
-      <div className="max-w-5xl mx-auto flex items-center gap-4">
+    <div
+      className="fixed bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur px-4 pt-3 z-10"
+      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+    >
+      <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex-1">
           <p className="text-xs text-muted-foreground mb-1">Paso {step} de {total}</p>
           <Progress value={pct} className="h-1.5" />
         </div>
-        <div className="flex gap-2 shrink-0">{children}</div>
+        <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 [&>*]:flex-1 sm:[&>*]:flex-none">{children}</div>
       </div>
     </div>
   )

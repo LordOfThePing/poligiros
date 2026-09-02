@@ -64,7 +64,7 @@ export default function TokenPage() {
 
   if (data.state === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
       </div>
     )
@@ -72,7 +72,7 @@ export default function TokenPage() {
 
   if (data.state === "expired") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-dvh flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-3">
           <p className="text-4xl">⏰</p>
           <h1 className="font-serif text-2xl text-foreground">Este enlace caducó</h1>
@@ -84,7 +84,7 @@ export default function TokenPage() {
 
   if (data.state === "revoked") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-dvh flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-3">
           <p className="text-4xl">🚫</p>
           <h1 className="font-serif text-2xl text-foreground">Este test quedó suspendido</h1>
@@ -98,7 +98,7 @@ export default function TokenPage() {
 
   if (data.state === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-dvh flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-3">
           <h1 className="font-serif text-2xl text-foreground">Enlace no encontrado</h1>
           <p className="text-muted-foreground">{data.message}</p>
@@ -123,7 +123,7 @@ export default function TokenPage() {
           }),
       }
       return (
-        <div className="min-h-screen bg-brand-bg py-8">
+        <div className="min-h-dvh bg-brand-bg py-8">
           <div className="max-w-5xl mx-auto px-4">
             <div className="mb-4">
               <button
@@ -148,7 +148,7 @@ export default function TokenPage() {
     }
 
     return (
-      <div className="min-h-screen bg-brand-bg py-8">
+      <div className="min-h-dvh bg-brand-bg py-8">
         <div className={`${wide ? "max-w-6xl" : "max-w-2xl"} mx-auto px-4`}>
           <ResultsView
             testType={data.testType}
@@ -175,7 +175,7 @@ export default function TokenPage() {
       data.testType === "TABLERO_IDEAS" ? "max-w-5xl" :
       "max-w-2xl"
     return (
-      <div className="min-h-screen bg-brand-bg py-8">
+      <div className="min-h-dvh bg-brand-bg py-8">
         <div className={`${formWidth} mx-auto px-4`}>
           {data.testType === "ANCLAS_CARRERA" && (
             <AnclasTest api={api} assignmentId={data.assignmentId} />
