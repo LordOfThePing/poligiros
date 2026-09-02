@@ -172,7 +172,7 @@ export default function EntregasPage() {
                     className={s.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
                     onClick={() => { setReviewing(s); setFeedback(s.feedback ?? "") }}
                   >
-                    {s.reviewedAt ? "Ver devolución" : "Devolver"}
+                    {s.reviewedAt ? "Editar devolución" : "Devolver"}
                   </Button>
                 </div>
 
@@ -240,7 +240,7 @@ export default function EntregasPage() {
                     className={r.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
                     onClick={() => { setReviewingPractice(r); setFeedback(r.feedback ?? "") }}
                   >
-                    {r.reviewedAt ? "Ver devolución" : "Devolver"}
+                    {r.reviewedAt ? "Editar devolución" : "Devolver"}
                   </Button>
                 </div>
 
@@ -290,7 +290,9 @@ export default function EntregasPage() {
               <Label>Tu devolución</Label>
               <MarkdownEditor value={feedback} onChange={setFeedback} rows={8} />
               <p className="text-xs text-muted-foreground">
-                Al guardar, el coach recibe un mail y el registro queda cerrado a nuevas ediciones.
+                {reviewingPractice?.reviewedAt
+                  ? "Podés seguir editando tu devolución cuando quieras — el coach no recibe un mail de nuevo."
+                  : "Al guardar, el coach recibe un mail y el registro queda cerrado a nuevas ediciones de su parte."}
               </p>
             </div>
           </div>
@@ -325,7 +327,9 @@ export default function EntregasPage() {
               <Label>Tu devolución</Label>
               <MarkdownEditor value={feedback} onChange={setFeedback} rows={8} />
               <p className="text-xs text-muted-foreground">
-                Al guardar, el coach recibe un mail y la entrega queda cerrada a nuevas ediciones.
+                {reviewing?.reviewedAt
+                  ? "Podés seguir editando tu devolución cuando quieras — el coach no recibe un mail de nuevo."
+                  : "Al guardar, el coach recibe un mail y la entrega queda cerrada a nuevas ediciones de su parte."}
               </p>
             </div>
           </div>

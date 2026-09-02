@@ -1850,7 +1850,7 @@ supervisor.get("/submissions", async (c) => {
   )
 })
 
-/** POST /supervisor/submissions/:id/review — body: { feedback } */
+/** POST /supervisor/submissions/:id/review — body: { feedback }. Editable after the fact. */
 supervisor.post("/submissions/:id/review", async (c) => {
   const user = c.get("user")
   const id = c.req.param("id")
@@ -1859,13 +1859,23 @@ supervisor.post("/submissions/:id/review", async (c) => {
   const clean = String(feedback ?? "").trim()
   if (!clean) return c.json({ error: "Escribí la devolución" }, 400)
 
+  const existing = await prisma.moduleItemSubmission.findUnique({ where: { id } })
+  const alreadyReviewed = Boolean(existing?.reviewedAt)
+
   const submission = await prisma.moduleItemSubmission.update({
     where: { id },
-    data: { feedback: clean, reviewedAt: new Date(), reviewedById: user.id },
+    data: {
+      feedback: clean,
+      reviewedById: user.id,
+      reviewedAt: alreadyReviewed ? existing!.reviewedAt : new Date(),
+    },
     include: { user: { select: { email: true } }, item: { select: { title: true } } },
   })
 
-  sendSubmissionReviewedEmail(submission.user.email, submission.item.title, clean).catch(() => {})
+  // Only notify the first time, so fixing a typo doesn't re-spam the coach.
+  if (!alreadyReviewed) {
+    sendSubmissionReviewedEmail(submission.user.email, submission.item.title, clean).catch(() => {})
+  }
 
   return c.json({ ok: true })
 })
@@ -1920,21 +1930,32 @@ supervisor.get("/practice-records", async (c) => {
   )
 })
 
-/** POST /supervisor/practice-records/:id/review — body: { feedback } */
+/** POST /supervisor/practice-records/:id/review — body: { feedback }. Editable after the fact. */
 supervisor.post("/practice-records/:id/review", async (c) => {
   const user = c.get("user")
+  const id = c.req.param("id")
   const { feedback } = await c.req.json().catch(() => ({}))
 
   const clean = String(feedback ?? "").trim()
   if (!clean) return c.json({ error: "Escribí la devolución" }, 400)
 
+  const existing = await prisma.practiceRecord.findUnique({ where: { id } })
+  const alreadyReviewed = Boolean(existing?.reviewedAt)
+
   const record = await prisma.practiceRecord.update({
-    where: { id: c.req.param("id") },
-    data: { feedback: clean, reviewedAt: new Date(), reviewedById: user.id },
+    where: { id },
+    data: {
+      feedback: clean,
+      reviewedById: user.id,
+      reviewedAt: alreadyReviewed ? existing!.reviewedAt : new Date(),
+    },
     include: { coach: { select: { email: true } }, item: { select: { title: true } } },
   })
 
-  sendSubmissionReviewedEmail(record.coach.email, record.item.title, clean).catch(() => {})
+  // Only notify the first time, so fixing a typo doesn't re-spam the coach.
+  if (!alreadyReviewed) {
+    sendSubmissionReviewedEmail(record.coach.email, record.item.title, clean).catch(() => {})
+  }
 
   return c.json({ ok: true })
 })
