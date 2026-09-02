@@ -181,6 +181,7 @@ export function RegistroCard({
                       coachFeedback={null}
                       completedAt={result.completedAt ?? new Date().toISOString()}
                       hideExport
+                      constrainHeight={false}
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground">

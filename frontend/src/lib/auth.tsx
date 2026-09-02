@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { useNavigate, Navigate } from "react-router-dom"
-import { api } from "./api"
+import { api, apiTry } from "./api"
 
 export type Role = "SUPERVISOR" | "STUDENT_COACH"
 
@@ -11,6 +11,9 @@ export interface AuthUser {
   role: Role
   /** True after the supervisor resets the password; forces the change screen. */
   mustChangePassword?: boolean
+  /** The OTHER account of the same physical person (e.g. the supervisor's own
+   *  coach identity), if one is linked. Lets the profile menu offer a switch. */
+  linkedUser?: { id: string; name: string; role: Role } | null
 }
 
 export interface RegisterData {
@@ -30,6 +33,8 @@ interface AuthContextType {
   /** Lets the change-password screen clear the flag without a full reload. */
   clearMustChange: () => void
   logout: () => Promise<void>
+  /** Swaps the session to the linked account (see AuthUser.linkedUser). */
+  switchAccount: () => Promise<AuthUser>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -110,9 +115,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }
 
+  async function switchAccount() {
+    const res = await apiTry("/auth/switch", { method: "POST" })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || "switch_failed")
+    }
+    const meRes = await api("/auth/me")
+    if (!meRes.ok) throw new Error("Session hydration failed")
+    const next = (await meRes.json()) as AuthUser
+    setUser(next)
+    return next
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, changePassword, clearMustChange, logout }}
+      value={{ user, loading, login, register, changePassword, clearMustChange, logout, switchAccount }}
     >
       {children}
     </AuthContext.Provider>

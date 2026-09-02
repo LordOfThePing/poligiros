@@ -58,8 +58,15 @@ auth.get("/me", async (c) => {
   // login (loginUser runs DB-free).
   const dbUser = await prisma.user.findUnique({
     where: { id: payload.id },
-    select: { mustChangePassword: true },
+    select: { mustChangePassword: true, linkedUserId: true },
   })
+
+  const linkedUser = dbUser?.linkedUserId
+    ? await prisma.user.findUnique({
+        where: { id: dbUser.linkedUserId },
+        select: { id: true, name: true, role: true },
+      })
+    : null
 
   return c.json({
     id: payload.id,
@@ -67,7 +74,35 @@ auth.get("/me", async (c) => {
     email: payload.email,
     role: payload.role,
     mustChangePassword: dbUser?.mustChangePassword ?? false,
+    linkedUser,
   })
+})
+
+/**
+ * POST /auth/switch — swap the session to this user's linked account (e.g. the
+ * supervisor's own coach identity), no password required since it's the same
+ * physical person already authenticated.
+ */
+auth.post("/switch", async (c) => {
+  const token = getCookie(c, "token")
+  if (!token) return c.json({ error: "Unauthorized" }, 401)
+
+  const payload = await verifyJWT(token)
+  if (!payload) return c.json({ error: "Unauthorized" }, 401)
+
+  const me = await prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { linkedUserId: true },
+  })
+  if (!me?.linkedUserId) return c.json({ error: "No tenés una cuenta vinculada" }, 400)
+
+  const target = await prisma.user.findUnique({ where: { id: me.linkedUserId } })
+  if (!target) return c.json({ error: "Cuenta vinculada no encontrada" }, 404)
+
+  const newPayload = { id: target.id, role: target.role, name: target.name, email: target.email }
+  const newToken = await signJWT(newPayload)
+  setCookie(c, "token", newToken, COOKIE_OPTIONS)
+  return c.json({ user: newPayload })
 })
 
 /**

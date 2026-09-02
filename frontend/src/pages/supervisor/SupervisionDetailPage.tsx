@@ -306,8 +306,9 @@ export default function SupervisionDetailPage() {
 
   const responses = req.assignment?.response?.responses
   const testType = req.assignment?.test?.type
-  // Modelo de Negocio needs room for the wide canvas.
-  const wide = testType === "MODELO_NEGOCIO"
+  // Modelo de Negocio needs room for the wide canvas; Tablero de Ideas for its
+  // three columns + brainstorming panel.
+  const wide = testType === "MODELO_NEGOCIO" || testType === "TABLERO_IDEAS"
   // Anclas gets the full pretty view with a floating feedback box on the right.
   const isAnclas = testType === "ANCLAS_CARRERA"
 
@@ -377,6 +378,7 @@ export default function SupervisionDetailPage() {
                       responses={responses}
                       coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
                       completedAt={req.assignment.completedAt}
+                      constrainHeight={false}
                     />
                   )}
                 </CardContent>
@@ -404,9 +406,19 @@ export default function SupervisionDetailPage() {
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setFullView(true)}>
-                    <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
-                  </Button>
+                  {testType === "TABLERO_IDEAS" ? (
+                    // Its 3-column + scroll layout only renders correctly at a
+                    // real full page, never nested in a modal — open a tab.
+                    <a href={`/supervisor/supervision/${req.id}/vista`} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
+                      </Button>
+                    </a>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => setFullView(true)}>
+                      <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
                     {editing ? "Cancelar" : "Editar"}
                   </Button>
@@ -465,6 +477,7 @@ export default function SupervisionDetailPage() {
                     responses={responses}
                     coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
                     completedAt={req.assignment.completedAt}
+                    constrainHeight={false}
                   />
                 </div>
                 {/* Floating feedback box: stays visible while the dialog scrolls. */}
@@ -487,6 +500,7 @@ export default function SupervisionDetailPage() {
                 responses={responses}
                 coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
                 completedAt={req.assignment.completedAt}
+                constrainHeight={false}
               />
             ))}
         </DialogContent>

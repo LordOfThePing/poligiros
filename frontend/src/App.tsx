@@ -23,6 +23,7 @@ import SupervisorInscripcionesPage from "@/pages/supervisor/InscripcionesPage"
 import SupervisorEntregasPage from "@/pages/supervisor/EntregasPage"
 import SupervisorPreviewPage from "@/pages/supervisor/PreviewPage"
 import SupervisorConfiguracionPage from "@/pages/supervisor/ConfiguracionPage"
+import SupervisorSupervisionResultPage from "@/pages/supervisor/SupervisionResultPage"
 import InscripcionPage from "@/pages/InscripcionPage"
 
 // Pages - student
@@ -74,6 +75,18 @@ export default function App() {
           <Route path="/t/:token" element={<TokenPage />} />
           <Route path="/inscripcion/:token" element={<InscripcionPage />} />
           <Route path="/cambiar-password" element={<ChangePasswordPage />} />
+
+          {/* Standalone (no sidebar) — opened as a new tab from the supervisor's
+              detail page so a viewport-height result layout (Tablero de Ideas)
+              renders correctly. */}
+          <Route
+            path="/supervisor/supervision/:id/vista"
+            element={
+              <ProtectedRoute roles={["SUPERVISOR"]}>
+                <SupervisorSupervisionResultPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Supervisor routes */}
           <Route

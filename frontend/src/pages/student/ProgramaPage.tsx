@@ -508,6 +508,9 @@ export default function ProgramaPage() {
                             <CheckCircle2 className="h-4 w-4 mr-2" />
                             {current.item.submission ? "Guardar cambios" : "Enviar entrega"}
                           </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Vas a poder ver las respuestas de tus compañeros más abajo.
+                          </p>
                         </>
                       )}
                       <GroupEntregas itemId={current.item.id} />

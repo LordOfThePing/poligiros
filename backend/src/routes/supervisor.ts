@@ -442,10 +442,18 @@ supervisor.post("/students/:id/reset-password", async (c) => {
 
 /** GET /supervisor/supervision */
 supervisor.get("/supervision", async (c) => {
+  const cohortId = c.req.query("cohortId")
+
   const requests = await prisma.supervisionRequest.findMany({
+    where: cohortId ? { student: { enrollments: { some: { cohortId } } } } : {},
     include: {
-      student: true,
-      supervisor: true,
+      student: {
+        select: {
+          id: true,
+          name: true,
+          enrollments: { include: { cohort: { select: { id: true, name: true } } } },
+        },
+      },
       assignment: {
         include: { test: true, client: true, response: true },
       },
@@ -453,7 +461,12 @@ supervisor.get("/supervision", async (c) => {
     orderBy: { createdAt: "desc" },
   })
 
-  return c.json(requests)
+  return c.json(
+    requests.map((r) => ({
+      ...r,
+      student: { id: r.student.id, name: r.student.name, cohorts: r.student.enrollments.map((e) => e.cohort) },
+    }))
+  )
 })
 
 /** POST /supervisor/supervision/:id/review */
@@ -1403,16 +1416,32 @@ supervisor.get("/module-progress", async (c) => {
 supervisor.get("/sessions", async (c) => {
   const studentId = c.req.query("studentId")
   const clientId = c.req.query("clientId")
+  const cohortId = c.req.query("cohortId")
 
   const sessions = await prisma.sessionRecord.findMany({
     where: {
       ...(studentId ? { studentId } : {}),
       ...(clientId ? { clientId } : {}),
+      ...(cohortId ? { student: { enrollments: { some: { cohortId } } } } : {}),
     },
-    include: { student: true, client: true },
+    include: {
+      student: {
+        select: {
+          id: true,
+          name: true,
+          enrollments: { include: { cohort: { select: { id: true, name: true } } } },
+        },
+      },
+      client: true,
+    },
     orderBy: { createdAt: "desc" },
   })
-  return c.json(sessions)
+  return c.json(
+    sessions.map((s) => ({
+      ...s,
+      student: { id: s.student.id, name: s.student.name, cohorts: s.student.enrollments.map((e) => e.cohort) },
+    }))
+  )
 })
 
 /* ─────────────────────────────────────────
@@ -1958,6 +1987,95 @@ supervisor.post("/practice-records/:id/review", async (c) => {
   }
 
   return c.json({ ok: true })
+})
+
+/* ─────────────────────────────────────────
+   Supervisor's own linked coach identity — lets her preview a CIC exactly as
+   an enrolled coach sees it, switching accounts from the profile menu (no
+   separate password: POST /auth/switch reuses the already-authenticated
+   session). See User.linkedUserId.
+───────────────────────────────────────── */
+
+function serializeLinkedCoach(coach: {
+  id: string
+  email: string
+  name: string
+  enrollments: { cohort: { id: string; name: string } }[]
+}) {
+  return {
+    id: coach.id,
+    email: coach.email,
+    name: coach.name,
+    cohorts: coach.enrollments.map((e) => e.cohort),
+  }
+}
+
+/** GET /supervisor/me/coach — the supervisor's linked coach identity, if any. */
+supervisor.get("/me/coach", async (c) => {
+  const user = c.get("user")
+  const me = await prisma.user.findUnique({ where: { id: user.id }, select: { linkedUserId: true } })
+  if (!me?.linkedUserId) return c.json({ coach: null })
+
+  const coach = await prisma.user.findUnique({
+    where: { id: me.linkedUserId },
+    include: { enrollments: { include: { cohort: { select: { id: true, name: true } } } } },
+  })
+  return c.json({ coach: coach ? serializeLinkedCoach(coach) : null })
+})
+
+/**
+ * POST /supervisor/me/coach — body: { cohortId }
+ * Creates the linked coach identity on first call, then just enrolls it in
+ * another CIC on later calls (idempotent either way).
+ */
+supervisor.post("/me/coach", async (c) => {
+  const user = c.get("user")
+  const { cohortId } = await c.req.json().catch(() => ({}))
+  if (!cohortId) return c.json({ error: "Elegí un CIC" }, 400)
+
+  const cohort = await prisma.cohort.findUnique({ where: { id: cohortId } })
+  if (!cohort) return c.json({ error: "CIC inválido" }, 400)
+
+  const me = await prisma.user.findUnique({ where: { id: user.id } })
+  if (!me) return c.json({ error: "Not found" }, 404)
+
+  let coachId = me.linkedUserId
+  if (!coachId) {
+    // Derive a unique coach-identity email from the supervisor's own address
+    // (works out of the box with any provider that supports +tag addressing).
+    const [localPart, domain] = me.email.split("@")
+    let email = `${localPart}+coach@${domain}`
+    let n = 1
+    while (await prisma.user.findUnique({ where: { email } })) {
+      n += 1
+      email = `${localPart}+coach${n}@${domain}`
+    }
+
+    const coach = await prisma.user.create({
+      data: {
+        email,
+        name: me.name,
+        role: "STUDENT_COACH",
+        // Never logged into directly — only reached via POST /auth/switch.
+        password: await bcrypt.hash(randomBytes(24).toString("base64url"), 12),
+        linkedUserId: me.id,
+      },
+    })
+    await prisma.user.update({ where: { id: me.id }, data: { linkedUserId: coach.id } })
+    coachId = coach.id
+  }
+
+  await prisma.enrollment.upsert({
+    where: { userId_cohortId: { userId: coachId, cohortId } },
+    update: {},
+    create: { userId: coachId, cohortId },
+  })
+
+  const coach = await prisma.user.findUnique({
+    where: { id: coachId },
+    include: { enrollments: { include: { cohort: { select: { id: true, name: true } } } } },
+  })
+  return c.json({ coach: serializeLinkedCoach(coach!) }, 201)
 })
 
 export default supervisor

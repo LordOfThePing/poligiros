@@ -4,10 +4,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Mail, Loader2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Mail, Loader2, Repeat } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth"
 import { apiJson, apiTry } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+
+type Cohort = { id: string; name: string }
+type LinkedCoach = { id: string; email: string; name: string; cohorts: Cohort[] }
 
 type Settings = {
   testCompleteDays: number
@@ -52,10 +59,49 @@ export default function ConfiguracionPage() {
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
+  const [linkedCoach, setLinkedCoach] = useState<LinkedCoach | null | undefined>(undefined)
+  const [cohorts, setCohorts] = useState<Cohort[]>([])
+  const [cohortId, setCohortId] = useState("")
+  const [linking, setLinking] = useState(false)
+  const { switchAccount } = useAuth()
+  const navigate = useNavigate()
+
   useEffect(() => {
     apiJson<Settings>("/supervisor/settings").then(setSettings).catch(() => {})
     apiJson<Recipient>("/supervisor/notify-recipient").then(setRecipient).catch(() => {})
+    apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
+    apiJson<{ coach: LinkedCoach | null }>("/supervisor/me/coach")
+      .then((r) => setLinkedCoach(r.coach))
+      .catch(() => setLinkedCoach(null))
   }, [])
+
+  async function addToCohort() {
+    if (!cohortId) return
+    setLinking(true)
+    const res = await apiTry("/supervisor/me/coach", {
+      method: "POST",
+      body: JSON.stringify({ cohortId }),
+    })
+    setLinking(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "Error" }))
+      toast({ title: j.error || "No se pudo asignar el CIC", variant: "destructive" })
+      return
+    }
+    const { coach } = await res.json()
+    setLinkedCoach(coach)
+    setCohortId("")
+    toast({ title: "Listo" })
+  }
+
+  async function handleSwitch() {
+    try {
+      await switchAccount()
+      navigate("/student/programa")
+    } catch {
+      toast({ title: "No se pudo cambiar de cuenta", variant: "destructive" })
+    }
+  }
 
   async function save(next: Settings) {
     setSaving(true)
@@ -159,6 +205,67 @@ export default function ConfiguracionPage() {
               </label>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-sans text-base font-medium">Mi cuenta de coach</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Tu identidad como coach: te permite ver un CIC igual que lo ve un coach realmente
+            inscripto (módulos, tests, entregas) en vez de la vista de solo lectura de Preview.
+            Cambiá de cuenta desde tu menú de usuario, arriba a la izquierda.
+          </p>
+
+          {linkedCoach === undefined ? (
+            <LoadingBadge />
+          ) : (
+            <>
+              {linkedCoach && (
+                <div className="flex items-center justify-between gap-3 bg-muted/40 rounded-lg px-3 py-2 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground break-all">{linkedCoach.email}</p>
+                    <div className="flex gap-1.5 flex-wrap mt-1">
+                      {linkedCoach.cohorts.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">Sin CIC asignado todavía</span>
+                      ) : (
+                        linkedCoach.cohorts.map((c) => (
+                          <Badge key={c.id} variant="secondary" className="text-xs">{c.name}</Badge>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={handleSwitch}>
+                    <Repeat className="h-3.5 w-3.5 mr-1.5" /> Cambiar a vista Coach
+                  </Button>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {linkedCoach ? "Agregar a otro CIC" : "Asignate a un CIC para empezar"}
+                </Label>
+                <div className="flex items-end gap-2">
+                  <Select value={cohortId} onValueChange={setCohortId}>
+                    <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Elegí un CIC" /></SelectTrigger>
+                    <SelectContent>
+                      {cohorts
+                        .filter((c) => !linkedCoach?.cohorts.some((lc) => lc.id === c.id))
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" className="h-8" disabled={linking || !cohortId} onClick={addToCohort}>
+                    {linking && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    {linkedCoach ? "Agregar" : "Crear cuenta"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

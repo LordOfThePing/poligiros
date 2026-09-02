@@ -45,14 +45,28 @@ export function GroupEntregas({ itemId }: { itemId: string }) {
       </div>
       <div className="space-y-3">
         {items.map((s) => (
-          <div key={s.id} className="bg-muted/40 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">
-              <strong className="text-foreground">{s.coach.name}</strong> · entregó el {formatShortDate(s.submittedAt)}
-            </p>
-            <Markdown>{s.text}</Markdown>
-          </div>
+          <GroupEntregaItem key={s.id} entrega={s} />
         ))}
       </div>
     </div>
+  )
+}
+
+function GroupEntregaItem({ entrega }: { entrega: GroupEntrega }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <button
+      onClick={() => setExpanded((v) => !v)}
+      className="block w-full text-left bg-muted/40 hover:bg-muted/60 rounded-lg p-3 transition-colors"
+    >
+      <p className="text-xs text-muted-foreground mb-1">
+        <strong className="text-foreground">{entrega.coach.name}</strong> · entregó el {formatShortDate(entrega.submittedAt)}
+      </p>
+      <div className={expanded ? undefined : "line-clamp-2"}>
+        <Markdown>{entrega.text}</Markdown>
+      </div>
+      <p className="text-xs text-brand-accent mt-1">{expanded ? "Ver menos" : "Ver más"}</p>
+    </button>
   )
 }

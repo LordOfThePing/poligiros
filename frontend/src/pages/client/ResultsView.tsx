@@ -16,6 +16,14 @@ interface ResultsViewProps {
   footer?: React.ReactNode
   /** Skip the download/print bar — used when this view is itself the exported copy. */
   hideExport?: boolean
+  /**
+   * Tablero de Ideas only: cap its height to the viewport and scroll inside its
+   * columns instead of growing the page. Only correct on a real full-page view
+   * (the client's own results page) — everywhere else (an embedded card, a
+   * supervisor modal, the off-screen PDF/print capture) it clips content that
+   * never gets seen, so those pass `false` to let it grow naturally.
+   */
+  constrainHeight?: boolean
 }
 
 const TABLERO_COLUMNS = [
@@ -24,7 +32,9 @@ const TABLERO_COLUMNS = [
   { key: "sonar", rankKey: "sonarRanking", title: "SOÑAR", subtitle: "Aspiraciones a futuro", header: "bg-indigo-600" },
 ] as const
 
-export default function ResultsView({ testType, responses, coachFeedback, completedAt, footer, hideExport }: ResultsViewProps) {
+export default function ResultsView({
+  testType, responses, coachFeedback, completedAt, footer, hideExport, constrainHeight = true,
+}: ResultsViewProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -40,12 +50,12 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
       )}
 
       {testType === "TABLERO_IDEAS" && (
-        <div className="flex flex-col lg:h-[calc(100vh-150px)] gap-0">
+        <div className={cn("flex flex-col gap-0", constrainHeight && "lg:h-[calc(100vh-150px)]")}>
           <h2 className="font-serif text-2xl text-foreground shrink-0 mb-3">Tu Tablero de Ideas</h2>
 
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
             {/* Left: three columns — each with sticky header and independent scroll */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:h-full">
+            <div className={cn("grid grid-cols-1 sm:grid-cols-3 gap-4", constrainHeight && "lg:h-full")}>
               {TABLERO_COLUMNS.map((col) => {
                 const ranked = (responses[col.rankKey] as string[] | undefined)?.filter(Boolean)
                 const raw = (responses[col.key] as string[] | undefined)?.filter(Boolean)
@@ -57,7 +67,7 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
                       <h3 className="font-serif text-base font-medium">{col.title}</h3>
                       <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">{col.subtitle}</p>
                     </div>
-                    <ol className="mt-2 flex-1 lg:overflow-y-auto space-y-1.5 lg:pr-1">
+                    <ol className={cn("mt-2 flex-1 space-y-1.5", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
                       {items.map((v, i) => {
                         const inTop3 = i < 3
                         return (
@@ -124,7 +134,7 @@ export default function ResultsView({ testType, responses, coachFeedback, comple
                     <h3 className="font-serif text-base font-medium">Brainstorming</h3>
                     <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">Ideas conectando las tres columnas — la elegida está resaltada</p>
                   </div>
-                  <div className="mt-2 flex-1 space-y-2 lg:overflow-y-auto lg:pr-1">
+                  <div className={cn("mt-2 flex-1 space-y-2", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
                     {ideas.map((v, i) => (
                       <Idea key={`b-${i}`} text={v} />
                     ))}

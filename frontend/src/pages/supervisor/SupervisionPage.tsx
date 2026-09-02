@@ -5,10 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+
+type Cohort = { id: string; name: string }
 
 type SupervisionRequest = {
   id: string
@@ -17,8 +21,7 @@ type SupervisionRequest = {
   supervisorNotes: string | null
   createdAt: string
   reviewedAt: string | null
-  student: { name: string }
-  supervisor: { name: string } | null
+  student: { name: string; cohorts: Cohort[] }
   assignment: { test: { title: string }; client: { name: string } }
 }
 
@@ -36,6 +39,7 @@ export default function SupervisorSupervisionPage() {
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
+  const [cohortFilter, setCohortFilter] = useState<string>("all")
 
   function loadResetRequests() {
     apiJson<ResetRequest[]>("/supervisor/reset-requests").then(setResetRequests).catch(() => {})
@@ -61,14 +65,30 @@ export default function SupervisorSupervisionPage() {
     setActingId(null)
   }
 
-  const pending = requests.filter((r) => r.status === "PENDING")
-  const reviewed = requests.filter((r) => r.status === "REVIEWED")
+  const cohorts = Array.from(new Map(requests.flatMap((r) => r.student.cohorts).map((c) => [c.id, c])).values())
+  const visibleRequests =
+    cohortFilter === "all" ? requests : requests.filter((r) => r.student.cohorts.some((c) => c.id === cohortFilter))
+  const pending = visibleRequests.filter((r) => r.status === "PENDING")
+  const reviewed = visibleRequests.filter((r) => r.status === "REVIEWED")
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Tests</h1>
         <p className="text-muted-foreground text-sm">Revisá las solicitudes de tus alumnos</p>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">CIC</Label>
+        <Select value={cohortFilter} onValueChange={setCohortFilter}>
+          <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los CIC</SelectItem>
+            {cohorts.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {resetRequests.length > 0 && (

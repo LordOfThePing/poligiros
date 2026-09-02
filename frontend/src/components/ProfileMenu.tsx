@@ -1,5 +1,7 @@
-import { MoreHorizontal, LogOut } from "lucide-react"
+import { MoreHorizontal, LogOut, Repeat } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,8 +44,19 @@ export function ProfileMenu({
   /** Keep the sidebar expanded while the menu is open (prevents flicker). */
   keepOpen?: (open: boolean) => void
 }) {
-  const { user, logout } = useAuth()
+  const { user, logout, switchAccount } = useAuth()
+  const { toast } = useToast()
+  const navigate = useNavigate()
   if (!user) return null
+
+  async function handleSwitch() {
+    try {
+      const next = await switchAccount()
+      navigate(next.role === "SUPERVISOR" ? "/supervisor/panel" : "/student/programa")
+    } catch {
+      toast({ title: "No se pudo cambiar de cuenta", variant: "destructive" })
+    }
+  }
 
   return (
     <DropdownMenu onOpenChange={(open) => keepOpen?.(open)}>
@@ -73,6 +86,11 @@ export function ProfileMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
+        {user.linkedUser && (
+          <DropdownMenuItem onClick={handleSwitch} className="cursor-pointer">
+            <Repeat className="h-4 w-4" /> Cambiar a {ROLE_LABELS[user.linkedUser.role] ?? user.linkedUser.role}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onClick={() => logout()}
           className="text-destructive focus:text-destructive cursor-pointer"

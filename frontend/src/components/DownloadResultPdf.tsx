@@ -30,6 +30,7 @@ export function DownloadResultPdf({
   const renderCapture = () => (
     <div
       ref={captureRef}
+      className="print-result"
       style={{ position: "fixed", left: -10000, top: 0, width: 900, background: "#fff", color: "#1c1917" }}
     >
       <div className="p-6">
@@ -39,6 +40,7 @@ export function DownloadResultPdf({
           coachFeedback={coachFeedback}
           completedAt={completedAt}
           hideExport
+          constrainHeight={false}
         />
       </div>
     </div>

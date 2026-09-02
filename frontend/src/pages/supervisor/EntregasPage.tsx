@@ -49,6 +49,7 @@ export default function EntregasPage() {
   // Which practice record is being given feedback (separate endpoint from entregas).
   const [reviewingPractice, setReviewingPractice] = useState<PracticeRecord | null>(null)
   const [filter, setFilter] = useState<Filter>("pending")
+  const [cohortFilter, setCohortFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState<Submission | null>(null)
   const [feedback, setFeedback] = useState("")
@@ -66,6 +67,14 @@ export default function EntregasPage() {
   }
 
   useEffect(load, [filter])
+
+  const cohortNames = Array.from(
+    new Set([...submissions.flatMap((s) => s.cohorts), ...practices.flatMap((r) => r.cohorts)])
+  ).sort()
+  const visibleSubmissions =
+    cohortFilter === "all" ? submissions : submissions.filter((s) => s.cohorts.includes(cohortFilter))
+  const visiblePractices =
+    cohortFilter === "all" ? practices : practices.filter((r) => r.cohorts.includes(cohortFilter))
 
   async function submitPracticeReview() {
     if (!reviewingPractice || !feedback.trim()) return
@@ -127,17 +136,29 @@ export default function EntregasPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">CIC</Label>
+          <Select value={cohortFilter} onValueChange={setCohortFilter}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los CIC</SelectItem>
+              {cohortNames.map((n) => (
+                <SelectItem key={n} value={n}>{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {loading ? (
         <LoadingBadge />
-      ) : submissions.length === 0 ? (
+      ) : visibleSubmissions.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
           No hay entregas {filter === "pending" ? "sin devolver" : "en este estado"}.
         </p>
       ) : (
         <div className="space-y-3">
-          {submissions.map((s) => (
+          {visibleSubmissions.map((s) => (
             <Card key={s.id} className="bg-white">
               <CardContent className="pt-6 space-y-3">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -194,7 +215,7 @@ export default function EntregasPage() {
         </div>
       )}
 
-      {practices.length > 0 && (
+      {visiblePractices.length > 0 && (
         <div className="space-y-3 pt-2">
           <div>
             <h2 className="font-serif text-xl text-foreground">Registros de sesión</h2>
@@ -203,7 +224,7 @@ export default function EntregasPage() {
             </p>
           </div>
 
-          {practices.map((r) => (
+          {visiblePractices.map((r) => (
             <Card key={r.id} className="bg-white">
               <CardContent className="pt-6 space-y-3">
                 <div className="flex items-start justify-between gap-3 flex-wrap">

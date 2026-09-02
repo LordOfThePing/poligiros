@@ -9,6 +9,8 @@ import { apiJson } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { SessionRecordPdf } from "@/components/SessionRecordPdf"
 
+type Cohort = { id: string; name: string }
+
 type SessionRecord = {
   id: string
   sessionNum: number
@@ -21,7 +23,7 @@ type SessionRecord = {
   mainOutputs: string
   toolsAndResults: string
   conclusions: string
-  student: { id: string; name: string }
+  student: { id: string; name: string; cohorts: Cohort[] }
   client: { id: string; name: string }
   createdAt: string
 }
@@ -29,6 +31,7 @@ type SessionRecord = {
 export default function SupervisorRegistrosPage() {
   const [records, setRecords] = useState<SessionRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [filterCohort, setFilterCohort] = useState<string>("all")
   const [filterStudent, setFilterStudent] = useState<string>("all")
   const [filterClient, setFilterClient] = useState<string>("all")
   const [selected, setSelected] = useState<SessionRecord | null>(null)
@@ -40,10 +43,12 @@ export default function SupervisorRegistrosPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const cohorts = Array.from(new Map(records.flatMap((r) => r.student.cohorts).map((c) => [c.id, c])).values())
   const students = Array.from(new Map(records.map((r) => [r.student.id, r.student])).values())
   const clients = Array.from(new Map(records.map((r) => [r.client.id, r.client])).values())
 
   const filtered = records.filter((r) => {
+    if (filterCohort !== "all" && !r.student.cohorts.some((c) => c.id === filterCohort)) return false
     if (filterStudent !== "all" && r.student.id !== filterStudent) return false
     if (filterClient !== "all" && r.client.id !== filterClient) return false
     return true
@@ -62,6 +67,20 @@ export default function SupervisorRegistrosPage() {
       </div>
 
       <div className="flex gap-4 flex-wrap">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">CIC</Label>
+          <Select value={filterCohort} onValueChange={setFilterCohort}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los CIC</SelectItem>
+              {cohorts.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Alumno</Label>
           <Select value={filterStudent} onValueChange={setFilterStudent}>

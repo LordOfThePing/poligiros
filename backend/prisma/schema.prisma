@@ -79,6 +79,12 @@ model User {
   especialidad String?
   bio          String?
 
+  /// Soft pointer (not a Prisma relation, to sidestep self-relation ceremony)
+  /// to the OTHER account of the same physical person — e.g. the supervisor's
+  /// own coach identity, so she can preview a CIC as a real enrolled coach. Set
+  /// symmetrically on both rows at creation time. See POST /auth/switch.
+  linkedUserId String? @unique
+
   clients             Client[]
   coacheeProfile      Client?                @relation("CoachAsCoachee")
   enrollments         Enrollment[]
