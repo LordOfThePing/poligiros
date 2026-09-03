@@ -54,7 +54,7 @@ student.post("/clients", async (c) => {
   const { name, email } = await c.req.json()
 
   const access = await getCoachAccess(user.id)
-  if (!access.practiceEnabled) {
+  if (!access.canPractice) {
     return c.json({ error: "Todavia no tenes habilitada la practica con coachees en tu CIC" }, 403)
   }
 
@@ -105,7 +105,7 @@ student.post("/clients/:id/assign", async (c) => {
 
   // Verify client belongs to this student
   const access = await getCoachAccess(user.id)
-  if (!access.practiceEnabled) {
+  if (!access.canPractice) {
     return c.json({ error: "Todavia no tenes habilitada la practica con coachees en tu CIC" }, 403)
   }
 
@@ -116,6 +116,9 @@ student.post("/clients/:id/assign", async (c) => {
 
   const test = await prisma.test.findUnique({ where: { id: testId } })
   if (!test) return c.json({ error: "Test not assignable" }, 400)
+  if (access.enabledTestTypes !== null && !access.enabledTestTypes.includes(test.type)) {
+    return c.json({ error: "Este test no está habilitado para tu pool" }, 403)
+  }
 
   const accessToken = randomBytes(32).toString("base64url")
   const now = new Date()
@@ -159,7 +162,7 @@ student.post("/assignments/:id/resend", async (c) => {
   const id = c.req.param("id")
 
   const access = await getCoachAccess(user.id)
-  if (!access.practiceEnabled) {
+  if (!access.canPractice) {
     return c.json({ error: "Todavia no tenes habilitada la practica con coachees en tu CIC" }, 403)
   }
 

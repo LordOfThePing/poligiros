@@ -70,6 +70,11 @@ export default function AlumnoDetailPage() {
   const [memberCohortIds, setMemberCohortIds] = useState<Set<string>>(new Set())
   const [savingCohorts, setSavingCohorts] = useState(false)
 
+  // Coach pool memberships editor.
+  const [pools, setPools] = useState<{ id: string; name: string }[]>([])
+  const [memberPoolIds, setMemberPoolIds] = useState<Set<string>>(new Set())
+  const [savingPools, setSavingPools] = useState(false)
+
   // Multi-step delete confirmation (so it never happens by accident).
   const [delOpen, setDelOpen] = useState(false)
   const [delStep, setDelStep] = useState<1 | 2>(1)
@@ -134,6 +139,7 @@ export default function AlumnoDetailPage() {
         setStudent(data)
         setLoading(false)
         setMemberCohortIds(new Set((data.enrollments ?? []).map((e: any) => e.cohortId)))
+        setMemberPoolIds(new Set((data.poolMemberships ?? []).map((m: any) => m.poolId)))
       })
       .catch(() => setLoading(false))
   }
@@ -154,6 +160,22 @@ export default function AlumnoDetailPage() {
     loadStudent()
   }
 
+  async function savePoolMemberships() {
+    setSavingPools(true)
+    const res = await apiTry(`/supervisor/students/${id}/pool-memberships`, {
+      method: "PUT",
+      body: JSON.stringify({ poolIds: [...memberPoolIds] }),
+    })
+    setSavingPools(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      toast({ title: j.error || "No se pudieron actualizar los pools", variant: "destructive" })
+      return
+    }
+    toast({ title: "Pools actualizados" })
+    loadStudent()
+  }
+
   async function handleDelete() {
     setDelBusy(true)
     const res = await apiTry(`/supervisor/students/${id}`, { method: "DELETE" })
@@ -171,6 +193,7 @@ export default function AlumnoDetailPage() {
     loadStudent()
     apiJson<Test[]>("/supervisor/tests").then(setAllTests).catch(() => {})
     apiJson<{ id: string; name: string }[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
+    apiJson<{ id: string; name: string }[]>("/supervisor/pools").then(setPools).catch(() => {})
     loadCoachTests()
   }, [id])
 
@@ -350,6 +373,69 @@ export default function AlumnoDetailPage() {
               size="sm"
               variant="outline"
               disabled={savingCohorts}
+              onClick={() => loadStudent()}
+            >
+              Descartar cambios
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Coach pool memberships: "coaches certificados" who keep practising after a CIC. */}
+      <Card className="bg-white">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-sans text-base font-medium">Pool de coaching</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {pools.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay pools creados todavía.</p>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              {pools.map((p) => {
+                const active = memberPoolIds.has(p.id)
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() =>
+                      setMemberPoolIds((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(p.id)) next.delete(p.id)
+                        else next.add(p.id)
+                        return next
+                      })
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-brand-accent text-white border-brand-accent"
+                        : "border-border text-muted-foreground hover:border-brand-accent hover:text-foreground"
+                    )}
+                  >
+                    {active ? "✓ " : ""}{p.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {memberPoolIds.size > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {student.name} pertenece a {memberPoolIds.size} {memberPoolIds.size === 1 ? "pool" : "pools"} — puede
+              practicar con coachees y asignar los tests que ese pool tenga habilitados.
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="bg-brand-accent hover:bg-brand-accent-dark"
+              disabled={savingPools}
+              onClick={savePoolMemberships}
+            >
+              {savingPools ? "Guardando..." : "Guardar pools"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={savingPools}
               onClick={() => loadStudent()}
             >
               Descartar cambios

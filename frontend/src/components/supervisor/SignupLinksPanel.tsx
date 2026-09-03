@@ -12,24 +12,27 @@ import { apiJson, apiTry } from "@/lib/api"
 import { copyToClipboard, signupUrl, type SignupLink } from "@/lib/signup"
 
 type Cohort = { id: string; name: string }
+type Pool = { id: string; name: string }
 
 /** Only the field this panel needs, to prefill the expiry of a new link. */
 type Settings = { signupLinkDays: number }
 
-/** No cohort bound — the applicant picks from the active CICs. */
+/** No cohort/pool bound — the applicant picks from the active CICs. */
 const ANY_COHORT = "__any__"
 
 export function SignupLinksPanel() {
   const { toast } = useToast()
   const [links, setLinks] = useState<SignupLink[]>([])
   const [cohorts, setCohorts] = useState<Cohort[]>([])
-  const [newCohort, setNewCohort] = useState<string>(ANY_COHORT)
+  const [pools, setPools] = useState<Pool[]>([])
+  const [newTarget, setNewTarget] = useState<string>(ANY_COHORT)
   const [newDays, setNewDays] = useState<string>("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     apiJson<SignupLink[]>("/supervisor/signup-links").then(setLinks).catch(() => {})
     apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
+    apiJson<Pool[]>("/supervisor/pools").then(setPools).catch(() => {})
     // Only to prefill the days field with the configured default.
     apiJson<Settings>("/supervisor/settings")
       .then((s) => setNewDays(String(s.signupLinkDays)))
@@ -45,10 +48,12 @@ export function SignupLinksPanel() {
   }
 
   async function generate() {
+    const isPool = newTarget.startsWith("pool:")
     const res = await apiTry("/supervisor/signup-links", {
       method: "POST",
       body: JSON.stringify({
-        cohortId: newCohort === ANY_COHORT ? null : newCohort,
+        cohortId: newTarget === ANY_COHORT || isPool ? null : newTarget,
+        poolId: isPool ? newTarget.slice("pool:".length) : null,
         days: newDays ? Number(newDays) : undefined,
       }),
     })
@@ -110,13 +115,16 @@ export function SignupLinksPanel() {
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">CIC</Label>
-              <Select value={newCohort} onValueChange={setNewCohort}>
-                <SelectTrigger className="h-8 w-44 text-xs"><SelectValue /></SelectTrigger>
+              <Label className="text-xs text-muted-foreground">Destino</Label>
+              <Select value={newTarget} onValueChange={setNewTarget}>
+                <SelectTrigger className="h-8 w-52 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ANY_COHORT}>Que elija el postulante</SelectItem>
+                  <SelectItem value={ANY_COHORT}>Que elija el postulante (CIC)</SelectItem>
                   {cohorts.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                  {pools.map((p) => (
+                    <SelectItem key={p.id} value={`pool:${p.id}`}>{p.name} (pool)</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -153,7 +161,11 @@ export function SignupLinksPanel() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-foreground truncate">{signupUrl(link)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {link.cohort ? link.cohort.name : "Sin CIC fijo"} · vence{" "}
+                        {link.pool
+                          ? `${link.pool.name} (pool)`
+                          : link.cohort
+                            ? link.cohort.name
+                            : "Sin CIC fijo"} · vence{" "}
                         {formatShortDate(link.expiresAt)} · {link._count.requests}{" "}
                         {link._count.requests === 1 ? "inscripción" : "inscripciones"}
                       </p>

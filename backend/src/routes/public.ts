@@ -18,7 +18,10 @@ const publicRoutes = new Hono()
 async function resolveLink(token: string) {
   const link = await prisma.signupLink.findUnique({
     where: { token },
-    include: { cohort: { select: { id: true, name: true } } },
+    include: {
+      cohort: { select: { id: true, name: true } },
+      pool: { select: { id: true, name: true } },
+    },
   })
 
   if (!link) return { ok: false as const, reason: "invalid" as const }
@@ -49,18 +52,23 @@ publicRoutes.get("/signup/:token", async (c) => {
   }
 
   // A link bound to a cohort fixes the camada; an open one lets them choose.
-  const cohorts = result.link.cohort
-    ? [result.link.cohort]
-    : await prisma.cohort.findMany({
-        where: { active: true },
-        orderBy: { startDate: "desc" },
-        select: { id: true, name: true },
-      })
+  // A link bound to a pool fixes that instead — no cohort choice is offered.
+  const cohorts = result.link.pool
+    ? []
+    : result.link.cohort
+      ? [result.link.cohort]
+      : await prisma.cohort.findMany({
+          where: { active: true },
+          orderBy: { startDate: "desc" },
+          select: { id: true, name: true },
+        })
 
   return c.json({
     state: "open",
     expiresAt: result.link.expiresAt,
     boundCohortId: result.link.cohort?.id ?? null,
+    boundPoolId: result.link.pool?.id ?? null,
+    boundPoolName: result.link.pool?.name ?? null,
     cohorts,
   })
 })
@@ -103,10 +111,10 @@ publicRoutes.post("/signup/:token", async (c) => {
   })
   if (existingPending) return c.json(genericOk, 201)
 
-  // A link bound to a cohort wins; otherwise accept only an active cohort the
-  // form could legitimately have offered.
+  // A link bound to a cohort or a pool wins; otherwise accept only an active
+  // cohort the form could legitimately have offered.
   let resolvedCohortId: string | null = link.cohortId
-  if (!resolvedCohortId && cohortId) {
+  if (!resolvedCohortId && !link.poolId && cohortId) {
     const cohort = await prisma.cohort.findFirst({
       where: { id: String(cohortId), active: true },
       select: { id: true },
@@ -122,10 +130,11 @@ publicRoutes.post("/signup/:token", async (c) => {
       especialidad: especialidad ? String(especialidad).trim() : null,
       motivation: motivation ? String(motivation).trim() : null,
       cohortId: resolvedCohortId,
+      poolId: link.poolId,
       signupLinkId: link.id,
       passwordHash: await bcrypt.hash(cleanPassword, 12),
     },
-    include: { cohort: { select: { name: true } } },
+    include: { cohort: { select: { name: true } }, pool: { select: { name: true } } },
   })
 
   const signupTo = await notifyTarget("signupRequest")

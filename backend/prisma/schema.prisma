@@ -88,6 +88,7 @@ model User {
   clients             Client[]
   coacheeProfile      Client?                @relation("CoachAsCoachee")
   enrollments         Enrollment[]
+  poolMemberships     PoolMembership[]
   moduleProgress      ModuleProgress[]
   moduleItemProgress  ModuleItemProgress[]
   submissions         ModuleItemSubmission[] @relation("SubmissionAuthor")
@@ -135,6 +136,34 @@ model Enrollment {
   enrolledAt DateTime @default(now())
 
   @@unique([userId, cohortId])
+}
+
+/// A group of already-certified coaches who keep practising on real coachees
+/// after finishing a CIC. No modules/coursework — unlike Cohort, membership
+/// alone is what grants access; `enabledTests` is the only per-group knob.
+model CoachPool {
+  id        String   @id @default(cuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  /// Which catalog tests a member of this pool may assign to a coachee.
+  enabledTests TestType[] @default([])
+
+  members        PoolMembership[]
+  signupRequests SignupRequest[]
+  signupLinks    SignupLink[]
+}
+
+model PoolMembership {
+  id       String    @id @default(cuid())
+  userId   String
+  poolId   String
+  user     User      @relation(fields: [userId], references: [id])
+  pool     CoachPool @relation(fields: [poolId], references: [id])
+  joinedAt DateTime  @default(now())
+
+  @@unique([userId, poolId])
 }
 
 /// A class of the CIC. The content is shared by every cohort; what varies per
@@ -375,9 +404,13 @@ model SignupRequest {
   motivation   String?
 
   /// The CIC they are applying to. Kept nullable so a cohort can be deleted
-  /// without destroying the historical request.
+  /// without destroying the historical request. At most one of cohortId/poolId
+  /// is set — enforced in the route, not the schema.
   cohortId String?
   cohort   Cohort? @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+
+  poolId String?
+  pool   CoachPool? @relation(fields: [poolId], references: [id], onDelete: SetNull)
 
   passwordHash String
   status       SignupStatus @default(PENDING)
@@ -428,8 +461,12 @@ model SignupLink {
   id    String @id @default(cuid())
   token String @unique
 
+  /// At most one of cohortId/poolId is set — enforced in the route.
   cohortId String?
   cohort   Cohort? @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+
+  poolId String?
+  pool   CoachPool? @relation(fields: [poolId], references: [id], onDelete: SetNull)
 
   expiresAt DateTime
   /// Revoked by hand before expiry.

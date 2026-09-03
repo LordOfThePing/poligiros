@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import bcrypt from "bcryptjs"
 import { prisma } from "../lib/prisma.js"
-import { ModuleItemKind, Prisma } from "@prisma/client"
+import { ModuleItemKind, Prisma, TestType } from "@prisma/client"
 import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/r2.js"
 import { checkUpload, buildObjectKey, ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES } from "../lib/uploads.js"
 import {
@@ -212,6 +212,7 @@ supervisor.get("/students/:id", async (c) => {
     where: { id },
     include: {
       enrollments: { include: { cohort: true } },
+      poolMemberships: { include: { pool: true } },
       clients: {
         include: {
           assignments: {
@@ -329,6 +330,46 @@ supervisor.put("/students/:id/memberships", async (c) => {
 })
 
 /**
+ * PUT /supervisor/students/:id/pool-memberships — body: { poolIds: string[] }
+ * Replace the coach's coach-pool memberships in one call, mirroring
+ * PUT /students/:id/memberships for CICs.
+ */
+supervisor.put("/students/:id/pool-memberships", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}) as Record<string, unknown>)
+
+  const student = await prisma.user.findUnique({ where: { id } })
+  if (!student || student.role !== "STUDENT_COACH") {
+    return c.json({ error: "Estudiante no encontrado" }, 404)
+  }
+
+  const poolIds = Array.isArray(body.poolIds)
+    ? [...new Set((body.poolIds as string[]).filter(Boolean))]
+    : null
+  if (poolIds === null) return c.json({ error: "Enviá una lista poolIds" }, 400)
+
+  if (poolIds.length > 0) {
+    const found = await prisma.coachPool.findMany({
+      where: { id: { in: poolIds } },
+      select: { id: true },
+    })
+    if (found.length !== poolIds.length) {
+      return c.json({ error: "Algún pool no existe" }, 400)
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.poolMembership.deleteMany({ where: { userId: id } }),
+    ...poolIds.map((poolId) =>
+      prisma.poolMembership.create({ data: { userId: id, poolId } })
+    ),
+  ])
+
+  const access = await getCoachAccess(id)
+  return c.json({ pools: access.pools, poolIds: access.poolIds })
+})
+
+/**
  * DELETE /supervisor/students/:id
  * Permanently remove a coach and everything they own: their clients, the
  * coach-as-coachee profile and their self-tests, enrollments, progress,
@@ -387,6 +428,7 @@ supervisor.delete("/students/:id", async (c) => {
   // here explicitly for clarity + to free the FKs without cascade).
   ops.push(
     prisma.enrollment.deleteMany({ where: { userId: id } }),
+    prisma.poolMembership.deleteMany({ where: { userId: id } }),
     prisma.moduleProgress.deleteMany({ where: { userId: id } }),
     prisma.moduleItemProgress.deleteMany({ where: { userId: id } }),
     prisma.moduleItemSubmission.deleteMany({ where: { userId: id } }),
@@ -716,6 +758,99 @@ supervisor.post("/cohorts/:id/enroll", async (c) => {
   })
 
   return c.json(enrollment, 201)
+})
+
+/* ─────────────────────────────────────────
+   Coach pools — "coaches certificados". Same idea as a Cohort (a group that
+   grants practice with real coachees) but with no modules/coursework: a coach
+   lands here manually, after finishing a CIC, to keep practising.
+───────────────────────────────────────── */
+
+const TEST_TYPES = Object.values(TestType)
+
+/** GET /supervisor/pools */
+supervisor.get("/pools", async (c) => {
+  const pools = await prisma.coachPool.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      members: { include: { user: true } },
+      _count: { select: { members: true } },
+    },
+  })
+  return c.json(pools)
+})
+
+/** POST /supervisor/pools — body: { name } */
+supervisor.post("/pools", async (c) => {
+  const { name } = await c.req.json()
+
+  const trimmed = String(name ?? "").trim()
+  if (!trimmed) return c.json({ error: "El nombre no puede estar vacío" }, 400)
+
+  const pool = await prisma.coachPool.create({
+    data: { name: trimmed, active: true },
+    include: {
+      members: { include: { user: true } },
+      _count: { select: { members: true } },
+    },
+  })
+  return c.json(pool, 201)
+})
+
+/** PUT /supervisor/pools/:id — name, active, enabledTests. */
+supervisor.put("/pools/:id", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json()
+
+  const data: { name?: string; active?: boolean; enabledTests?: TestType[] } = {}
+
+  if (body.name !== undefined) {
+    const name = String(body.name).trim()
+    if (!name) return c.json({ error: "El nombre no puede estar vacío" }, 400)
+    data.name = name
+  }
+  if (body.active !== undefined) data.active = Boolean(body.active)
+  if (body.enabledTests !== undefined) {
+    if (!Array.isArray(body.enabledTests) || body.enabledTests.some((t: unknown) => !TEST_TYPES.includes(t as TestType))) {
+      return c.json({ error: "enabledTests inválido" }, 400)
+    }
+    data.enabledTests = [...new Set(body.enabledTests as TestType[])]
+  }
+
+  if (Object.keys(data).length === 0) return c.json({ error: "Nada para actualizar" }, 400)
+
+  const pool = await prisma.coachPool.update({
+    where: { id },
+    data,
+    include: {
+      members: { include: { user: true } },
+      _count: { select: { members: true } },
+    },
+  })
+  return c.json(pool)
+})
+
+/** POST /supervisor/pools/:id/enroll — body: { email } */
+supervisor.post("/pools/:id/enroll", async (c) => {
+  const id = c.req.param("id")
+  const { email } = await c.req.json()
+
+  const user = await prisma.user.findUnique({ where: { email } })
+  if (!user) {
+    return c.json({ error: "Usuario no encontrado con ese email" }, 404)
+  }
+  if (user.role !== "STUDENT_COACH") {
+    return c.json({ error: "El usuario no es un student coach" }, 400)
+  }
+
+  const membership = await prisma.poolMembership.upsert({
+    where: { userId_poolId: { userId: user.id, poolId: id } },
+    update: {},
+    create: { userId: user.id, poolId: id },
+    include: { user: true },
+  })
+
+  return c.json(membership, 201)
 })
 
 /* ─────────────────────────────────────────
@@ -1635,7 +1770,10 @@ supervisor.get("/signups", async (c) => {
 
   const signups = await prisma.signupRequest.findMany({
     where: filter ? { status: filter } : {},
-    include: { cohort: { select: { id: true, name: true } } },
+    include: {
+      cohort: { select: { id: true, name: true } },
+      pool: { select: { id: true, name: true } },
+    },
     orderBy: { createdAt: "desc" },
   })
 
@@ -1674,6 +1812,9 @@ supervisor.post("/signups/:id/approve", async (c) => {
 
     if (signup.cohortId) {
       await tx.enrollment.create({ data: { userId: coach.id, cohortId: signup.cohortId } })
+    }
+    if (signup.poolId) {
+      await tx.poolMembership.create({ data: { userId: coach.id, poolId: signup.poolId } })
     }
 
     await tx.client.create({
@@ -1786,15 +1927,19 @@ supervisor.get("/signup-links", async (c) => {
     orderBy: { createdAt: "desc" },
     include: {
       cohort: { select: { id: true, name: true } },
+      pool: { select: { id: true, name: true } },
       _count: { select: { requests: true } },
     },
   })
   return c.json(links)
 })
 
-/** POST /supervisor/signup-links — body: { cohortId?, days? } */
+/** POST /supervisor/signup-links — body: { cohortId?, poolId?, days? } */
 supervisor.post("/signup-links", async (c) => {
-  const { cohortId, days } = await c.req.json().catch(() => ({}))
+  const { cohortId, poolId, days } = await c.req.json().catch(() => ({}))
+  if (cohortId && poolId) {
+    return c.json({ error: "Un link no puede apuntar a un CIC y a un pool a la vez" }, 400)
+  }
   const settings = await getSettings()
   const lifetime = clampDays(days ?? settings.signupLinkDays, settings.signupLinkDays)
 
@@ -1802,10 +1947,12 @@ supervisor.post("/signup-links", async (c) => {
     data: {
       token: randomBytes(24).toString("base64url"),
       cohortId: cohortId || null,
+      poolId: poolId || null,
       expiresAt: daysFromNow(lifetime),
     },
     include: {
       cohort: { select: { id: true, name: true } },
+      pool: { select: { id: true, name: true } },
       _count: { select: { requests: true } },
     },
   })
@@ -1819,6 +1966,7 @@ supervisor.post("/signup-links/:id/disable", async (c) => {
     data: { disabled: true },
     include: {
       cohort: { select: { id: true, name: true } },
+      pool: { select: { id: true, name: true } },
       _count: { select: { requests: true } },
     },
   })

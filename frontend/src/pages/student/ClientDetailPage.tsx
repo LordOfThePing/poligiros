@@ -19,6 +19,8 @@ import { formatShortDate } from "@/lib/date"
 import { api, apiJson, apiPost } from "@/lib/api"
 import { EditableResult } from "@/components/EditableResult"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { useCoachAccess } from "@/lib/useCoachAccess"
+import type { TestType } from "@/lib/access"
 
 const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   ANCLAS_CARRERA: { title: "Test de Anclas de Carrera" },
@@ -68,6 +70,7 @@ type Client = {
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { toast } = useToast()
+  const { access } = useCoachAccess()
   const [client, setClient] = useState<Client | null>(null)
   const [tests, setTests] = useState<{ id: string; type: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -174,6 +177,9 @@ export default function ClientDetailPage() {
             const assignment = client.assignments.find((a) => a.test.type === type)
             const isComingSoon = info.comingSoon
             const resetPending = assignment?.resetRequests?.[0]?.status === "PENDING"
+            const notEnabled =
+              !!access?.enabledTestTypes &&
+              !access.enabledTestTypes.includes(type as TestType)
 
             return (
               <div
@@ -198,7 +204,10 @@ export default function ClientDetailPage() {
 
                 {!isComingSoon && (
                   <div className="flex gap-2">
-                    {!assignment && (
+                    {!assignment && notEnabled && (
+                      <span className="text-xs text-muted-foreground">No habilitado para tu pool</span>
+                    )}
+                    {!assignment && !notEnabled && (
                       <Button size="sm" variant="outline" onClick={() => handleAssign(type)}>
                         Asignar
                       </Button>

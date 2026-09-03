@@ -27,6 +27,7 @@ type Signup = {
   reviewedAt: string | null
   reviewNote: string | null
   cohort: { id: string; name: string } | null
+  pool: { id: string; name: string } | null
 }
 
 const STATUS_LABEL: Record<SignupStatus, string> = {
@@ -137,6 +138,9 @@ export default function InscripcionesPage() {
                       <Badge className={STATUS_BADGE[s.status]}>{STATUS_LABEL[s.status]}</Badge>
                       {s.cohort && (
                         <Badge variant="secondary" className="text-xs">{s.cohort.name}</Badge>
+                      )}
+                      {s.pool && (
+                        <Badge variant="secondary" className="text-xs">{s.pool.name} (pool)</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-4 mt-1 flex-wrap text-sm text-muted-foreground">

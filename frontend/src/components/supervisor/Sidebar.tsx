@@ -12,6 +12,7 @@ import {
   Inbox,
   Settings,
   Eye,
+  Award,
   type LucideIcon,
 } from "lucide-react"
 import { CollapsibleSidebar } from "@/components/CollapsibleSidebar"
@@ -50,6 +51,7 @@ const groups: NavGroup[] = [
     title: "Administración",
     items: [
       { href: "/supervisor/cohortes", label: "Camadas (CIC)", icon: GraduationCap },
+      { href: "/supervisor/pools", label: "Coaches certificados", icon: Award },
       { href: "/supervisor/inscripciones", label: "Inscripciones", icon: UserPlus },
       { href: "/supervisor/configuracion", label: "Configuración", icon: Settings },
     ],

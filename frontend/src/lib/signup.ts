@@ -8,6 +8,7 @@ export type SignupLink = {
   disabled: boolean
   createdAt: string
   cohort: { id: string; name: string } | null
+  pool: { id: string; name: string } | null
   _count: { requests: number }
 }
 

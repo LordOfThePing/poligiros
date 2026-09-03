@@ -37,7 +37,7 @@ export function StudentSidebar() {
   const { student } = useNotifications()
 
   // While loading, show everything rather than flashing items away.
-  const canPractice = loading || access?.practiceEnabled !== false
+  const canPractice = loading || access?.canPractice !== false
 
   const renderItem = ({ href, label, icon: Icon }: NavItem, expanded: boolean) => {
     const count = badgeForRole(user?.role, { href, label }, null, student)
