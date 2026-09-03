@@ -42,7 +42,7 @@ help: ## List available targets
 	@echo "--------------------------------------------------------------------------"
 	@echo "PROD (run on the server):"
 	@echo "  env-check            Verify .env exists and has the required variables"
-	@echo "  env-scp              Print the scp command to copy your local .env to the server"
+	@echo "  env-scp              Print the scp commands to copy .env + backend/.env to the server"
 	@echo "  prod-deploy          Pull latest code, rebuild, restart, prune, health-check"
 	@echo "  prod-up              Build and start the prod stack"
 	@echo "  prod-down            Stop the prod stack"
@@ -112,8 +112,9 @@ studio: ## Prisma Studio against the dockerized DB (host port 5433)
 #   make prod-health
 # ══════════════════════════════════════════════════════════════════════════════
 
-env-scp: ## Print the scp command to copy your local .env to the server. Usage: make env-scp [SCP_ALIAS=hetzner] [SCP_PATH=/opt/poligiros]
+env-scp: ## Print the scp commands to copy your local .env + backend/.env to the server. Usage: make env-scp [SCP_ALIAS=hetzner] [SCP_PATH=/opt/poligiros]
 	@echo "scp .env $(SCP_ALIAS):$(SCP_PATH)/.env"
+	@echo "scp backend/.env $(SCP_ALIAS):$(SCP_PATH)/backend/.env"
 
 env-check: ## Verify .env exists and has the required variables
 	@test -f .env || { echo "❌ Falta .env — copiá .env.example y completá la sección ROOT."; exit 1; }
