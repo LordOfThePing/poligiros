@@ -174,11 +174,11 @@ export default function EntregasPage() {
 
       {loading ? (
         <LoadingBadge />
-      ) : visibleSubmissions.length === 0 ? (
+      ) : visibleSubmissions.length === 0 && visiblePractices.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
           No hay entregas {filter === "pending" ? "sin devolver" : "en este estado"}.
         </p>
-      ) : (
+      ) : visibleSubmissions.length === 0 ? null : (
         <div className="space-y-3">
           {visibleSubmissions.map((s) => (
             <Card key={s.id} className="bg-white">

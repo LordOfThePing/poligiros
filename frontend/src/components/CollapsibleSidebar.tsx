@@ -3,8 +3,7 @@ import { useLocation } from "react-router-dom"
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-
-const STORAGE_KEY = "poligiros.sidebar-fixed"
+import { useSidebarMode } from "@/lib/sidebarMode"
 
 /**
  * The global left nav shell, shared by the supervisor and the coach.
@@ -36,16 +35,12 @@ export function CollapsibleSidebar({
   /** Fixed footer pinned to the bottom (e.g. the profile + logout menu). */
   footer?: (args: { expanded: boolean; keepOpen: (open: boolean) => void }) => ReactNode
 }) {
-  const [fixed, setFixed] = useState<boolean>(false)
+  const { fixed, setFixed } = useSidebarMode()
   const [hovering, setHovering] = useState(false)
   // An open dropdown/popover must keep the sidebar expanded (no flicker).
   const [keepOpen, setKeepOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, fixed ? "fixed" : "auto")
-  }, [fixed])
 
   // Close the mobile drawer whenever a nav link is followed.
   useEffect(() => {

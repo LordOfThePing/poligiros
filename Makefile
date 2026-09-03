@@ -16,7 +16,7 @@ PROD    = docker compose -f docker-compose.prod.yml
 # (e.g. "hetzner", so it carries its own user/hostname/key) — override with
 #   make env-scp SCP_ALIAS=other-alias
 SCP_ALIAS ?= hetzner
-SCP_PATH  ?= /opt/poligiros
+SCP_PATH  ?= poligiros
 
 .DEFAULT_GOAL := help
 .PHONY: help up down rebuild rebuild-backend logs logs-api seed ps restart migrate studio shell \

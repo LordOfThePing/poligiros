@@ -1,8 +1,11 @@
+import type { ReactNode } from "react"
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom"
 import { AuthProvider, ProtectedRoute } from "@/lib/auth"
 import { Toaster } from "@/components/ui/toaster"
 import { SupervisorSidebar } from "@/components/supervisor/Sidebar"
 import { StudentSidebar } from "@/components/student/Sidebar"
+import { SidebarModeProvider, useSidebarMode } from "@/lib/sidebarMode"
+import { cn } from "@/lib/utils"
 
 // Pages - public
 import LoginPage from "@/pages/LoginPage"
@@ -42,31 +45,48 @@ import StudentNuevoRegistroPage from "@/pages/student/NuevoRegistroPage"
 // offset (lg:pl-16). The inner wrapper also trims to a tighter, edge-to-edge
 // gutter on phones — max-w-7xl's centering padding reads as wasted margin on
 // a narrow screen — and only grows into the padded, centered card at sm+.
+//
+// pl-16 reserves the collapsed rail; when the sidebar's "auto" mode expands on
+// hover it overlays over the content instead of shifting it. But when pinned
+// "fixed" open (w-64) the content DOES need to shift, or the wider rail
+// covers it — hence lg:pl-64 while `fixed` is true (from SidebarModeProvider).
+function LayoutContent({ children }: { children: ReactNode }) {
+  const { fixed } = useSidebarMode()
+  return (
+    <main
+      className={cn(
+        "h-full overflow-y-auto pt-14 lg:pt-0 transition-[padding] duration-200 ease-in-out",
+        fixed ? "lg:pl-64" : "lg:pl-16"
+      )}
+    >
+      <div className="p-3 sm:p-6 lg:max-w-7xl lg:mx-auto">{children}</div>
+    </main>
+  )
+}
+
 function SupervisorLayout() {
   return (
-    <div className="h-dvh overflow-hidden bg-brand-bg">
-      <SupervisorSidebar />
-      {/* pl-16 reserves the collapsed rail; the expanded sidebar overlays over
-          the content instead of shifting it. */}
-      <main className="h-full overflow-y-auto pt-14 lg:pt-0 lg:pl-16">
-        <div className="p-3 sm:p-6 lg:max-w-7xl lg:mx-auto">
+    <SidebarModeProvider>
+      <div className="h-dvh overflow-hidden bg-brand-bg">
+        <SupervisorSidebar />
+        <LayoutContent>
           <Outlet />
-        </div>
-      </main>
-    </div>
+        </LayoutContent>
+      </div>
+    </SidebarModeProvider>
   )
 }
 
 function StudentLayout() {
   return (
-    <div className="h-dvh overflow-hidden bg-brand-bg">
-      <StudentSidebar />
-      <main className="h-full overflow-y-auto pt-14 lg:pt-0 lg:pl-16">
-        <div className="p-3 sm:p-6 lg:max-w-7xl lg:mx-auto">
+    <SidebarModeProvider>
+      <div className="h-dvh overflow-hidden bg-brand-bg">
+        <StudentSidebar />
+        <LayoutContent>
           <Outlet />
-        </div>
-      </main>
-    </div>
+        </LayoutContent>
+      </div>
+    </SidebarModeProvider>
   )
 }
 
