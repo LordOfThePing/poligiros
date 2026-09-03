@@ -40,6 +40,7 @@ export default function SupervisorSupervisionPage() {
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
   const [cohortFilter, setCohortFilter] = useState<string>("all")
+  const [testFilter, setTestFilter] = useState<string>("all")
 
   function loadResetRequests() {
     apiJson<ResetRequest[]>("/supervisor/reset-requests").then(setResetRequests).catch(() => {})
@@ -66,8 +67,12 @@ export default function SupervisorSupervisionPage() {
   }
 
   const cohorts = Array.from(new Map(requests.flatMap((r) => r.student.cohorts).map((c) => [c.id, c])).values())
-  const visibleRequests =
-    cohortFilter === "all" ? requests : requests.filter((r) => r.student.cohorts.some((c) => c.id === cohortFilter))
+  const testTitles = Array.from(new Set(requests.map((r) => r.assignment.test.title))).sort()
+  const visibleRequests = requests.filter(
+    (r) =>
+      (cohortFilter === "all" || r.student.cohorts.some((c) => c.id === cohortFilter)) &&
+      (testFilter === "all" || r.assignment.test.title === testFilter)
+  )
   const pending = visibleRequests.filter((r) => r.status === "PENDING")
   const reviewed = visibleRequests.filter((r) => r.status === "REVIEWED")
 
@@ -78,17 +83,31 @@ export default function SupervisorSupervisionPage() {
         <p className="text-muted-foreground text-sm">Revisá las solicitudes de tus alumnos</p>
       </div>
 
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">CIC</Label>
-        <Select value={cohortFilter} onValueChange={setCohortFilter}>
-          <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los CIC</SelectItem>
-            {cohorts.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex items-end gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">CIC</Label>
+          <Select value={cohortFilter} onValueChange={setCohortFilter}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los CIC</SelectItem>
+              {cohorts.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Test</Label>
+          <Select value={testFilter} onValueChange={setTestFilter}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tests</SelectItem>
+              {testTitles.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {resetRequests.length > 0 && (

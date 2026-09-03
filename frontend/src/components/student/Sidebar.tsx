@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, type LucideIcon } from "lucide-react"
 import { CollapsibleSidebar } from "@/components/CollapsibleSidebar"
 import { ProfileMenu } from "@/components/ProfileMenu"
-import { HelpLauncher } from "@/components/HelpGuide"
+import { HelpLauncher, SupportLink } from "@/components/HelpGuide"
 import { useCoachAccess } from "@/lib/useCoachAccess"
 import { useNotifications, badgeForRole } from "@/lib/useNotifications"
 
@@ -74,6 +74,7 @@ export function StudentSidebar() {
       roleLabel="Coach"
       footer={({ expanded, keepOpen }) => (
         <div className="space-y-1">
+          <SupportLink collapsed={!expanded} />
           <HelpLauncher collapsed={!expanded} />
           <ProfileMenu collapsed={!expanded} keepOpen={keepOpen} />
         </div>

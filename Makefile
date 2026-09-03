@@ -12,14 +12,55 @@
 COMPOSE = docker compose -f docker-compose.local.yml
 PROD    = docker compose -f docker-compose.prod.yml
 
+# Defaults for env-scp. SCP_ALIAS is meant to be a Host entry in ~/.ssh/config
+# (e.g. "hetzner", so it carries its own user/hostname/key) — override with
+#   make env-scp SCP_ALIAS=other-alias
+SCP_ALIAS ?= hetzner
+SCP_PATH  ?= /opt/poligiros
+
 .DEFAULT_GOAL := help
 .PHONY: help up down rebuild rebuild-backend logs logs-api seed ps restart migrate studio shell \
-        env-check prod-deploy prod-up prod-down prod-build prod-ps prod-logs prod-logs-api \
+        env-check env-scp prod-deploy prod-up prod-down prod-build prod-ps prod-logs prod-logs-api \
         prod-logs-tunnel prod-restart prod-migrate prod-bootstrap prod-supervisor prod-health \
         prod-shell prod-psql prod-backup prod-seed-danger
 
+# Hardcoded rather than piped through grep/awk so `help` also works under plain
+# cmd.exe (no grep/awk in PATH) — not just Git Bash/WSL/Linux.
 help: ## List available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo "LOCAL:"
+	@echo "  up                   Start the local stack (postgres + api + cloudflared)"
+	@echo "  down                 Stop the local stack (data persists in the postgres volume)"
+	@echo "  rebuild              Rebuild the api image after backend changes and recreate it"
+	@echo "  logs                 Tail logs for all local services"
+	@echo "  logs-api             Tail local api logs only"
+	@echo "  seed                 Seed the local database with demo data (DESTRUCTIVE)"
+	@echo "  migrate              Apply Prisma migrations locally"
+	@echo "  ps                   Show local container status"
+	@echo "  restart              Restart the local api container"
+	@echo "  shell                Open a shell in the local api container"
+	@echo "  studio               Prisma Studio against the dockerized DB"
+	@echo "--------------------------------------------------------------------------"
+	@echo "PROD (run on the server):"
+	@echo "  env-check            Verify .env exists and has the required variables"
+	@echo "  env-scp              Print the scp command to copy your local .env to the server"
+	@echo "  prod-deploy          Pull latest code, rebuild, restart, prune, health-check"
+	@echo "  prod-up              Build and start the prod stack"
+	@echo "  prod-down            Stop the prod stack"
+	@echo "  prod-build           Rebuild images without restarting"
+	@echo "  prod-ps              Show prod container status"
+	@echo "  prod-logs            Tail logs for all prod services"
+	@echo "  prod-logs-api        Tail prod api logs only"
+	@echo "  prod-logs-tunnel     Tail cloudflared logs"
+	@echo "  prod-restart         Restart the prod api container"
+	@echo "  prod-migrate         Apply Prisma migrations"
+	@echo "  prod-migrate-status  Show which migrations applied, plus the live TestType enum"
+	@echo "  prod-bootstrap       Set up a fresh DB: test catalog + supervisor login"
+	@echo "  prod-supervisor      Create/update the supervisor login"
+	@echo "  prod-health          Curl the API health endpoint from inside the container"
+	@echo "  prod-shell           Open a shell in the prod api container"
+	@echo "  prod-psql            Open psql against the prod database"
+	@echo "  prod-backup          Dump the prod database to backup-DATE.sql"
+	@echo "  prod-seed-danger     DESTRUCTIVE demo seed - wipes ALL data (needs CONFIRM=WIPE)"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LOCAL (docker-compose.local.yml)
@@ -70,6 +111,9 @@ studio: ## Prisma Studio against the dockerized DB (host port 5433)
 #   make prod-bootstrap                        # test catalog + Gaby's login
 #   make prod-health
 # ══════════════════════════════════════════════════════════════════════════════
+
+env-scp: ## Print the scp command to copy your local .env to the server. Usage: make env-scp [SCP_ALIAS=hetzner] [SCP_PATH=/opt/poligiros]
+	@echo "scp .env $(SCP_ALIAS):$(SCP_PATH)/.env"
 
 env-check: ## Verify .env exists and has the required variables
 	@test -f .env || { echo "❌ Falta .env — copiá .env.example y completá la sección ROOT."; exit 1; }

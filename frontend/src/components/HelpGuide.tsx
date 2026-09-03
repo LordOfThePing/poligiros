@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { useAuth, type Role } from "@/lib/auth"
+import { useSupportPhone } from "@/lib/useSupportPhone"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,8 +36,10 @@ import {
 
 const SEEN_KEY = "poligiros.help-seen.v1"
 
-/** Where coaches and the supervisor report app bugs. */
-const SUPPORT_PHONE = "+54 9 11 0000-0000"
+/** Builds a wa.me link from a phone number in any format, e.g. "+54 9 11 0000-0000". */
+function whatsappUrl(phone: string | null): string | undefined {
+  return phone ? `https://wa.me/${phone.replace(/\D/g, "")}` : undefined
+}
 
 type Section = { icon: LucideIcon; title: string; lines: string[] }
 type Guide = { title: string; intro: string; sections: Section[]; closing: string }
@@ -171,6 +174,8 @@ export function HelpGuideDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { user } = useAuth()
+  const supportPhone = useSupportPhone()
+  const supportWhatsappUrl = whatsappUrl(supportPhone)
   if (!user) return null
   const guide = GUIDES[user.role]
 
@@ -209,7 +214,26 @@ export function HelpGuideDialog({
               <p className="text-sm font-semibold text-foreground">¿Algo no funciona?</p>
               <p className="mt-1 text-sm text-muted-foreground leading-snug">
                 Cualquier consulta sobre el funcionamiento de la app o un error, escribile al
-                desarrollador: {SUPPORT_PHONE}.
+                desarrollador
+                {supportWhatsappUrl ? (
+                  <>
+                    {" "}
+                    por{" "}
+                    <a
+                      href={supportWhatsappUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-brand-accent underline underline-offset-2"
+                    >
+                      WhatsApp
+                    </a>
+                    .
+                  </>
+                ) : supportPhone ? (
+                  `: ${supportPhone}.`
+                ) : (
+                  "."
+                )}
               </p>
             </div>
           </div>
@@ -222,6 +246,32 @@ export function HelpGuideDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * The sidebar's "Soporte" button: opens a WhatsApp chat with the developer.
+ * Renders nothing until the backend's SUPPORT_PHONE env var resolves.
+ */
+export function SupportLink({ collapsed = false }: { collapsed?: boolean }) {
+  const url = whatsappUrl(useSupportPhone())
+  if (!url) return null
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className={cn(
+        "sidebar-link sidebar-link-inactive w-full",
+        collapsed && "justify-center px-0"
+      )}
+      title={collapsed ? "Soporte" : undefined}
+      aria-label="Soporte"
+    >
+      <LifeBuoy className="h-4 w-4 shrink-0" />
+      {!collapsed && <span className="flex-1 truncate text-left">Soporte</span>}
+    </a>
   )
 }
 

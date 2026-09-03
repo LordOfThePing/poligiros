@@ -14,6 +14,17 @@ import { notifyTarget } from "../lib/notify.js"
 
 const publicRoutes = new Hono()
 
+/**
+ * GET /public/config
+ * Small, non-sensitive settings the frontend needs before/without a session,
+ * sourced from the backend's own env so they can change without a Pages
+ * rebuild. `supportPhone` is the developer's WhatsApp number shown in the
+ * "Cómo usar la app" guide and the sidebar's Soporte button.
+ */
+publicRoutes.get("/config", (c) => {
+  return c.json({ supportPhone: process.env.SUPPORT_PHONE || null })
+})
+
 /** Resolve a signup token, or explain why it is not usable. */
 async function resolveLink(token: string) {
   const link = await prisma.signupLink.findUnique({

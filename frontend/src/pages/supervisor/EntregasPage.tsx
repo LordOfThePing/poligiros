@@ -50,6 +50,7 @@ export default function EntregasPage() {
   const [reviewingPractice, setReviewingPractice] = useState<PracticeRecord | null>(null)
   const [filter, setFilter] = useState<Filter>("pending")
   const [cohortFilter, setCohortFilter] = useState<string>("all")
+  const [itemFilter, setItemFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState<Submission | null>(null)
   const [feedback, setFeedback] = useState("")
@@ -71,10 +72,19 @@ export default function EntregasPage() {
   const cohortNames = Array.from(
     new Set([...submissions.flatMap((s) => s.cohorts), ...practices.flatMap((r) => r.cohorts)])
   ).sort()
-  const visibleSubmissions =
-    cohortFilter === "all" ? submissions : submissions.filter((s) => s.cohorts.includes(cohortFilter))
-  const visiblePractices =
-    cohortFilter === "all" ? practices : practices.filter((r) => r.cohorts.includes(cohortFilter))
+  const itemTitles = Array.from(
+    new Set([...submissions.map((s) => s.item.title), ...practices.map((r) => r.item.title)])
+  ).sort()
+  const visibleSubmissions = submissions.filter(
+    (s) =>
+      (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
+      (itemFilter === "all" || s.item.title === itemFilter)
+  )
+  const visiblePractices = practices.filter(
+    (r) =>
+      (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
+      (itemFilter === "all" || r.item.title === itemFilter)
+  )
 
   async function submitPracticeReview() {
     if (!reviewingPractice || !feedback.trim()) return
@@ -143,6 +153,18 @@ export default function EntregasPage() {
             <SelectContent>
               <SelectItem value="all">Todos los CIC</SelectItem>
               {cohortNames.map((n) => (
+                <SelectItem key={n} value={n}>{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Tarea</Label>
+          <Select value={itemFilter} onValueChange={setItemFilter}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las tareas</SelectItem>
+              {itemTitles.map((n) => (
                 <SelectItem key={n} value={n}>{n}</SelectItem>
               ))}
             </SelectContent>
