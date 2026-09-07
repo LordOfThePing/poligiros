@@ -121,7 +121,10 @@ first-time one). Both edit routes funnel through it: `PUT
 and `PUT /client/t/:token/edit` (coachee, `frontend/src/pages/client/TokenPage.tsx`
 — `GET /client/t/:token` reports eligibility as `canEdit`). Both reuse the
 generic per-field `EditableResult` editor (`frontend/src/components/EditableResult.tsx`),
-same as the supervisor's own edit UI. The supervisor's own edit route (`PUT
+same as the supervisor's own edit UI. The coach's route also covers their **own**
+module self-test (`client.userId == coach`): `GET /student/my-tests/:id` reports
+`canEdit` + Gaby's `feedback`, and `frontend/src/pages/student/TakeTestPage.tsx`
+offers the same one-shot editor on the read-only results. The supervisor's own edit route (`PUT
 /supervisor/responses/:assignmentId`) is intentionally NOT gated — editing is
 how they perform the review itself.
 

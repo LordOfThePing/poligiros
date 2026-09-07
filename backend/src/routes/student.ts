@@ -1112,7 +1112,7 @@ student.delete("/module-items/:id/comments/:commentId", async (c) => {
 async function loadMyAssignment(userId: string, id: string) {
   return prisma.testAssignment.findFirst({
     where: { id, client: { userId } },
-    include: { test: true, response: true },
+    include: { test: true, response: true, supervision: true },
   })
 }
 
@@ -1161,6 +1161,11 @@ student.get("/my-tests/:id", async (c) => {
     ...assignment,
     revoked: assignment.completedAt === null && Boolean(assignment.accessRevokedAt),
     prefillIdea,
+    // Gaby's return on the coach's own test, and their one post-review edit.
+    feedback: assignment.supervision
+      ? assignment.supervision.coachFeedback || assignment.supervision.supervisorNotes
+      : null,
+    canEdit: Boolean(assignment.supervision?.reviewedAt) && !assignment.response?.editedAt,
   })
 })
 

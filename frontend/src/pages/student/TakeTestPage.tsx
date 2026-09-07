@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
-import { apiJson } from "@/lib/api"
+import { ArrowLeft, Pencil } from "lucide-react"
+import { apiJson, apiTry } from "@/lib/api"
 import { sessionTestApi } from "@/lib/testApi"
 import AnclasTest from "@/pages/client/tests/AnclasTest"
 import TableroTest from "@/pages/client/tests/TableroTest"
@@ -10,7 +10,10 @@ import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
 import PlanVitalTest from "@/pages/client/tests/PlanVitalTest"
 import TareasExploracionTest from "@/pages/client/tests/TareasExploracionTest"
 import ResultsView from "@/pages/client/ResultsView"
+import { EditableResult } from "@/components/EditableResult"
+import { Button } from "@/components/ui/button"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { useToast } from "@/hooks/use-toast"
 
 type Assignment = {
   id: string
@@ -20,19 +23,27 @@ type Assignment = {
   response: { responses: Record<string, unknown> } | null
   prefillIdea?: string
   prefillIdeas?: string[]
+  feedback?: string | null
+  canEdit?: boolean
 }
 
 export default function StudentTakeTestPage() {
   const { id } = useParams<{ id: string }>()
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    apiJson<Assignment>(`/student/my-tests/${id}`)
+  const load = useCallback(() => {
+    return apiJson<Assignment>(`/student/my-tests/${id}`)
       .then(setAssignment)
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   if (loading) return <LoadingBadge />
   if (!assignment) return <div className="text-muted-foreground text-sm py-8">Test no encontrado.</div>
@@ -49,16 +60,67 @@ export default function StudentTakeTestPage() {
     assignment.test.type === "TABLERO_IDEAS" ? "max-w-5xl" :
     "max-w-2xl"
 
+  const feedbackPanel = assignment.feedback ? (
+    <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-4">
+      <p className="text-xs text-muted-foreground mb-1.5">Feedback de Gaby</p>
+      <p className="text-sm text-foreground whitespace-pre-wrap">{assignment.feedback}</p>
+    </div>
+  ) : null
+
+  // Completed + Gaby already reviewed it → the coach's single post-review edit.
+  if (assignment.completedAt && assignment.response && editing && assignment.canEdit) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <button
+          onClick={() => setEditing(false)}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          ← Volver a mis resultados
+        </button>
+        <p className="text-xs text-muted-foreground">
+          Esta es tu única edición para este resultado. Al guardar, vuelve a supervisión para una
+          segunda revisión.
+        </p>
+        {feedbackPanel}
+        <EditableResult
+          testType={assignment.test.type}
+          responses={assignment.response.responses}
+          onSave={async (responses) => {
+            const res = await apiTry(`/student/responses/${assignment.id}`, {
+              method: "PUT",
+              body: JSON.stringify({ responses }),
+            })
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({ message: "No se pudo guardar" }))
+              toast({ title: j.message || "No se pudo guardar", variant: "destructive" })
+              return
+            }
+            toast({ title: "Resultado actualizado", description: "Vuelve a supervisión para una segunda revisión." })
+            setEditing(false)
+            load()
+          }}
+        />
+      </div>
+    )
+  }
+
   // Completed → read-only results
   if (assignment.completedAt && assignment.response) {
     return (
       <div className={`${widthClass} mx-auto`}>
         {back}
+        {feedbackPanel && <div className="mb-6">{feedbackPanel}</div>}
         <ResultsView
           testType={assignment.test.type}
           responses={assignment.response.responses}
           coachFeedback={null}
           completedAt={assignment.completedAt}
+          footer={assignment.canEdit ? (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Editar mis respuestas
+            </Button>
+          ) : undefined}
         />
       </div>
     )
