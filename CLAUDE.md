@@ -121,7 +121,10 @@ first-time one). Both edit routes funnel through it: `PUT
 and `PUT /client/t/:token/edit` (coachee, `frontend/src/pages/client/TokenPage.tsx`
 — `GET /client/t/:token` reports eligibility as `canEdit`). Both reuse the
 generic per-field `EditableResult` editor (`frontend/src/components/EditableResult.tsx`),
-same as the supervisor's own edit UI. The coach's route also covers their **own**
+same as the supervisor's own edit UI. Anclas is the exception to "edit the
+fields": its editor re-asks the 40 statements and recomputes `scores`/`ranking`
+(reapplying the bonus +4), because those and `aiInsight` are derived — none of
+them is hand-editable. The coach's route also covers their **own**
 module self-test (`client.userId == coach`): `GET /student/my-tests/:id` reports
 `canEdit` + Gaby's `feedback`, and `frontend/src/pages/student/TakeTestPage.tsx`
 offers the same one-shot editor on the read-only results. The supervisor's own edit route (`PUT
@@ -148,9 +151,12 @@ results page).
 
 ## Anclas de Carrera scoring
 
-Step 2 offers "bonus candidates" via `selectBonusCandidates` in
-`frontend/src/lib/anclas.ts` (a pure, unit-tested tier walk: start at score 6,
-drop a tier at a time until ≥3 items qualify). The user picks 3; each gets `+4`
+`frontend/src/lib/anclas.ts` owns the questionnaire and the scoring —
+`QUESTIONS` (the 40 statements), `ANCHOR_ITEMS`/`ANCHOR_KEYS`, `calcScores`,
+`rankAnchors` — shared by the test page and by the post-review editor, which
+re-asks the same 40 statements. Step 2 offers "bonus candidates" via
+`selectBonusCandidates` there too (a pure, unit-tested tier walk: start at score
+6, drop a tier at a time until ≥3 items qualify). The user picks 3; each gets `+4`
 before anchor scoring. Scores are averages of 5 items per anchor. The AI insight
 comes from `POST /client/t/:token/ai-insight` (top-3 anchors) and is saved into
 `responses.aiInsight`.

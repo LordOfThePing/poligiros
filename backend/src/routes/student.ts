@@ -547,7 +547,10 @@ student.get("/modules", async (c) => {
   const myAssignments = myClient
     ? await prisma.testAssignment.findMany({
         where: { clientId: myClient.id },
-        select: { id: true, testId: true, completedAt: true, accessRevokedAt: true },
+        select: {
+          id: true, testId: true, completedAt: true, accessRevokedAt: true,
+          response: { select: { editedAt: true } },
+        },
       })
     : []
 
@@ -596,6 +599,8 @@ student.get("/modules", async (c) => {
             ? {
                 feedback: ownSupervision.coachFeedback || ownSupervision.supervisorNotes,
                 reviewedAt: ownSupervision.reviewedAt,
+                // The one-shot post-review edit, offered right on the card.
+                canEdit: Boolean(ownSupervision.reviewedAt) && !assignment?.response?.editedAt,
               }
             : null,
           // Only meaningful for kind = ENTREGA.
@@ -1132,7 +1137,7 @@ student.get("/my-tests", async (c) => {
   const supervisions = ids.length
     ? await prisma.supervisionRequest.findMany({
         where: { assignmentId: { in: ids }, studentId: user.id },
-        select: { assignmentId: true, coachFeedback: true, supervisorNotes: true },
+        select: { assignmentId: true, coachFeedback: true, supervisorNotes: true, reviewedAt: true },
       })
     : []
   const supervisionByAssignment = new Map(supervisions.map((s) => [s.assignmentId, s]))
@@ -1144,6 +1149,7 @@ student.get("/my-tests", async (c) => {
         ...a,
         revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
         feedback: sv ? sv.coachFeedback || sv.supervisorNotes : null,
+        canEdit: Boolean(sv?.reviewedAt) && !a.response?.editedAt,
       }
     })
   )

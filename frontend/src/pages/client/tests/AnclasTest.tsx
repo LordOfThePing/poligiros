@@ -3,81 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { selectBonusCandidates } from "@/lib/anclas"
-import { AnclasResult, ANCHOR_ORDER } from "@/components/results/AnclasResult"
+import { selectBonusCandidates, QUESTIONS, calcScores, rankAnchors } from "@/lib/anclas"
+import { AnclasResult } from "@/components/results/AnclasResult"
 import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
 import type { TestApi } from "@/lib/testApi"
-
-// ─── Data ────────────────────────────────────────────────────────────────────
-
-const QUESTIONS = [
-  "Sueño con ser tan bueno en lo que hago que mi consejo será requerido continuamente.",
-  "Me siento más satisfecho / realizado en mi trabajo cuando siento que logré integrar y optimizar los esfuerzos de otros.",
-  "Sueño con tener una carrera que me permita la libertad de trabajar independientemente y con planificación propia.",
-  "La seguridad y la estabilidad son más importantes para mi que la libertad y la autonomía.",
-  "Estoy siempre buscando ideas o proyectos que me permitan encarar un emprendimiento propio.",
-  "Voy a sentirme exitoso en mi carrera solo si siento que he hecho una contribución a la comunidad.",
-  "Sueño con tener una carrera que me permita resolver problemas o salir adelante en situaciones extremadamente desafiantes.",
-  "Cambiaría de empresa antes que asumir una responsabilidad que comprometiera mis objetivos personales y familiares.",
-  "Voy a sentirme exitoso en mi carrera sólo si puedo desarrollar mis habilidades técnicas o funcionales hasta el nivel más alto de competencia.",
-  "Sueño con estar a cargo de una organización compleja y con tomar decisiones que involucren a muchas personas.",
-  "Me siento más cómodo en mi trabajo cuando tengo libertad absoluta para definir tareas, procedimientos y planes.",
-  "Cambiaría de empresa antes que aceptar una posición que pusiera en juego mi seguridad en esa organización.",
-  "Armar mi propia empresa es más importante para mí que lograr una posición ejecutiva en una organización.",
-  "Me siento más realizado en mi carrera si puedo poner mi talento al servicio de otros.",
-  "Voy a sentirme exitoso en mi carrera sólo si enfrento y resuelvo desafíos muy complejos.",
-  "Sueño una carrera que me permitirá integrar mis necesidades personales, familiares y laborales.",
-  "Es más atractivo para mí convertirme en un profesional de nivel ejecutivo en mi área de experiencia que en un gerente general.",
-  "Voy a sentirme exitoso sólo si me convierto en gerente general de una empresa.",
-  "Voy a sentirme exitoso sólo si logro completa autonomía y libertad.",
-  "Prefiero trabajar en organizaciones que me den seguridad y estabilidad.",
-  "Me siento más realizado en mi carrera cuando puedo construir algo que es resultado de mis ideas y esfuerzo.",
-  "Usar mis capacidades para hacer del mundo un lugar mejor es más importante para mí que alcanzar una posición de alto nivel ejecutivo.",
-  "Me sentí más contento con mi carrera cuando pude resolver problemas que parecían imposibles o triunfar pese a grandes obstáculos.",
-  "Me siento exitoso en mi vida sólo si puedo equilibrar mis objetivos personales, familiares y de carrera.",
-  "Cambiaría de empresa antes que aceptar una rotación que me alejara de mi área de experiencia.",
-  "Llegar a ser gerente general es más atractivo para mí que ser un director funcional de mi área de experiencia.",
-  "La posibilidad de realizar un trabajo a mi manera, libre de reglas y limitaciones, es más importante para mí que la seguridad laboral.",
-  "Me siento más contento con mi trabajo cuando siento que tengo una completa seguridad financiera y de empleo.",
-  "Me sentiré realizado en mi carrera sólo si logro crear o construir algo desarrollado o creado enteramente por mí.",
-  "Sueño con tener una carrera que me permita realizar una contribución real a la humanidad y a la sociedad.",
-  "Busco oportunidades de trabajo que desafíen fuertemente mi capacidad de resolver problemas o mi perfil competitivo.",
-  "Equilibrar los requerimientos de la vida personal y profesional es más importante para mí que lograr una posición de alto nivel.",
-  "Me siento más satisfecho en mi trabajo cuando puedo utilizar mis conocimientos y habilidades específicas.",
-  "Cambiaría de empresa antes que aceptar un trabajo que me alejara del camino hacia la gerencia general.",
-  "Cambiaría de empresa antes que aceptar un trabajo que redujera mi autonomía y libertad.",
-  "Sueño con desarrollar una carrera que me permita sentir seguridad y estabilidad.",
-  "Sueño con poner en marcha y construir mi propio negocio.",
-  "Cambiaría de empresa antes que aceptar una posición en la que se desaprovechara mi habilidad de brindar servicio a otros.",
-  "Lidiar con problemas que parecen insolubles es más importante para mí que alcanzar una posición ejecutiva.",
-  "Siempre busqué oportunidades de trabajo que minimizaran la interferencia con lo familiar y personal.",
-]
-
-const ANCHOR_ITEMS: Record<string, number[]> = {
-  TF: [0, 8, 16, 24, 32],
-  GG: [1, 9, 17, 25, 33],
-  AU: [2, 10, 18, 26, 34],
-  SE: [3, 11, 19, 27, 35],
-  CE: [4, 12, 20, 28, 36],
-  SC: [5, 13, 21, 29, 37],
-  PD: [6, 14, 22, 30, 38],
-  EV: [7, 15, 23, 31, 39],
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function calcScores(finalAnswers: number[]): Record<string, number> {
-  const scores: Record<string, number> = {}
-  for (const [anchor, items] of Object.entries(ANCHOR_ITEMS)) {
-    const sum = items.reduce((s, i) => s + (finalAnswers[i] || 0), 0)
-    scores[anchor] = parseFloat((sum / items.length).toFixed(2))
-  }
-  return scores
-}
-
-function rankAnchors(scores: Record<string, number>): string[] {
-  return [...ANCHOR_ORDER].sort((a, b) => scores[b] - scores[a])
-}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

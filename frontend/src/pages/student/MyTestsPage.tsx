@@ -4,7 +4,7 @@ import { apiJson } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LoadingBadge } from "@/components/LoadingBadge"
 
@@ -14,6 +14,8 @@ type MyAssignment = {
   test: { type: string; title: string }
   /** Feedback from Gaby on a test the coach took on themself. */
   feedback: string | null
+  /** The one-shot post-review edit is still available. */
+  canEdit?: boolean
 }
 
 export default function StudentMyTestsPage() {
@@ -66,6 +68,13 @@ export default function StudentMyTestsPage() {
                         >
                           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           Feedback de Gaby
+                        </Button>
+                      )}
+                      {a.completedAt && a.canEdit && (
+                        <Button asChild variant="outline" size="sm">
+                          <Link to={`/student/my-tests/${a.id}?edit=1`}>
+                            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
+                          </Link>
                         </Button>
                       )}
                       {a.completedAt ? (

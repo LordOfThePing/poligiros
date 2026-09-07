@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
-  ClipboardCheck, PanelLeftClose, PanelLeftOpen, ListChecks,
+  ClipboardCheck, PanelLeftClose, PanelLeftOpen, ListChecks, Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
@@ -540,15 +540,26 @@ export default function ProgramaPage() {
                           Al enviarlo le llega a Gaby para su devolución.
                         </p>
                       )}
-                      <Button
-                        className={current.item.submitted ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
-                        variant={current.item.submitted ? "outline" : "default"}
-                        disabled={saving}
-                        onClick={() => openTest(current.item)}
-                      >
-                        <ClipboardCheck className="h-4 w-4 mr-2" />
-                        {current.item.submitted ? "Ver mi resultado" : "Realizar test"}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {current.item.supervision?.canEdit && current.item.assignmentId && (
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/student/my-tests/${current.item.assignmentId}?edit=1`)}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar respuestas
+                          </Button>
+                        )}
+                        <Button
+                          className={current.item.submitted ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
+                          variant={current.item.submitted ? "outline" : "default"}
+                          disabled={saving}
+                          onClick={() => openTest(current.item)}
+                        >
+                          <ClipboardCheck className="h-4 w-4 mr-2" />
+                          {current.item.submitted ? "Ver mi resultado" : "Realizar test"}
+                        </Button>
+                      </div>
                     </div>
                     {current.item.supervision?.feedback && (
                       <div className="mt-4 bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-4 space-y-1.5">

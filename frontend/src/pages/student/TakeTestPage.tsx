@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, useSearchParams, Link } from "react-router-dom"
 import { ArrowLeft, Pencil } from "lucide-react"
 import { apiJson, apiTry } from "@/lib/api"
 import { sessionTestApi } from "@/lib/testApi"
@@ -32,7 +32,10 @@ export default function StudentTakeTestPage() {
   const { id } = useParams<{ id: string }>()
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState(false)
+  // ?edit=1 — the "Editar" buttons on Mi Programa / Mis Tests land straight in
+  // the editor instead of making the coach hunt for the button here.
+  const [searchParams] = useSearchParams()
+  const [editing, setEditing] = useState(searchParams.get("edit") === "1")
   const { toast } = useToast()
 
   const load = useCallback(() => {
@@ -105,32 +108,36 @@ export default function StudentTakeTestPage() {
     )
   }
 
-  // Completed → read-only results
+  // Completed → read-only results. The edit action lives in the top bar, not at
+  // the foot of the page: Tablero fills the viewport and anything below it is
+  // off-screen until you scroll.
   if (assignment.completedAt && assignment.response) {
     return (
       <div className={`${widthClass} mx-auto`}>
-        {back}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <Link to="/student/my-tests" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Volver a Mis Tests
+          </Link>
+          {/* Always say something: the edit button, or why it is not there. */}
+          {assignment.canEdit ? (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Editar mis respuestas
+            </Button>
+          ) : assignment.response?.editedAt ? (
+            <span className="text-xs text-muted-foreground text-right">Ya usaste tu única edición de este resultado.</span>
+          ) : (
+            <span className="text-xs text-muted-foreground text-right">
+              Vas a poder editar tus respuestas una vez que Gaby lo revise.
+            </span>
+          )}
+        </div>
         {feedbackPanel && <div className="mb-6">{feedbackPanel}</div>}
         <ResultsView
           testType={assignment.test.type}
           responses={assignment.response.responses}
           coachFeedback={null}
           completedAt={assignment.completedAt}
-          // Always say something: the edit button, or why it is not there.
-          footer={
-            assignment.canEdit ? (
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                Editar mis respuestas
-              </Button>
-            ) : assignment.response?.editedAt ? (
-              <span className="text-xs text-muted-foreground">Ya usaste tu única edición de este resultado.</span>
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                Vas a poder editar tus respuestas una vez que Gaby lo revise.
-              </span>
-            )
-          }
         />
       </div>
     )

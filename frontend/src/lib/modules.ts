@@ -80,6 +80,8 @@ export type OwnSubmission = {
 export type OwnSupervision = {
   feedback: string | null
   reviewedAt: string | null
+  /** The coach's one-shot post-review edit is still available. */
+  canEdit?: boolean
 }
 
 /** A peer of the same CIC, pickable as a dupla partner. */

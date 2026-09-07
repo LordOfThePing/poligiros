@@ -50,7 +50,7 @@ export default function ResultsView({
       )}
 
       {testType === "TABLERO_IDEAS" && (
-        <div className={cn("flex flex-col gap-0", constrainHeight && "lg:h-[calc(100vh-150px)]")}>
+        <div className={cn("flex flex-col gap-0", constrainHeight && "lg:max-h-[calc(100dvh-190px)]")}>
           <h2 className="font-serif text-2xl text-foreground shrink-0 mb-3">Tu Tablero de Ideas</h2>
 
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
@@ -163,7 +163,14 @@ export default function ResultsView({
           {(() => {
             const tasks = (responses.explorationTasks as string[] | undefined)?.filter(Boolean) ?? []
             return (
-              <div className="shrink-0 border-t border-border mt-3 pt-3 flex flex-col sm:flex-row sm:items-start gap-3">
+              <div
+                className={cn(
+                  "shrink-0 border-t border-border mt-3 pt-3 pb-3 flex flex-col sm:flex-row sm:items-start gap-3",
+                  // Pinned to the bottom of the scroller, over the columns: the
+                  // ideas scroll underneath, this bar never leaves the screen.
+                  constrainHeight && "sticky bottom-0 z-10 bg-brand-bg/95 backdrop-blur-sm",
+                )}
+              >
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
                     Tareas de exploración

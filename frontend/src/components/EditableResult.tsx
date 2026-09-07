@@ -7,15 +7,10 @@ import { Plus, X, ChevronUp, ChevronDown, Save } from "lucide-react"
 import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 import { PV_SECTIONS } from "@/lib/planVital"
+import { QUESTIONS, calcScores, rankAnchors } from "@/lib/anclas"
 
 // Editable test result (F7 follow-up): coach + supervisor can modify fields,
 // values, and order, then save back to the stored response.
-
-const ANCHOR_NAMES: Record<string, string> = {
-  TF: "Técnico/Funcional", GG: "Gerencia General", AU: "Autonomía",
-  SE: "Seguridad/Estabilidad", CE: "Creativo-Emprendedor", SC: "Servicio a la Causa",
-  PD: "Puro Desafío", EV: "Estilo de Vida",
-}
 
 type Data = Record<string, any>
 
@@ -84,26 +79,77 @@ function ListEditor({ label, items, onChange }: { label: string; items: string[]
   )
 }
 
+/**
+ * Anclas is edited by re-answering the 40 statements — the same thing the test
+ * asks — never by hand-editing what those answers produce. Puntajes, ranking e
+ * insight son derivados: los dos primeros se recalculan acá al guardar (con el
+ * mismo +4 de los ítems bonus que aplica el test) y el insight queda como está.
+ */
 function AnclasEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
-  const scores: Record<string, number> = data.scores ?? {}
-  const setScore = (a: string, v: string) => setField("scores", { ...scores, [a]: Number(v) })
+  const raw: (number | null)[] = Array.isArray(data.rawAnswers)
+    ? data.rawAnswers
+    : Array.isArray(data.finalAnswers)
+      ? data.finalAnswers
+      : Array(QUESTIONS.length).fill(null)
+  const bonusItems: number[] = Array.isArray(data.bonusItems) ? data.bonusItems : []
+
+  function setAnswer(idx: number, val: number) {
+    const next = [...raw]
+    next[idx] = val
+    // Same derivation as the test: bonus items get +4 before scoring.
+    const final = next.map((v) => v ?? 0)
+    bonusItems.forEach((i) => { final[i] = (final[i] || 0) + 4 })
+    const scores = calcScores(final)
+    setField("rawAnswers", next)
+    setField("finalAnswers", final)
+    setField("scores", scores)
+    setField("ranking", rankAnchors(scores))
+  }
+
+  const answered = raw.filter((v) => v !== null && v !== undefined).length
+
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs">Puntajes por ancla (definen el orden del ranking)</Label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-          {Object.keys(ANCHOR_NAMES).map((a) => (
-            <div key={a} className="flex items-center gap-2">
-              <span className="text-xs flex-1">{ANCHOR_NAMES[a]} ({a})</span>
-              <Input type="number" step="0.1" value={scores[a] ?? ""} onChange={(e) => setScore(a, e.target.value)} className="w-24 text-sm" />
+      <p className="text-xs text-muted-foreground">
+        Volvé a responder las afirmaciones que quieras cambiar ({answered} de {QUESTIONS.length}{" "}
+        respondidas). El ranking se recalcula solo al guardar.
+      </p>
+      {QUESTIONS.map((q, idx) => (
+        <div key={idx} className="rounded-lg border border-border p-3 space-y-2">
+          <p className="text-sm text-foreground flex items-start gap-2">
+            <span className="font-medium text-brand-accent">{idx + 1}.</span>
+            <span className="flex-1">{q}</span>
+          </p>
+          <div className="flex gap-1.5 flex-wrap">
+            {[1, 2, 3, 4, 5, 6].map((val) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setAnswer(idx, val)}
+                className={
+                  "w-8 h-8 rounded-full border-2 text-xs font-bold transition-all " +
+                  (raw[idx] === val
+                    ? "bg-brand-accent border-brand-accent text-white"
+                    : "border-border text-muted-foreground hover:border-brand-accent hover:text-brand-accent")
+                }
+              >
+                {val}
+              </button>
+            ))}
+            {bonusItems.includes(idx) && (
+              <span className="self-center text-[0.7rem] text-brand-accent font-medium ml-1">
+                +4 (elegida en el paso 2)
+              </span>
+            )}
+          </div>
+          {idx === 0 && (
+            <div className="flex justify-between text-[0.7rem] text-muted-foreground">
+              <span>1 = No es verdadero para mí</span>
+              <span>6 = Es siempre verdadero</span>
             </div>
-          ))}
+          )}
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Insight</Label>
-        <Textarea value={data.aiInsight ?? ""} onChange={(e) => setField("aiInsight", e.target.value)} className="text-sm min-h-[80px]" />
-      </div>
+      ))}
     </div>
   )
 }
