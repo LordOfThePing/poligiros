@@ -268,6 +268,12 @@ export default function ResultsView({
         </div>
       )}
 
+      {/* Action slot (e.g. the one-shot post-review edit button). Tablero pins it
+          into its own footer row above; every other test gets it here. */}
+      {footer && testType !== "TABLERO_IDEAS" && (
+        <div className="no-print flex justify-end">{footer}</div>
+      )}
+
       {/* Coach feedback */}
       {coachFeedback && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5">
