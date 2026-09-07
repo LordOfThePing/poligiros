@@ -20,7 +20,8 @@ type Assignment = {
   completedAt: string | null
   revoked?: boolean
   test: { type: string; title: string }
-  response: { responses: Record<string, unknown> } | null
+  response: { responses: Record<string, unknown>; editedAt?: string | null } | null
+  supervision?: { reviewedAt?: string | null } | null
   prefillIdea?: string
   prefillIdeas?: string[]
   feedback?: string | null
@@ -115,12 +116,21 @@ export default function StudentTakeTestPage() {
           responses={assignment.response.responses}
           coachFeedback={null}
           completedAt={assignment.completedAt}
-          footer={assignment.canEdit ? (
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />
-              Editar mis respuestas
-            </Button>
-          ) : undefined}
+          // Always say something: the edit button, or why it is not there.
+          footer={
+            assignment.canEdit ? (
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Editar mis respuestas
+              </Button>
+            ) : assignment.response?.editedAt ? (
+              <span className="text-xs text-muted-foreground">Ya usaste tu única edición de este resultado.</span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Vas a poder editar tus respuestas una vez que Gaby lo revise.
+              </span>
+            )
+          }
         />
       </div>
     )
