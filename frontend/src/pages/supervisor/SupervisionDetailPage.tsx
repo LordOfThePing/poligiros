@@ -324,9 +324,16 @@ export default function SupervisionDetailPage() {
             {req.student.name} · {req.assignment.client.name} · {formatShortDate(req.createdAt)}
           </p>
         </div>
-        <Badge className={req.status === "REVIEWED" ? "bg-indigo-100 text-indigo-800 ml-auto" : "bg-amber-100 text-amber-800 ml-auto"}>
-          {req.status === "REVIEWED" ? "Revisado" : "Pendiente"}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          {req.assignment?.response?.editedAt && (
+            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+              Editado por {req.assignment.response.editedBy === "coachee" ? "el coachee" : "el coach"}
+            </Badge>
+          )}
+          <Badge className={req.status === "REVIEWED" ? "bg-indigo-100 text-indigo-800" : "bg-amber-100 text-amber-800"}>
+            {req.status === "REVIEWED" ? "Revisado" : "Pendiente"}
+          </Badge>
+        </div>
       </div>
 
       {req.studentNotes && (

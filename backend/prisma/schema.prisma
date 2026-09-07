@@ -336,6 +336,14 @@ model TestResponse {
   assignment   TestAssignment @relation(fields: [assignmentId], references: [id])
   responses    Json
   submittedAt  DateTime       @default(now())
+
+  /// Set the one time the coach or coachee uses their single post-review edit
+  /// (see SupervisionRequest — only allowed once the supervisor has reviewed
+  /// it for the first time, and only once; saving flips the request back to
+  /// PENDING so the supervisor reviews it again).
+  editedAt DateTime?
+  /// Who made that edit: "coach" | "coachee".
+  editedBy String?
 }
 
 model SupervisionRequest {

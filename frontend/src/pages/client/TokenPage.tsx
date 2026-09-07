@@ -9,7 +9,9 @@ import { ModeloNegocioTest } from "./tests/ModeloNegocioTest"
 import PlanVitalTest from "./tests/PlanVitalTest"
 import TareasExploracionTest from "./tests/TareasExploracionTest"
 import ResultsView from "./ResultsView"
-import { tokenTestApi, type TestApi } from "@/lib/testApi"
+import { EditableResult } from "@/components/EditableResult"
+import { useToast } from "@/hooks/use-toast"
+import { tokenTestApi } from "@/lib/testApi"
 
 const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
@@ -22,6 +24,9 @@ type TokenState =
       responses: Record<string, unknown>
       coachFeedback: string | null
       completedAt: string
+      // The coachee's single post-review edit — only after the supervisor's
+      // first review, and only once (shared with the coach's own edit).
+      canEdit: boolean
     }
   | { state: "expired" }
   | { state: "revoked"; error: string }
@@ -29,6 +34,7 @@ type TokenState =
 
 export default function TokenPage() {
   const { token } = useParams<{ token: string }>()
+  const { toast } = useToast()
   const [data, setData] = useState<TokenState>({ state: "loading" })
   const [editing, setEditing] = useState(false)
 
@@ -109,35 +115,36 @@ export default function TokenPage() {
 
   if (data.state === "results") {
     const wide = data.testType === "MODELO_NEGOCIO" || data.testType === "TABLERO_IDEAS"
-    const canEdit = data.testType === "TABLERO_IDEAS"
 
-    if (editing && canEdit) {
-      const editApi: TestApi = {
-        ...tokenTestApi(token!),
-        submit: (responses) =>
-          fetch(`${API_URL}/client/t/${token}/edit`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ responses }),
-          }),
-      }
+    if (editing && data.canEdit) {
       return (
         <div className="min-h-dvh bg-brand-bg py-8">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="mb-4">
-              <button
-                onClick={() => setEditing(false)}
-                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-              >
-                ← Volver a mis resultados
-              </button>
-            </div>
-            <TableroTest
-              api={editApi}
-              assignmentId={`edit-${token}`}
-              initialResponses={data.responses}
-              onDone={() => {
+          <div className="max-w-2xl mx-auto px-4 space-y-4">
+            <button
+              onClick={() => setEditing(false)}
+              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              ← Volver a mis resultados
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Esta es tu única edición para este resultado — tu coach también puede usarla, así que
+              solo uno de los dos podrá editar. Al guardar, tu coach y su supervisora lo ven de nuevo.
+            </p>
+            <EditableResult
+              testType={data.testType}
+              responses={data.responses}
+              onSave={async (responses) => {
+                const res = await fetch(`${API_URL}/client/t/${token}/edit`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ responses }),
+                })
+                if (!res.ok) {
+                  const j = await res.json().catch(() => ({ message: "No se pudo guardar" }))
+                  toast({ title: j.message || "No se pudo guardar", variant: "destructive" })
+                  return
+                }
                 setEditing(false)
                 load()
               }}
@@ -155,7 +162,7 @@ export default function TokenPage() {
             responses={data.responses}
             coachFeedback={data.coachFeedback}
             completedAt={data.completedAt}
-            footer={canEdit ? (
+            footer={data.canEdit ? (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
                 Editar mis respuestas

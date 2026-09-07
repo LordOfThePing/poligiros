@@ -110,6 +110,17 @@
     .no-print {
       display: none !important;
     }
+
+    /* Tablero de Ideas: keep SABER/QUERER/SOÑAR together on the first page
+       and start Brainstorming on a fresh page instead of splitting mid-list. */
+    .print-result .tablero-print-columns {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .print-result .tablero-print-brainstorm {
+      page-break-before: always;
+      break-before: page;
+    }
   }
 
   /* Business Model Canvas: mobile stacks; desktop uses the reference layout. */

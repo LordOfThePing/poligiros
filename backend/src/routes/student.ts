@@ -12,6 +12,7 @@ import { getCoachAccess } from "../lib/cohort.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
 import { notifyTarget } from "../lib/notify.js"
 import { isR2Configured, uploadToR2, deleteFromR2 } from "../lib/r2.js"
+import { applyPostReviewEdit, PostReviewEditError } from "../lib/postReviewEdit.js"
 import type { AppVariables } from "../lib/types.js"
 
 const student = new Hono<{ Variables: AppVariables }>()
@@ -1291,7 +1292,12 @@ student.post("/assignments/:id/reset-request", async (c) => {
   return c.json(request, 201)
 })
 
-/** PUT /student/responses/:assignmentId — coach edits a coachee's result. */
+/**
+ * PUT /student/responses/:assignmentId — the coach's single post-review edit
+ * of a coachee's (or their own self-test's) result — see applyPostReviewEdit:
+ * only once, only after the supervisor's first review. Reopens the
+ * supervision request for a second look.
+ */
 student.put("/responses/:assignmentId", async (c) => {
   const user = c.get("user")
   const id = c.req.param("assignmentId")
@@ -1301,11 +1307,16 @@ student.put("/responses/:assignmentId", async (c) => {
   })
   if (!assignment) return c.json({ error: "Not found" }, 404)
   const { responses } = await c.req.json()
-  const updated = await prisma.testResponse.update({
-    where: { assignmentId: id },
-    data: { responses },
-  })
-  return c.json(updated)
+
+  try {
+    const updated = await applyPostReviewEdit(id, responses, "coach")
+    return c.json(updated)
+  } catch (e) {
+    if (e instanceof PostReviewEditError) {
+      return c.json({ error: e.code, message: e.message }, e.code === "not_reviewed" ? 403 : 409)
+    }
+    throw e
+  }
 })
 
 export default student

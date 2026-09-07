@@ -22,7 +22,11 @@ type SupervisionRequest = {
   createdAt: string
   reviewedAt: string | null
   student: { name: string; cohorts: Cohort[] }
-  assignment: { test: { title: string }; client: { name: string } }
+  assignment: {
+    test: { title: string }
+    client: { name: string }
+    response: { editedAt: string | null; editedBy: string | null } | null
+  }
 }
 
 type ResetRequest = {
@@ -33,6 +37,8 @@ type ResetRequest = {
   assignment: { test: { title: string }; client: { name: string } }
 }
 
+type SortOrder = "recent" | "name"
+
 export default function SupervisorSupervisionPage() {
   const { toast } = useToast()
   const [requests, setRequests] = useState<SupervisionRequest[]>([])
@@ -41,6 +47,7 @@ export default function SupervisorSupervisionPage() {
   const [actingId, setActingId] = useState<string | null>(null)
   const [cohortFilter, setCohortFilter] = useState<string>("all")
   const [testFilter, setTestFilter] = useState<string>("all")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("recent")
 
   function loadResetRequests() {
     apiJson<ResetRequest[]>("/supervisor/reset-requests").then(setResetRequests).catch(() => {})
@@ -73,8 +80,20 @@ export default function SupervisorSupervisionPage() {
       (cohortFilter === "all" || r.student.cohorts.some((c) => c.id === cohortFilter)) &&
       (testFilter === "all" || r.assignment.test.title === testFilter)
   )
-  const pending = visibleRequests.filter((r) => r.status === "PENDING")
-  const reviewed = visibleRequests.filter((r) => r.status === "REVIEWED")
+  const pending = visibleRequests
+    .filter((r) => r.status === "PENDING")
+    .sort((a, b) =>
+      sortOrder === "name"
+        ? a.student.name.localeCompare(b.student.name)
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  const reviewed = visibleRequests
+    .filter((r) => r.status === "REVIEWED")
+    .sort((a, b) =>
+      sortOrder === "name"
+        ? a.student.name.localeCompare(b.student.name)
+        : new Date(b.reviewedAt ?? b.createdAt).getTime() - new Date(a.reviewedAt ?? a.createdAt).getTime()
+    )
 
   return (
     <div className="space-y-6">
@@ -105,6 +124,16 @@ export default function SupervisorSupervisionPage() {
               {testTitles.map((t) => (
                 <SelectItem key={t} value={t}>{t}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Ordenar por</Label>
+          <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Más recientes</SelectItem>
+              <SelectItem value="name">Nombre</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -176,7 +205,14 @@ export default function SupervisorSupervisionPage() {
                   <CardContent className="py-4 px-5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="font-medium text-foreground">{req.assignment.test.title}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-foreground">{req.assignment.test.title}</p>
+                          {req.reviewedAt && (
+                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">
+                              2da revisión · editado por {req.assignment.response?.editedBy === "coachee" ? "el coachee" : "el coach"}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground mt-0.5">
                           {req.student.name} · {req.assignment.client.name}
                         </p>

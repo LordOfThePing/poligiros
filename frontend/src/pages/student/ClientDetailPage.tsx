@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { api, apiJson, apiPost } from "@/lib/api"
+import { apiJson, apiPost, apiTry } from "@/lib/api"
 import { EditableResult } from "@/components/EditableResult"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { useCoachAccess } from "@/lib/useCoachAccess"
@@ -47,8 +47,8 @@ type Assignment = {
   test: { id: string; type: string; title: string }
   completedAt: string | null
   accessToken: string | null
-  response: { responses: Record<string, unknown> } | null
-  supervision: { id: string; status: string } | null
+  response: { responses: Record<string, unknown>; editedAt: string | null } | null
+  supervision: { id: string; status: string; reviewedAt: string | null } | null
   resetRequests?: { id: string; status: "PENDING" | "APPROVED" | "REJECTED" }[]
 }
 
@@ -180,6 +180,12 @@ export default function ClientDetailPage() {
             const notEnabled =
               !!access?.enabledTestTypes &&
               !access.enabledTestTypes.includes(type as TestType)
+            // One edit total, shared with the coachee, only after the supervisor's first review.
+            const canEdit =
+              Boolean(assignment?.completedAt) &&
+              Boolean(assignment?.response) &&
+              Boolean(assignment?.supervision?.reviewedAt) &&
+              !assignment?.response?.editedAt
 
             return (
               <div
@@ -196,6 +202,9 @@ export default function ClientDetailPage() {
                     <Badge className={`text-xs ${assignment.supervision.status === "REVIEWED" ? "bg-indigo-100 text-indigo-800" : "bg-gray-100 text-gray-600"} hover:bg-current`}>
                       {assignment.supervision.status === "REVIEWED" ? "Revisado" : "En supervisión"}
                     </Badge>
+                  )}
+                  {assignment?.response?.editedAt && (
+                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">Editado</Badge>
                   )}
                   {resetPending && (
                     <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">Eliminación solicitada</Badge>
@@ -239,7 +248,7 @@ export default function ClientDetailPage() {
                               <Eye className="h-4 w-4" /> Ver resultado
                             </DropdownMenuItem>
                           )}
-                          {assignment.completedAt && assignment.response && (
+                          {canEdit && (
                             <DropdownMenuItem
                               onSelect={() =>
                                 setResultModal({
@@ -378,17 +387,25 @@ export default function ClientDetailPage() {
           <DialogHeader>
             <DialogTitle className="font-serif">Editar resultado — {resultModal?.title}</DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Esta es tu única edición para este resultado — el coachee también puede usarla, así que
+            solo uno de los dos podrá editar. Al guardar, vuelve a supervisión para una segunda revisión.
+          </p>
           {resultModal && (
             <EditableResult
               testType={resultModal.testType}
               responses={resultModal.responses}
               onSave={async (responses) => {
-                await api(`/student/responses/${resultModal.assignmentId}`, {
+                const res = await apiTry(`/student/responses/${resultModal.assignmentId}`, {
                   method: "PUT",
-                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ responses }),
                 })
-                toast({ title: "Resultado actualizado" })
+                if (!res.ok) {
+                  const j = await res.json().catch(() => ({ message: "No se pudo guardar" }))
+                  toast({ title: j.message || "No se pudo guardar", variant: "destructive" })
+                  return
+                }
+                toast({ title: "Resultado actualizado", description: "Vuelve a supervisión para una segunda revisión." })
                 setResultModal(null)
                 refreshClient()
               }}

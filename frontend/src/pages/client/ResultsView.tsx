@@ -55,7 +55,7 @@ export default function ResultsView({
 
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
             {/* Left: three columns — each with sticky header and independent scroll */}
-            <div className={cn("grid grid-cols-1 sm:grid-cols-3 gap-4", constrainHeight && "lg:h-full")}>
+            <div className={cn("tablero-print-columns grid grid-cols-1 sm:grid-cols-3 gap-4", constrainHeight && "lg:h-full")}>
               {TABLERO_COLUMNS.map((col) => {
                 const ranked = (responses[col.rankKey] as string[] | undefined)?.filter(Boolean)
                 const raw = (responses[col.key] as string[] | undefined)?.filter(Boolean)
@@ -67,14 +67,17 @@ export default function ResultsView({
                       <h3 className="font-serif text-base font-medium">{col.title}</h3>
                       <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">{col.subtitle}</p>
                     </div>
-                    <ol className={cn("mt-2 flex-1 space-y-1.5", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
+                    <ol className={cn("mt-2 flex-1 min-h-0 space-y-1.5", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
                       {items.map((v, i) => {
                         const inTop3 = i < 3
                         return (
                           <li
                             key={i}
                             className={cn(
-                              "flex items-center gap-2 text-sm bg-white rounded-lg border px-2.5 py-1.5 transition-colors",
+                              // space-x (margin-based), not gap — html2canvas doesn't
+                              // account for flex `gap`, which shifts the number badge
+                              // and text out of place in the downloaded PDF.
+                              "flex items-center space-x-2 text-sm bg-white rounded-lg border px-2.5 py-1.5 transition-colors",
                               inTop3 ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-60",
                             )}
                           >
@@ -108,7 +111,7 @@ export default function ResultsView({
                 return (
                   <div
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                      "flex items-center space-x-2 rounded-lg border px-3 py-2 text-sm transition-colors",
                       isAi && "border-dashed",
                       active
                         ? "border-brand-accent bg-brand-accent/10 text-foreground"
@@ -118,7 +121,7 @@ export default function ResultsView({
                     {isAi && <Sparkles className="h-3.5 w-3.5 text-brand-accent shrink-0" />}
                     <span className="flex-1">{text}</span>
                     {active && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-brand-accent shrink-0">
+                      <span className="flex items-center space-x-1 text-xs font-medium text-brand-accent shrink-0">
                         <Check className="h-4 w-4" /> Elegida
                       </span>
                     )}
@@ -129,12 +132,12 @@ export default function ResultsView({
               if (ideas.length === 0 && ai.length === 0 && !legacy) return <div />
 
               return (
-                <div className="flex flex-col min-h-0">
+                <div className="tablero-print-brainstorm flex flex-col min-h-0">
                   <div className="bg-gray-800 text-white rounded-lg px-4 py-2.5 shrink-0">
                     <h3 className="font-serif text-base font-medium">Brainstorming</h3>
                     <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">Ideas conectando las tres columnas — la elegida está resaltada</p>
                   </div>
-                  <div className={cn("mt-2 flex-1 space-y-2", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
+                  <div className={cn("mt-2 flex-1 min-h-0 space-y-2", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
                     {ideas.map((v, i) => (
                       <Idea key={`b-${i}`} text={v} />
                     ))}
@@ -170,7 +173,7 @@ export default function ResultsView({
                   ) : (
                     <ul className="flex flex-wrap gap-x-4 gap-y-1">
                       {tasks.map((t, i) => (
-                        <li key={i} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <li key={i} className="flex items-center space-x-1.5 text-sm text-muted-foreground">
                           <span className="text-brand-accent shrink-0">○</span>
                           <span>{t}</span>
                         </li>

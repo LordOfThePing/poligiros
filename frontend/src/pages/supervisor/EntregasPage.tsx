@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Check, Mail } from "lucide-react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Check, ChevronDown, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
@@ -42,6 +43,7 @@ type PracticeRecord = {
 }
 
 type Filter = "pending" | "reviewed" | "all"
+type SortOrder = "recent" | "name"
 
 export default function EntregasPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -51,6 +53,7 @@ export default function EntregasPage() {
   const [filter, setFilter] = useState<Filter>("pending")
   const [cohortFilter, setCohortFilter] = useState<string>("all")
   const [itemFilter, setItemFilter] = useState<string>("all")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("recent")
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState<Submission | null>(null)
   const [feedback, setFeedback] = useState("")
@@ -75,16 +78,28 @@ export default function EntregasPage() {
   const itemTitles = Array.from(
     new Set([...submissions.map((s) => s.item.title), ...practices.map((r) => r.item.title)])
   ).sort()
-  const visibleSubmissions = submissions.filter(
-    (s) =>
-      (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
-      (itemFilter === "all" || s.item.title === itemFilter)
-  )
-  const visiblePractices = practices.filter(
-    (r) =>
-      (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
-      (itemFilter === "all" || r.item.title === itemFilter)
-  )
+  const visibleSubmissions = submissions
+    .filter(
+      (s) =>
+        (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
+        (itemFilter === "all" || s.item.title === itemFilter)
+    )
+    .sort((a, b) =>
+      sortOrder === "name"
+        ? a.coach.name.localeCompare(b.coach.name)
+        : new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+    )
+  const visiblePractices = practices
+    .filter(
+      (r) =>
+        (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
+        (itemFilter === "all" || r.item.title === itemFilter)
+    )
+    .sort((a, b) =>
+      sortOrder === "name"
+        ? a.coach.name.localeCompare(b.coach.name)
+        : new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+    )
 
   async function submitPracticeReview() {
     if (!reviewingPractice || !feedback.trim()) return
@@ -170,6 +185,16 @@ export default function EntregasPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Ordenar por</Label>
+          <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Más recientes</SelectItem>
+              <SelectItem value="name">Nombre</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {loading ? (
@@ -181,58 +206,69 @@ export default function EntregasPage() {
       ) : visibleSubmissions.length === 0 ? null : (
         <div className="space-y-3">
           {visibleSubmissions.map((s) => (
-            <Card key={s.id} className="bg-white">
-              <CardContent className="pt-6 space-y-3">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium text-foreground">{s.coach.name}</h3>
-                      {s.cohorts.map((c) => (
-                        <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
-                      ))}
-                      {s.reviewedAt ? (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          Devuelta
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                          Sin devolver
-                        </Badge>
-                      )}
+            <Collapsible key={s.id} asChild>
+              <Card className="bg-white">
+                <CardContent className="pt-6 space-y-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-foreground">{s.coach.name}</h3>
+                        {s.cohorts.map((c) => (
+                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                        ))}
+                        {s.reviewedAt ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                            Devuelta
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                            Sin devolver
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {s.module.title} · {s.item.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Mail className="h-3 w-3" /> {s.coach.email} · entregó el{" "}
+                        {formatShortDate(s.submittedAt)}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {s.module.title} · {s.item.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <Mail className="h-3 w-3" /> {s.coach.email} · entregó el{" "}
-                      {formatShortDate(s.submittedAt)}
-                    </p>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant={s.reviewedAt ? "outline" : "default"}
+                        className={s.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
+                        onClick={() => { setReviewing(s); setFeedback(s.feedback ?? "") }}
+                      >
+                        {s.reviewedAt ? "Editar devolución" : "Devolver"}
+                      </Button>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="group h-8 w-8 p-0">
+                          <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant={s.reviewedAt ? "outline" : "default"}
-                    className={s.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
-                    onClick={() => { setReviewing(s); setFeedback(s.feedback ?? "") }}
-                  >
-                    {s.reviewedAt ? "Editar devolución" : "Devolver"}
-                  </Button>
-                </div>
+                  <CollapsibleContent className="space-y-3">
+                    <div className="bg-muted/40 rounded-lg p-3">
+                      <Markdown>{s.text}</Markdown>
+                    </div>
 
-                <div className="bg-muted/40 rounded-lg p-3">
-                  <Markdown>{s.text}</Markdown>
-                </div>
-
-                {s.feedback && (
-                  <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Check className="h-3 w-3" /> Tu devolución
-                    </p>
-                    <Markdown>{s.feedback}</Markdown>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    {s.feedback && (
+                      <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Tu devolución
+                        </p>
+                        <Markdown>{s.feedback}</Markdown>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </CardContent>
+              </Card>
+            </Collapsible>
           ))}
         </div>
       )}
@@ -247,69 +283,80 @@ export default function EntregasPage() {
           </div>
 
           {visiblePractices.map((r) => (
-            <Card key={r.id} className="bg-white">
-              <CardContent className="pt-6 space-y-3">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium text-foreground">{r.coach.name}</h3>
-                      <span className="text-sm text-muted-foreground">entrevistó a</span>
-                      <h3 className="font-medium text-foreground">{r.coachee.name}</h3>
-                      {r.cohorts.map((c) => (
-                        <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+            <Collapsible key={r.id} asChild>
+              <Card className="bg-white">
+                <CardContent className="pt-6 space-y-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-foreground">{r.coach.name}</h3>
+                        <span className="text-sm text-muted-foreground">entrevistó a</span>
+                        <h3 className="font-medium text-foreground">{r.coachee.name}</h3>
+                        {r.cohorts.map((c) => (
+                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                        ))}
+                        {r.reviewedAt ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                            Devuelta
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                            Sin devolver
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {r.module.title} · {r.item.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {r.sessionDate && `Sesión del ${formatShortDate(r.sessionDate)} · `}
+                        entregado el {formatShortDate(r.submittedAt)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant={r.reviewedAt ? "outline" : "default"}
+                        className={r.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
+                        onClick={() => { setReviewingPractice(r); setFeedback(r.feedback ?? "") }}
+                      >
+                        {r.reviewedAt ? "Editar devolución" : "Devolver"}
+                      </Button>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="group h-8 w-8 p-0">
+                          <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+                  </div>
+
+                  <CollapsibleContent className="space-y-3">
+                    <div className="bg-muted/40 rounded-lg p-3 space-y-3">
+                      {[
+                        ["Principales emergentes", r.mainOutputs],
+                        ["Herramientas y resultados", r.toolsAndResults],
+                        ["Conclusiones", r.conclusions],
+                      ].map(([label, body]) => (
+                        <div key={label}>
+                          <p className="text-xs font-medium text-foreground mb-1">{label}</p>
+                          <Markdown>{body}</Markdown>
+                        </div>
                       ))}
-                      {r.reviewedAt ? (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          Devuelta
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                          Sin devolver
-                        </Badge>
-                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {r.module.title} · {r.item.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {r.sessionDate && `Sesión del ${formatShortDate(r.sessionDate)} · `}
-                      entregado el {formatShortDate(r.submittedAt)}
-                    </p>
-                  </div>
 
-                  <Button
-                    size="sm"
-                    variant={r.reviewedAt ? "outline" : "default"}
-                    className={r.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
-                    onClick={() => { setReviewingPractice(r); setFeedback(r.feedback ?? "") }}
-                  >
-                    {r.reviewedAt ? "Editar devolución" : "Devolver"}
-                  </Button>
-                </div>
-
-                <div className="bg-muted/40 rounded-lg p-3 space-y-3">
-                  {[
-                    ["Principales emergentes", r.mainOutputs],
-                    ["Herramientas y resultados", r.toolsAndResults],
-                    ["Conclusiones", r.conclusions],
-                  ].map(([label, body]) => (
-                    <div key={label}>
-                      <p className="text-xs font-medium text-foreground mb-1">{label}</p>
-                      <Markdown>{body}</Markdown>
-                    </div>
-                  ))}
-                </div>
-
-                {r.feedback && (
-                  <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Check className="h-3 w-3" /> Tu devolución
-                    </p>
-                    <Markdown>{r.feedback}</Markdown>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    {r.feedback && (
+                      <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Tu devolución
+                        </p>
+                        <Markdown>{r.feedback}</Markdown>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </CardContent>
+              </Card>
+            </Collapsible>
           ))}
         </div>
       )}

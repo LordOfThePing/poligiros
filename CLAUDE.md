@@ -107,6 +107,24 @@ editable. The canvas pages render at `max-w-6xl` (the rest stay `max-w-2xl`).
 (supervisor↔coach). `SupervisionRequest.coachFeedback` is shown to the client on
 their results link. Do not surface `supervisorNotes` to clients.
 
+**Post-review edit (one-shot, shared).** Once a `SupervisionRequest` has been
+reviewed for the first time (`reviewedAt` set), the coach *or* the coachee gets
+exactly one chance to fix the answers — never before that first review, and
+never twice. `applyPostReviewEdit` (`backend/src/lib/postReviewEdit.ts`) is the
+single gate for this: it requires `supervision.reviewedAt` to be set and
+`TestResponse.editedAt` to still be null, then stamps `editedAt`/`editedBy`
+(`"coach"` | `"coachee"`) and flips the request back to `PENDING` so the
+supervisor sees it again (a second, final review — `reviewedAt` itself is
+never cleared, so the supervision list can tell a re-review apart from a
+first-time one). Both edit routes funnel through it: `PUT
+/student/responses/:assignmentId` (coach, `frontend/src/pages/student/ClientDetailPage.tsx`)
+and `PUT /client/t/:token/edit` (coachee, `frontend/src/pages/client/TokenPage.tsx`
+— `GET /client/t/:token` reports eligibility as `canEdit`). Both reuse the
+generic per-field `EditableResult` editor (`frontend/src/components/EditableResult.tsx`),
+same as the supervisor's own edit UI. The supervisor's own edit route (`PUT
+/supervisor/responses/:assignmentId`) is intentionally NOT gated — editing is
+how they perform the review itself.
+
 ## TestResponse JSON shapes
 
 `TestResponse.responses` is an untyped `Json` column. Each test type writes a

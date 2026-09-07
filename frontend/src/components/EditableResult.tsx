@@ -49,6 +49,7 @@ export function EditableResult({
       {testType === "PIRAMIDE_PROPOSITO" && <PiramideEditor data={data} setField={setField} />}
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioEditor data={data} setField={setField} />}
       {testType === "PLAN_VITAL" && <PlanVitalEditor data={data} setField={setField} />}
+      {testType === "TAREAS_EXPLORACION" && <TareasExploracionEditor data={data} setField={setField} />}
       <Button onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
         <Save className="h-4 w-4 mr-2" /> {saving ? "Guardando..." : "Guardar cambios"}
       </Button>
@@ -213,6 +214,11 @@ function PlanVitalEditor({ data, setField }: { data: Data; setField: (k: string,
       <ListEditor label="Estímulos" items={list("estimulos")} onChange={(v) => setField("estimulos", v)} />
     </div>
   )
+}
+
+function TareasExploracionEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  const list = (k: string): string[] => (Array.isArray(data[k]) ? data[k] : [])
+  return <ListEditor label="Tareas" items={list("tasks")} onChange={(v) => setField("tasks", v)} />
 }
 
 function PiramideEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {

@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { prisma } from "../lib/prisma.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { sendTestCompletedToCoach, sendTestCompletedToClient } from "../lib/email.js"
+import { applyPostReviewEdit, PostReviewEditError } from "../lib/postReviewEdit.js"
 
 const client = new Hono()
 
@@ -107,6 +108,8 @@ client.get("/t/:token", async (c) => {
     responses: assignment.response?.responses ?? null,
     coachFeedback: assignment.supervision?.coachFeedback ?? null,
     completedAt: assignment.completedAt,
+    // The coachee gets one edit, only after the supervisor's first review.
+    canEdit: Boolean(assignment.supervision?.reviewedAt) && !assignment.response?.editedAt,
   })
 })
 
@@ -194,8 +197,9 @@ client.post("/t/:token/ai-ideas", async (c) => {
 
 /**
  * PUT /client/t/:token/edit
- * Update responses for an already-completed assignment (coachee self-edit).
- * Only valid while state === "results" (completedAt is set).
+ * The coachee's single post-review edit of an already-completed assignment —
+ * see applyPostReviewEdit: only once, only after the supervisor's first
+ * review. Reopens the supervision request for a second look.
  */
 client.put("/t/:token/edit", async (c) => {
   const token = c.req.param("token")
@@ -212,13 +216,15 @@ client.put("/t/:token/edit", async (c) => {
 
   const { responses } = await c.req.json()
 
-  const updated = await prisma.testResponse.upsert({
-    where: { assignmentId: assignment.id },
-    update: { responses },
-    create: { assignmentId: assignment.id, responses },
-  })
-
-  return c.json(updated)
+  try {
+    const updated = await applyPostReviewEdit(assignment.id, responses, "coachee")
+    return c.json(updated)
+  } catch (e) {
+    if (e instanceof PostReviewEditError) {
+      return c.json({ error: e.code, message: e.message }, e.code === "not_reviewed" ? 403 : 409)
+    }
+    throw e
+  }
 })
 
 export default client

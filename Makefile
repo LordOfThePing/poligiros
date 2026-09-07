@@ -113,8 +113,7 @@ studio: ## Prisma Studio against the dockerized DB (host port 5433)
 # ══════════════════════════════════════════════════════════════════════════════
 
 env-scp: ## Print the scp commands to copy your local .env + backend/.env to the server. Usage: make env-scp [SCP_ALIAS=hetzner] [SCP_PATH=/opt/poligiros]
-	@echo "scp .env $(SCP_ALIAS):$(SCP_PATH)/.env"
-	@echo "scp backend/.env $(SCP_ALIAS):$(SCP_PATH)/backend/.env"
+	@echo " scp .env hetzner:poligiros/.env;scp backend/.env hetzner:poligiros/backend/.env"
 
 env-check: ## Verify .env exists and has the required variables
 	@test -f .env || { echo "❌ Falta .env — copiá .env.example y completá la sección ROOT."; exit 1; }

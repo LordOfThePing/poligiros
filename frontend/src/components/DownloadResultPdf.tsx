@@ -6,6 +6,22 @@ import ResultsView from "@/pages/client/ResultsView"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 
+const TEST_LABELS: Record<string, string> = {
+  ANCLAS_CARRERA: "Anclas de Carrera",
+  TABLERO_IDEAS: "Tablero de Ideas",
+  PIRAMIDE_PROPOSITO: "Piramide del Proposito",
+  MODELO_NEGOCIO: "Modelo de Negocio",
+  TAREAS_EXPLORACION: "Tareas de Exploracion",
+  PLAN_VITAL: "Plan Vital Integral",
+}
+
+function slugify(label: string) {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+}
+
 /**
  * Result export actions:
  *  - "Descargar PDF": captures the result and downloads a real .pdf file.
@@ -49,8 +65,11 @@ export function DownloadResultPdf({
   async function handleDownload() {
     setDownloading(true)
     try {
-      // Let the portal+canvas paint before snapshot.
-      await new Promise((r) => setTimeout(r, 200))
+      // Let the portal paint, then wait for webfonts so html2canvas measures
+      // text with the real metrics — otherwise it can snapshot mid-swap from
+      // the fallback font, shifting glyphs (numbers, headings) out of place.
+      await new Promise((r) => setTimeout(r, 50))
+      await document.fonts.ready
       const el = captureRef.current
       if (!el) throw new Error("no capture")
       const canvas = await html2canvas(el, {
@@ -68,7 +87,7 @@ export function DownloadResultPdf({
       const imgH = (canvas.height * pageW) / canvas.width
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [pageW, Math.ceil(imgH)] })
       pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH)
-      pdf.save(`anclas-de-carrera.pdf`)
+      pdf.save(`${slugify(TEST_LABELS[testType] ?? "resultado")}.pdf`)
     } catch (e) {
       console.error(e)
       // Fallback to the print dialog if snapshotting failed.
@@ -80,9 +99,14 @@ export function DownloadResultPdf({
 
   function handlePrint() {
     setPrinting(true)
+    // The browser's "Save as PDF" filename comes from document.title —
+    // swap it to the test name for the duration of the print dialog.
+    const previousTitle = document.title
+    document.title = TEST_LABELS[testType] ?? previousTitle
     // Let the portal render before triggering the print dialog.
     setTimeout(() => {
       window.print()
+      document.title = previousTitle
       setPrinting(false)
     }, 120)
   }
