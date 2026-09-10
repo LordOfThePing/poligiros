@@ -74,6 +74,10 @@ export type OwnSubmission = {
   submittedAt: string
   feedback: string | null
   reviewedAt: string | null
+  /** When the coach last corrected it after a devolución. */
+  editedAt?: string | null
+  /** Her devolución stands, so the coach may correct it (and send it back). */
+  canEdit?: boolean
 }
 
 /** kind = TEST only: the supervisor's feedback on a test the coach took on themself. */
@@ -98,6 +102,10 @@ export type OwnPractice = {
   submittedAt: string
   feedback: string | null
   reviewedAt: string | null
+  /** When the coach last corrected it after a devolución. */
+  editedAt?: string | null
+  /** Her devolución stands, so the coach may correct it (and send it back). */
+  canEdit?: boolean
 }
 
 /** The session a partner ran on ME. No feedback: that devolución is theirs. */

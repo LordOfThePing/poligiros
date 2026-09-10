@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
-  ClipboardCheck, PanelLeftClose, PanelLeftOpen, ListChecks, Pencil,
+  ClipboardCheck, PanelLeftClose, PanelLeftOpen, ListChecks, Pencil, Clock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
@@ -62,6 +62,8 @@ export default function ProgramaPage() {
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.
   const [entrega, setEntrega] = useState("")
+  // Correcting an already-returned ENTREGA (her devolución reopens it).
+  const [editingEntrega, setEditingEntrega] = useState(false)
 
   const loadModules = useCallback((cohortId: string) => {
     setSelected(null)
@@ -116,6 +118,7 @@ export default function ProgramaPage() {
     const mod = modules.find((m) => m.id === selected.moduleId)
     const item = mod?.items.find((i) => i.id === selected.itemId)
     setEntrega(item?.submission?.text ?? "")
+    setEditingEntrega(false)
   }, [selected, modules])
 
   async function submitEntrega(item: StudentModuleItem) {
@@ -127,6 +130,7 @@ export default function ProgramaPage() {
     })
     setSaving(false)
     if (!res.ok) return
+    setEditingEntrega(false)
     // The card completion and module progress are derived server-side.
     apiJson<StudentModule[]>("/student/modules").then(setModules).catch(() => {})
   }
@@ -481,11 +485,17 @@ export default function ProgramaPage() {
                     />
                   ) : current.item.kind === "ENTREGA" ? (
                     <div className="space-y-3">
-                      {current.item.submission?.reviewedAt ? (
+                      {current.item.submission && !editingEntrega ? (
                         <>
-                          <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
-                            <CheckCircle2 className="h-4 w-4" /> Entregado y revisado
-                          </div>
+                          {current.item.submission.reviewedAt ? (
+                            <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                              <CheckCircle2 className="h-4 w-4" /> Entregado y revisado
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-amber-700 text-sm font-medium">
+                              <Clock className="h-4 w-4" /> Entregado · esperando la devolución de Gaby
+                            </div>
+                          )}
                           <div className="bg-muted/40 rounded-lg p-3">
                             <p className="text-xs text-muted-foreground mb-1">Tu entrega</p>
                             <Markdown>{current.item.submission.text}</Markdown>
@@ -496,15 +506,29 @@ export default function ProgramaPage() {
                               <Markdown>{current.item.submission.feedback}</Markdown>
                             </div>
                           )}
+                          {current.item.submission.canEdit ? (
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <Button variant="outline" size="sm" onClick={() => setEditingEntrega(true)}>
+                                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi entrega
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                Al guardar vuelve a Gaby para una nueva devolución.
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              Mientras espera su devolución no se puede editar.
+                            </p>
+                          )}
                         </>
                       ) : (
                         <>
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <p className="text-sm font-medium text-foreground">Tu entrega</p>
-                            {current.item.submission && (
-                              <span className="text-xs text-muted-foreground">
-                                Entregado · podés editarlo hasta que Gaby lo revise
-                              </span>
+                            {editingEntrega && (
+                              <Button variant="ghost" size="sm" onClick={() => setEditingEntrega(false)}>
+                                Cancelar
+                              </Button>
                             )}
                           </div>
                           <MarkdownEditor
@@ -522,7 +546,8 @@ export default function ProgramaPage() {
                             {current.item.submission ? "Guardar cambios" : "Enviar entrega"}
                           </Button>
                           <p className="text-xs text-muted-foreground">
-                            Vas a poder ver las respuestas de tus compañeros más abajo.
+                            Al enviarla queda fija hasta que Gaby te devuelva. Vas a poder ver las
+                            respuestas de tus compañeros más abajo.
                           </p>
                         </>
                       )}

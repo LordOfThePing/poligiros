@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Users } from "lucide-react"
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, Users, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
@@ -51,7 +51,13 @@ export function RegistroCard({
 
   const [showAboutMe, setShowAboutMe] = useState(false)
 
-  const locked = Boolean(item.practice?.reviewedAt)
+  // Handed in → read-only until Gaby returns it; her devolución reopens it for
+  // a correction, which goes back to her (see PUT .../registro). So the form is
+  // shown for the first hand-in, and afterwards only while correcting.
+  const [editing, setEditing] = useState(false)
+  const postReviewEdit = editing && Boolean(item.practice?.canEdit)
+  const locked = Boolean(item.practice) && !postReviewEdit
+  const awaitingReview = Boolean(item.practice) && !item.practice?.reviewedAt
 
   useEffect(() => {
     apiJson<{ candidates: DuplaCandidate[] }>(`/student/module-items/${item.id}/dupla`)
@@ -98,7 +104,11 @@ export function RegistroCard({
       toast({ title: j.error || "No se pudo guardar", variant: "destructive" })
       return
     }
-    toast({ title: item.practice ? "Registro actualizado" : "Registro enviado" })
+    toast({
+      title: item.practice ? "Registro actualizado" : "Registro enviado",
+      description: postReviewEdit ? "Vuelve a Gaby para una nueva devolución." : undefined,
+    })
+    setEditing(false)
     onSaved()
   }
 
@@ -109,9 +119,15 @@ export function RegistroCard({
       {/* ── The session I ran ─────────────────────────────────────────────── */}
       {locked ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
-            <CheckCircle2 className="h-4 w-4" /> Entregado y revisado
-          </div>
+          {awaitingReview ? (
+            <div className="flex items-center gap-2 text-amber-700 text-sm font-medium">
+              <Clock className="h-4 w-4" /> Entregado · esperando la devolución de Gaby
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
+              <CheckCircle2 className="h-4 w-4" /> Entregado y revisado
+            </div>
+          )}
           <ReadOnlyRecord
             heading={`Sesión con ${item.practice!.coachee.name}`}
             date={item.practice!.sessionDate}
@@ -124,6 +140,20 @@ export function RegistroCard({
               <p className="text-xs text-muted-foreground mb-1">Devolución de Gaby</p>
               <Markdown>{item.practice!.feedback}</Markdown>
             </div>
+          )}
+          {item.practice!.canEdit ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi registro
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Al guardar vuelve a Gaby para una nueva devolución.
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Mientras espera su devolución no se puede editar.
+            </p>
           )}
         </div>
       ) : (
@@ -246,9 +276,16 @@ export function RegistroCard({
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {item.practice ? "Guardar cambios" : "Enviar registro"}
             </Button>
-            {item.practice && (
+            {postReviewEdit ? (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancelar</Button>
+                <span className="text-xs text-muted-foreground">
+                  Al guardar vuelve a Gaby para una nueva devolución
+                </span>
+              </>
+            ) : (
               <span className="text-xs text-muted-foreground">
-                Entregado · podés editarlo hasta que Gaby lo revise
+                Al enviarlo queda fijo hasta que Gaby te devuelva
               </span>
             )}
           </div>

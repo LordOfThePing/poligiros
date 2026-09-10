@@ -127,8 +127,8 @@ export default function TokenPage() {
               ← Volver a mis resultados
             </button>
             <p className="text-xs text-muted-foreground">
-              Esta es tu única edición para este resultado — tu coach también puede usarla, así que
-              solo uno de los dos podrá editar. Al guardar, tu coach y su supervisora lo ven de nuevo.
+              Al guardar, tu coach y su supervisora lo revisan de nuevo. Mientras esperás esa
+              revisión no vas a poder editarlo; cuando la reciba, sí.
             </p>
             <EditableResult
               testType={data.testType}

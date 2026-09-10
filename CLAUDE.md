@@ -107,16 +107,18 @@ editable. The canvas pages render at `max-w-6xl` (the rest stay `max-w-2xl`).
 (supervisor↔coach). `SupervisionRequest.coachFeedback` is shown to the client on
 their results link. Do not surface `supervisorNotes` to clients.
 
-**Post-review edit (one-shot, shared).** Once a `SupervisionRequest` has been
-reviewed for the first time (`reviewedAt` set), the coach *or* the coachee gets
-exactly one chance to fix the answers — never before that first review, and
-never twice. `applyPostReviewEdit` (`backend/src/lib/postReviewEdit.ts`) is the
-single gate for this: it requires `supervision.reviewedAt` to be set and
-`TestResponse.editedAt` to still be null, then stamps `editedAt`/`editedBy`
-(`"coach"` | `"coachee"`) and flips the request back to `PENDING` so the
-supervisor sees it again (a second, final review — `reviewedAt` itself is
-never cleared, so the supervision list can tell a re-review apart from a
-first-time one). Both edit routes funnel through it: `PUT
+**Post-review edit (repeatable, one round at a time).** Anything the supervisor
+reviews is editable *while her review stands*, as many rounds as it takes, and
+frozen while it waits for her: review → edit → review → edit … Sending something
+back for review is what locks it, so an edit never lands on top of a version she
+has not read.
+
+For tests, `applyPostReviewEdit` (`backend/src/lib/postReviewEdit.ts`) is the
+single gate: it requires `supervision.status === "REVIEWED"` (a `PENDING` request
+throws `pending_review`), then stamps `TestResponse.editedAt`/`editedBy`
+(`"coach"` | `"coachee"` — the LAST edit) and flips the request back to `PENDING`
+so the supervisor sees it again. `reviewedAt` itself is never cleared, so the
+supervision list can still tell a re-review apart from a first-time one. Both edit routes funnel through it: `PUT
 /student/responses/:assignmentId` (coach, `frontend/src/pages/student/ClientDetailPage.tsx`)
 and `PUT /client/t/:token/edit` (coachee, `frontend/src/pages/client/TokenPage.tsx`
 — `GET /client/t/:token` reports eligibility as `canEdit`). Both reuse the
@@ -130,6 +132,17 @@ module self-test (`client.userId == coach`): `GET /student/my-tests/:id` reports
 offers the same one-shot editor on the read-only results. The supervisor's own edit route (`PUT
 /supervisor/responses/:assignmentId`) is intentionally NOT gated — editing is
 how they perform the review itself.
+
+**REGISTRO and ENTREGA cards follow the same cycle**, with `reviewedAt` playing
+the part `status` plays for tests: handing one in freezes it (`PUT
+/student/module-items/:itemId/registro` and `.../submission` answer 409 while
+`reviewedAt` is null), and Gaby's devolución unfreezes it. Saving a correction
+stamps `editedAt` and **clears `reviewedAt`**, which is what returns the row to
+her pending queue — both supervisor lists filter on `reviewedAt: null` — and
+re-sends the "nueva entrega" mail. The cards
+(`frontend/src/components/modules/RegistroCard.tsx`, and the ENTREGA branch of
+`ProgramaPage`) read `canEdit` from `/student/modules`; the supervisor's Entregas
+rows show an "Editado tras tu devolución" badge off `editedAt`.
 
 ## TestResponse JSON shapes
 

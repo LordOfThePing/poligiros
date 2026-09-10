@@ -3,12 +3,12 @@ import { prisma } from "./prisma.js"
 import { notifyTarget } from "./notify.js"
 import { sendSupervisionSubmittedEmail } from "./email.js"
 
-export type PostReviewEditErrorCode = "not_completed" | "not_reviewed" | "already_edited"
+export type PostReviewEditErrorCode = "not_completed" | "not_reviewed" | "pending_review"
 
 const MESSAGES: Record<PostReviewEditErrorCode, string> = {
   not_completed: "El test todavía no fue completado.",
-  not_reviewed: "Recién se puede editar después de que la supervisora lo revise por primera vez.",
-  already_edited: "Este resultado ya usó su única edición.",
+  not_reviewed: "Recién se puede editar después de que la supervisora lo revise.",
+  pending_review: "Está esperando la revisión de la supervisora — vas a poder editarlo cuando lo revise.",
 }
 
 export class PostReviewEditError extends Error {
@@ -18,11 +18,14 @@ export class PostReviewEditError extends Error {
 }
 
 /**
- * The coach and the coachee each get to fix a test's answers exactly once,
- * and only after the supervisor's first review — never before, and never a
- * second time (shared one-shot: whichever of them edits first uses it up).
- * Saving flips the (already-reviewed) supervision request back to PENDING so
- * the supervisor sees it again, and notifies them it needs a second look.
+ * Coach and coachee may fix a test's answers as many times as they like, but
+ * only while the supervision request sits in REVIEWED: saving flips it back to
+ * PENDING (and notifies the supervisor), and from then on the result is frozen
+ * again until she reviews it. So the cycle is review → edit → review → edit …,
+ * never two edits stacked on top of one unreviewed change.
+ *
+ * `editedAt`/`editedBy` record the LAST edit; `reviewedAt` is never cleared, so
+ * the supervision list can still tell a re-review from a first-time one.
  */
 export async function applyPostReviewEdit(
   assignmentId: string,
@@ -39,7 +42,7 @@ export async function applyPostReviewEdit(
 
   if (!existingResponse) throw new PostReviewEditError("not_completed")
   if (!supervision || !supervision.reviewedAt) throw new PostReviewEditError("not_reviewed")
-  if (existingResponse.editedAt) throw new PostReviewEditError("already_edited")
+  if (supervision.status !== "REVIEWED") throw new PostReviewEditError("pending_review")
 
   const [updated] = await prisma.$transaction([
     prisma.testResponse.update({

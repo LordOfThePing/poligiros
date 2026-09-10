@@ -82,8 +82,8 @@ export default function StudentTakeTestPage() {
           ← Volver a mis resultados
         </button>
         <p className="text-xs text-muted-foreground">
-          Esta es tu única edición para este resultado. Al guardar, vuelve a supervisión para una
-          segunda revisión.
+          Al guardar, vuelve a supervisión para una nueva revisión y queda fijo hasta que Gaby lo
+          revise. Después de esa revisión lo vas a poder editar otra vez.
         </p>
         {feedbackPanel}
         <EditableResult
@@ -99,7 +99,7 @@ export default function StudentTakeTestPage() {
               toast({ title: j.message || "No se pudo guardar", variant: "destructive" })
               return
             }
-            toast({ title: "Resultado actualizado", description: "Vuelve a supervisión para una segunda revisión." })
+            toast({ title: "Resultado actualizado", description: "Vuelve a supervisión para una nueva revisión." })
             setEditing(false)
             load()
           }}
@@ -124,8 +124,6 @@ export default function StudentTakeTestPage() {
               <Pencil className="h-3.5 w-3.5 mr-1.5" />
               Editar mis respuestas
             </Button>
-          ) : assignment.response?.editedAt ? (
-            <span className="text-xs text-muted-foreground text-right">Ya usaste tu única edición de este resultado.</span>
           ) : (
             <span className="text-xs text-muted-foreground text-right">
               Vas a poder editar tus respuestas una vez que Gaby lo revise.

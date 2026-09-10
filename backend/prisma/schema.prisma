@@ -500,11 +500,14 @@ model ModuleItemSubmission {
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  /// Supervisor review. The coach may keep editing until this is set.
+  /// Supervisor review. Handing the entrega in freezes it until this is set;
+  /// her devolución unfreezes it, and each correction clears `reviewedAt` again
+  /// so it goes back to her queue. `editedAt` stamps the last such correction.
   feedback     String?
   reviewedAt   DateTime?
   reviewedById String?
   reviewedBy   User?     @relation("SubmissionReviewedBy", fields: [reviewedById], references: [id])
+  editedAt     DateTime?
 
   @@unique([userId, itemId])
   @@index([reviewedAt])
@@ -560,11 +563,16 @@ model PracticeRecord {
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  /// Supervisor review. The coach may keep editing until this is set.
+  /// Supervisor review. Handing the record in freezes it until this is set; her
+  /// devolución unfreezes it for a correction, and saving that correction clears
+  /// `reviewedAt` again so it returns to her pending queue.
   feedback     String?
   reviewedAt   DateTime?
   reviewedById String?
   reviewedBy   User?     @relation("PracticeReviewedBy", fields: [reviewedById], references: [id])
+
+  /// When the coach last corrected the record after a devolución.
+  editedAt DateTime?
 
   /// One record per coach per card — a coach writes up the session they ran.
   @@unique([itemId, coachId])

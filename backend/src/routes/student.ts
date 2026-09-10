@@ -547,10 +547,7 @@ student.get("/modules", async (c) => {
   const myAssignments = myClient
     ? await prisma.testAssignment.findMany({
         where: { clientId: myClient.id },
-        select: {
-          id: true, testId: true, completedAt: true, accessRevokedAt: true,
-          response: { select: { editedAt: true } },
-        },
+        select: { id: true, testId: true, completedAt: true, accessRevokedAt: true },
       })
     : []
 
@@ -560,7 +557,7 @@ student.get("/modules", async (c) => {
   const mySupervisions = assignmentIds.length
     ? await prisma.supervisionRequest.findMany({
         where: { assignmentId: { in: assignmentIds }, studentId: user.id },
-        select: { assignmentId: true, supervisorNotes: true, coachFeedback: true, reviewedAt: true },
+        select: { assignmentId: true, supervisorNotes: true, coachFeedback: true, reviewedAt: true, status: true },
       })
     : []
   const supervisionByAssignment = new Map(mySupervisions.map((s) => [s.assignmentId, s]))
@@ -599,8 +596,9 @@ student.get("/modules", async (c) => {
             ? {
                 feedback: ownSupervision.coachFeedback || ownSupervision.supervisorNotes,
                 reviewedAt: ownSupervision.reviewedAt,
-                // The one-shot post-review edit, offered right on the card.
-                canEdit: Boolean(ownSupervision.reviewedAt) && !assignment?.response?.editedAt,
+                // Editable only while her review stands: a new edit sends it
+                // back to her and locks the card again.
+                canEdit: ownSupervision.status === "REVIEWED",
               }
             : null,
           // Only meaningful for kind = ENTREGA.
@@ -611,6 +609,9 @@ student.get("/modules", async (c) => {
                 submittedAt: submission.submittedAt,
                 feedback: submission.feedback,
                 reviewedAt: submission.reviewedAt,
+                editedAt: submission.editedAt,
+                // Her devolución stands → correctable; a correction sends it back.
+                canEdit: Boolean(submission.reviewedAt),
               }
             : null,
           // Only meaningful for kind = REGISTRO: the session I ran.
@@ -625,6 +626,9 @@ student.get("/modules", async (c) => {
                 submittedAt: practice.submittedAt,
                 feedback: practice.feedback,
                 reviewedAt: practice.reviewedAt,
+                editedAt: practice.editedAt,
+                // Her devolución stands → correctable; a correction sends it back.
+                canEdit: Boolean(practice.reviewedAt),
               }
             : null,
           // The session my dupla partner ran on ME. Read-only, and without the
@@ -740,9 +744,10 @@ student.post("/module-items/:itemId/start", async (c) => {
  * PUT /student/module-items/:itemId/submission — body: { text }
  *
  * Hand in (or correct) an ENTREGA card. The row existing IS the submission, and
- * it is what marks the card complete. The coach may keep editing until the
- * supervisor reviews it; after that it is frozen so the feedback keeps matching
- * the text it was written about.
+ * it is what marks the card complete. Handing it in freezes it until Gaby
+ * reviews it — so the feedback always describes the text she read — and her
+ * devolución unfreezes it: the coach can correct it as many times as they like,
+ * each correction going back to her (`reviewedAt` cleared) for a new one.
  */
 student.put("/module-items/:itemId/submission", async (c) => {
   const user = c.get("user")
@@ -759,13 +764,18 @@ student.put("/module-items/:itemId/submission", async (c) => {
   const existing = await prisma.moduleItemSubmission.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
   })
-  if (existing?.reviewedAt) {
-    return c.json({ error: "Gaby ya devolvió esta entrega, no se puede editar" }, 409)
+  if (existing && !existing.reviewedAt) {
+    return c.json(
+      { error: "Está esperando la devolución de Gaby — vas a poder editarla cuando la revise" },
+      409,
+    )
   }
+  // Re-handing in after a devolución: reopens the card for a new one.
+  const postReviewEdit = Boolean(existing)
 
   const submission = await prisma.moduleItemSubmission.upsert({
     where: { userId_itemId: { userId: user.id, itemId } },
-    update: { text: clean },
+    update: { text: clean, ...(postReviewEdit ? { editedAt: new Date(), reviewedAt: null } : {}) },
     create: { userId: user.id, itemId, text: clean },
   })
 
@@ -776,16 +786,18 @@ student.put("/module-items/:itemId/submission", async (c) => {
   })
   await syncModuleProgress(user.id, item.moduleId)
 
-  // Only tell the supervisor the first time; edits before review are not news.
-  if (!existing) {
+  // Every hand-in needs her eyes: the first one, and each correction made after
+  // a devolución (which is what reopened the card).
+  {
     const submissionTo = await notifyTarget("submission")
     const card = await prisma.moduleItem.findUnique({
       where: { id: itemId },
       select: { title: true, module: { select: { title: true } } },
     })
     if (card) {
+      const title = postReviewEdit ? `${card.title} (editado tras la devolución)` : card.title
       for (const to of submissionTo) {
-        sendSubmissionReceivedEmail(to, user.name, card.module.title, card.title).catch(() => {})
+        sendSubmissionReceivedEmail(to, user.name, card.module.title, title).catch(() => {})
       }
     }
   }
@@ -919,8 +931,11 @@ student.get("/module-items/:itemId/dupla/:coachId", async (c) => {
 
 /**
  * PUT /student/module-items/:itemId/registro
- * Write up (or correct) the session this coach ran. Frozen once reviewed, so the
- * feedback keeps matching the text it was written about.
+ * Write up (or correct) the session this coach ran. Handing it in freezes it
+ * until Gaby reviews it, and her devolución unfreezes it: saving a correction
+ * stamps `editedAt` and clears `reviewedAt`, putting the record back in her
+ * pending queue. Review → edit → review → edit, as many rounds as they need,
+ * never two edits stacked on one unreviewed version.
  */
 student.put("/module-items/:itemId/registro", async (c) => {
   const user = c.get("user")
@@ -954,13 +969,21 @@ student.put("/module-items/:itemId/registro", async (c) => {
   const existing = await prisma.practiceRecord.findUnique({
     where: { itemId_coachId: { itemId, coachId: user.id } },
   })
-  if (existing?.reviewedAt) {
-    return c.json({ error: "Gaby ya devolvió este registro, no se puede editar" }, 409)
+  if (existing && !existing.reviewedAt) {
+    return c.json(
+      { error: "Está esperando la devolución de Gaby — vas a poder editarlo cuando la revise" },
+      409,
+    )
   }
+  // Correcting it after a devolución: reopens the record for a new one.
+  const postReviewEdit = Boolean(existing)
 
   const record = await prisma.practiceRecord.upsert({
     where: { itemId_coachId: { itemId, coachId: user.id } },
-    update: { coacheeId, sessionDate, mainOutputs, toolsAndResults, conclusions },
+    update: {
+      coacheeId, sessionDate, mainOutputs, toolsAndResults, conclusions,
+      ...(postReviewEdit ? { editedAt: new Date(), reviewedAt: null } : {}),
+    },
     create: { itemId, coachId: user.id, coacheeId, sessionDate, mainOutputs, toolsAndResults, conclusions },
   })
 
@@ -971,15 +994,17 @@ student.put("/module-items/:itemId/registro", async (c) => {
   })
   await syncModuleProgress(user.id, item.moduleId)
 
-  // Only announce the first hand-in; edits before review are not news.
-  if (!existing) {
+  // Every version needs her eyes: the first hand-in, and each correction made
+  // after a devolución (which is what reopened the record).
+  {
     const card = await prisma.moduleItem.findUnique({
       where: { id: itemId },
       select: { title: true, module: { select: { title: true } } },
     })
     if (card) {
+      const title = postReviewEdit ? `${card.title} (editado tras la devolución)` : card.title
       for (const to of await notifyTarget("submission")) {
-        sendSubmissionReceivedEmail(to, user.name, card.module.title, card.title).catch(() => {})
+        sendSubmissionReceivedEmail(to, user.name, card.module.title, title).catch(() => {})
       }
     }
   }
@@ -1137,7 +1162,7 @@ student.get("/my-tests", async (c) => {
   const supervisions = ids.length
     ? await prisma.supervisionRequest.findMany({
         where: { assignmentId: { in: ids }, studentId: user.id },
-        select: { assignmentId: true, coachFeedback: true, supervisorNotes: true, reviewedAt: true },
+        select: { assignmentId: true, coachFeedback: true, supervisorNotes: true, reviewedAt: true, status: true },
       })
     : []
   const supervisionByAssignment = new Map(supervisions.map((s) => [s.assignmentId, s]))
@@ -1149,7 +1174,7 @@ student.get("/my-tests", async (c) => {
         ...a,
         revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
         feedback: sv ? sv.coachFeedback || sv.supervisorNotes : null,
-        canEdit: Boolean(sv?.reviewedAt) && !a.response?.editedAt,
+        canEdit: sv?.status === "REVIEWED",
       }
     })
   )
@@ -1171,7 +1196,7 @@ student.get("/my-tests/:id", async (c) => {
     feedback: assignment.supervision
       ? assignment.supervision.coachFeedback || assignment.supervision.supervisorNotes
       : null,
-    canEdit: Boolean(assignment.supervision?.reviewedAt) && !assignment.response?.editedAt,
+    canEdit: assignment.supervision?.status === "REVIEWED",
   })
 })
 

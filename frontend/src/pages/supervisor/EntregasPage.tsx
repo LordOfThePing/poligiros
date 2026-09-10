@@ -20,6 +20,8 @@ type Submission = {
   submittedAt: string
   feedback: string | null
   reviewedAt: string | null
+  /** Set = corrected after a devolución, so a pending row here is a re-review. */
+  editedAt: string | null
   coach: { id: string; name: string; email: string }
   cohorts: string[]
   item: { id: string; title: string }
@@ -40,6 +42,8 @@ type PracticeRecord = {
   submittedAt: string
   feedback: string | null
   reviewedAt: string | null
+  /** Set = the coach used their one post-review correction, so this is a re-review. */
+  editedAt: string | null
 }
 
 type Filter = "pending" | "reviewed" | "all"
@@ -225,6 +229,11 @@ export default function EntregasPage() {
                             Sin devolver
                           </Badge>
                         )}
+                        {s.editedAt && (
+                          <Badge variant="outline" className="text-xs">
+                            Editado tras tu devolución
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {s.module.title} · {s.item.title}
@@ -302,6 +311,11 @@ export default function EntregasPage() {
                         ) : (
                           <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
                             Sin devolver
+                          </Badge>
+                        )}
+                        {r.editedAt && (
+                          <Badge variant="outline" className="text-xs">
+                            Editado tras tu devolución
                           </Badge>
                         )}
                       </div>

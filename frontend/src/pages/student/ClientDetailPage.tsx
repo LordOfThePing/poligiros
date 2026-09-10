@@ -180,12 +180,12 @@ export default function ClientDetailPage() {
             const notEnabled =
               !!access?.enabledTestTypes &&
               !access.enabledTestTypes.includes(type as TestType)
-            // One edit total, shared with the coachee, only after the supervisor's first review.
+            // Editable only while the supervisor's review stands: saving sends it
+            // back to her, and it stays frozen until she reviews it again.
             const canEdit =
               Boolean(assignment?.completedAt) &&
               Boolean(assignment?.response) &&
-              Boolean(assignment?.supervision?.reviewedAt) &&
-              !assignment?.response?.editedAt
+              assignment?.supervision?.status === "REVIEWED"
 
             return (
               <div
@@ -388,8 +388,8 @@ export default function ClientDetailPage() {
             <DialogTitle className="font-serif">Editar resultado — {resultModal?.title}</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">
-            Esta es tu única edición para este resultado — el coachee también puede usarla, así que
-            solo uno de los dos podrá editar. Al guardar, vuelve a supervisión para una segunda revisión.
+            Al guardar, el resultado vuelve a supervisión para una nueva revisión y queda fijo hasta
+            que la supervisora lo revise. Después de esa revisión se puede volver a editar.
           </p>
           {resultModal && (
             <EditableResult
@@ -405,7 +405,7 @@ export default function ClientDetailPage() {
                   toast({ title: j.message || "No se pudo guardar", variant: "destructive" })
                   return
                 }
-                toast({ title: "Resultado actualizado", description: "Vuelve a supervisión para una segunda revisión." })
+                toast({ title: "Resultado actualizado", description: "Vuelve a supervisión para una nueva revisión." })
                 setResultModal(null)
                 refreshClient()
               }}

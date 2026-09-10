@@ -2018,6 +2018,8 @@ supervisor.get("/submissions", async (c) => {
       submittedAt: s.submittedAt,
       feedback: s.feedback,
       reviewedAt: s.reviewedAt,
+      // Set = corrected after a devolución, so this pending row is a re-review.
+      editedAt: s.editedAt,
       coach: { id: s.user.id, name: s.user.name, email: s.user.email },
       // A coach can be in more than one CIC; show them all rather than guessing.
       cohorts: s.user.enrollments.map((e) => e.cohort.name),
@@ -2103,6 +2105,9 @@ supervisor.get("/practice-records", async (c) => {
       submittedAt: r.submittedAt,
       feedback: r.feedback,
       reviewedAt: r.reviewedAt,
+      // Set = the coach used their one post-review correction, so a pending row
+      // here is a SECOND devolución on text that was already reviewed once.
+      editedAt: r.editedAt,
     }))
   )
 })
