@@ -79,4 +79,9 @@ serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.log(`🚀 Poligiros API running on http://localhost:${info.port}`)
 })
 
+// Rows uploaded under an older CLOUDFLARE_R2_PUBLIC_URL get their links rebuilt.
+import("./lib/r2.js")
+  .then(({ repairR2Urls }) => repairR2Urls())
+  .catch((err) => console.error("[r2] No se pudieron reparar las URLs:", err))
+
 export default app

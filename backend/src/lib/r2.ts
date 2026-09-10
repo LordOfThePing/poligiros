@@ -63,6 +63,33 @@ export async function uploadToR2(
   return `${PUBLIC_URL}/${key}`
 }
 
+/**
+ * The stored URLs are `PUBLIC_URL/key`, frozen at upload time, so rows written
+ * under a wrong or older CLOUDFLARE_R2_PUBLIC_URL keep a dead link. The key is
+ * the source of truth: on boot, rebuild every URL that no longer matches it.
+ * Idempotent — once the rows agree with the current PUBLIC_URL it touches nothing.
+ */
+export async function repairR2Urls(): Promise<void> {
+  if (!isR2Configured()) return
+  const { prisma } = await import("./prisma.js")
+  const [links, covers, comments] = await Promise.all([
+    prisma.$executeRaw`
+      UPDATE "ModuleLink" SET url = ${PUBLIC_URL} || '/' || "storageKey"
+      WHERE "storageKey" IS NOT NULL AND url <> ${PUBLIC_URL} || '/' || "storageKey"`,
+    prisma.$executeRaw`
+      UPDATE "ModuleItem" SET "coverImageUrl" = ${PUBLIC_URL} || '/' || "coverImageKey"
+      WHERE "coverImageKey" IS NOT NULL
+        AND "coverImageUrl" IS DISTINCT FROM ${PUBLIC_URL} || '/' || "coverImageKey"`,
+    prisma.$executeRaw`
+      UPDATE "ModuleItemComment" SET "imageUrl" = ${PUBLIC_URL} || '/' || "imageKey"
+      WHERE "imageKey" IS NOT NULL
+        AND "imageUrl" IS DISTINCT FROM ${PUBLIC_URL} || '/' || "imageKey"`,
+  ])
+  if (links + covers + comments > 0) {
+    console.log(`[r2] URLs reparadas: ${links} links, ${covers} portadas, ${comments} fotos`)
+  }
+}
+
 export async function deleteFromR2(key: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
 }
