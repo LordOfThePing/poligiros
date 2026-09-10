@@ -15,7 +15,22 @@ const s3 = new S3Client({
 })
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET_NAME!
-const PUBLIC_URL = process.env.CLOUDFLARE_R2_PUBLIC_URL!
+const PUBLIC_URL = (process.env.CLOUDFLARE_R2_PUBLIC_URL ?? "").replace(/\/+$/, "")
+
+/**
+ * `<account>.r2.cloudflarestorage.com` is the S3 API endpoint: every object
+ * there needs a signed request, so a browser gets `InvalidArgument:
+ * Authorization`. The public URL must be the bucket's r2.dev URL or a custom
+ * domain connected to it.
+ */
+const PUBLIC_URL_IS_API_ENDPOINT = /\.r2\.cloudflarestorage\.com/i.test(PUBLIC_URL)
+if (PUBLIC_URL_IS_API_ENDPOINT) {
+  console.error(
+    "[r2] CLOUDFLARE_R2_PUBLIC_URL apunta al endpoint S3 privado " +
+      "(*.r2.cloudflarestorage.com). Usá la URL pública del bucket " +
+      "(https://pub-….r2.dev o un dominio propio). Subidas deshabilitadas."
+  )
+}
 
 /**
  * R2 is optional: the rest of the app works without it, so upload routes check
@@ -27,7 +42,8 @@ export function isR2Configured(): boolean {
       process.env.CLOUDFLARE_R2_ACCESS_KEY_ID &&
       process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY &&
       process.env.CLOUDFLARE_R2_BUCKET_NAME &&
-      process.env.CLOUDFLARE_R2_PUBLIC_URL
+      PUBLIC_URL &&
+      !PUBLIC_URL_IS_API_ENDPOINT
   )
 }
 
