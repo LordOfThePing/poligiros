@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,7 @@ type ResetRequest = {
 }
 
 type SortOrder = "recent" | "name"
+type StateTab = "pending" | "reviewed" | "all"
 
 export default function SupervisorSupervisionPage() {
   const { toast } = useToast()
@@ -48,6 +49,7 @@ export default function SupervisorSupervisionPage() {
   const [cohortFilter, setCohortFilter] = useState<string>("all")
   const [testFilter, setTestFilter] = useState<string>("all")
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent")
+  const [stateTab, setStateTab] = useState<StateTab>("pending")
 
   function loadResetRequests() {
     apiJson<ResetRequest[]>("/supervisor/reset-requests").then(setResetRequests).catch(() => {})
@@ -94,6 +96,17 @@ export default function SupervisorSupervisionPage() {
         ? a.student.name.localeCompare(b.student.name)
         : new Date(b.reviewedAt ?? b.createdAt).getTime() - new Date(a.reviewedAt ?? a.createdAt).getTime()
     )
+
+  const byRecent = (r: SupervisionRequest) =>
+    new Date(r.status === "PENDING" ? r.createdAt : r.reviewedAt ?? r.createdAt).getTime()
+  const shown =
+    stateTab === "pending"
+      ? pending
+      : stateTab === "reviewed"
+        ? reviewed
+        : [...pending, ...reviewed].sort((a, b) =>
+            sortOrder === "name" ? a.student.name.localeCompare(b.student.name) : byRecent(b) - byRecent(a)
+          )
 
   return (
     <div className="space-y-6">
@@ -185,89 +198,68 @@ export default function SupervisorSupervisionPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="pendientes">
+      <Tabs value={stateTab} onValueChange={(v) => setStateTab(v as StateTab)}>
         <TabsList>
-          <TabsTrigger value="pendientes">
-            Pendientes {pending.length > 0 && <Badge className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-100">{pending.length}</Badge>}
+          <TabsTrigger value="pending">
+            Sin revisar {pending.length > 0 && <Badge className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-100">{pending.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="revisados">Revisados ({reviewed.length})</TabsTrigger>
+          <TabsTrigger value="reviewed">Revisados ({reviewed.length})</TabsTrigger>
+          <TabsTrigger value="all">Todos ({pending.length + reviewed.length})</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="pendientes" className="mt-4 space-y-3">
-          {loading ? (
-            <LoadingBadge />
-          ) : pending.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-8 text-center">No hay solicitudes pendientes</p>
-          ) : (
-            pending.map((req) => (
-              <Link key={req.id} to={`/supervisor/supervision/${req.id}`}>
-                <Card className="bg-white hover:shadow-sm transition-shadow cursor-pointer">
-                  <CardContent className="py-4 px-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-foreground">{req.assignment.test.title}</p>
-                          {req.reviewedAt && (
-                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">
-                              2da revisión · editado por {req.assignment.response?.editedBy === "coachee" ? "el coachee" : "el coach"}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {req.student.name} · {req.assignment.client.name}
-                        </p>
-                        {req.studentNotes && (
-                          <p className="text-sm text-muted-foreground mt-1 italic line-clamp-1">
-                            "{req.studentNotes}"
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pendiente</Badge>
-                        <p className="text-xs text-muted-foreground mt-1">{formatShortDate(req.createdAt)}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="revisados" className="mt-4 space-y-3">
-          {loading ? (
-            <LoadingBadge />
-          ) : reviewed.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-8 text-center">Sin revisiones aún</p>
-          ) : (
-            reviewed.map((req) => (
-              <Link key={req.id} to={`/supervisor/supervision/${req.id}`}>
-                <Card className="bg-white hover:shadow-sm transition-shadow cursor-pointer">
-                  <CardContent className="py-4 px-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-medium text-foreground">{req.assignment.test.title}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {req.student.name} · {req.assignment.client.name}
-                        </p>
-                        {req.supervisorNotes && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{req.supervisorNotes}</p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">Revisado</Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {req.reviewedAt ? formatShortDate(req.reviewedAt) : ""}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          )}
-        </TabsContent>
       </Tabs>
+
+      <div className="space-y-3">
+        {loading ? (
+          <LoadingBadge />
+        ) : shown.length === 0 ? (
+          <p className="text-muted-foreground text-sm py-8 text-center">
+            {stateTab === "pending" ? "No hay solicitudes pendientes" : stateTab === "reviewed" ? "Sin revisiones aún" : "No hay solicitudes"}
+          </p>
+        ) : (
+          shown.map((req) => (
+            <Link key={req.id} to={`/supervisor/supervision/${req.id}`}>
+              <Card className="bg-white hover:shadow-sm transition-shadow cursor-pointer">
+                <CardContent className="py-4 px-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-foreground">{req.assignment.test.title}</p>
+                        {req.status === "PENDING" && req.reviewedAt && (
+                          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">
+                            2da revisión · editado por {req.assignment.response?.editedBy === "coachee" ? "el coachee" : "el coach"}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {req.student.name} · {req.assignment.client.name}
+                      </p>
+                      {req.status === "PENDING"
+                        ? req.studentNotes && (
+                            <p className="text-sm text-muted-foreground mt-1 italic line-clamp-1">
+                              "{req.studentNotes}"
+                            </p>
+                          )
+                        : req.supervisorNotes && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{req.supervisorNotes}</p>
+                          )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      {req.status === "PENDING" ? (
+                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pendiente</Badge>
+                      ) : (
+                        <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">Revisado</Badge>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatShortDate(req.status === "PENDING" ? req.createdAt : req.reviewedAt ?? req.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))
+        )}
+      </div>
     </div>
   )
 }

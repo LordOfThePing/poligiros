@@ -129,7 +129,7 @@ const SUPERVISOR_GUIDE: Guide = {
       icon: ClipboardCheck,
       title: "Seguimiento",
       lines: [
-        "Tests a revisar, Tareas a revisar y Registros de sesión son tus tres bandejas.",
+        "Tests y Tareas son tus dos bandejas. Los registros de sesión de los alumnos están en Tareas.",
         "Al revisar un test escribís dos cosas: el feedback interno (lo ve solo la coach) y el feedback para el cliente (aparece en su enlace de resultados).",
       ],
     },

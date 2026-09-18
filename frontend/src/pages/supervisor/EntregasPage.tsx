@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Check, ChevronDown, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -66,17 +67,18 @@ export default function EntregasPage() {
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
+  // Everything is loaded once and the state tabs filter client-side, so each tab
+  // can show its count.
   function load() {
-    setLoading(true)
-    apiJson<Submission[]>(`/supervisor/submissions?status=${filter}`)
-      .then((s) => { setSubmissions(s); setLoading(false) })
-      .catch(() => setLoading(false))
-    apiJson<PracticeRecord[]>(`/supervisor/practice-records?status=${filter}`)
-      .then(setPractices)
+    Promise.all([
+      apiJson<Submission[]>("/supervisor/submissions?status=all").then(setSubmissions),
+      apiJson<PracticeRecord[]>("/supervisor/practice-records?status=all").then(setPractices),
+    ])
       .catch(() => {})
+      .finally(() => setLoading(false))
   }
 
-  useEffect(load, [filter])
+  useEffect(load, [])
 
   const cohortNames = Array.from(
     new Set([...submissions.flatMap((s) => s.cohorts), ...practices.flatMap((r) => r.cohorts)])
@@ -84,9 +86,12 @@ export default function EntregasPage() {
   const itemTitles = Array.from(
     new Set([...submissions.map((s) => s.item.title), ...practices.map((r) => r.item.title)])
   ).sort()
+  const matchesState = (reviewedAt: string | null) =>
+    filter === "all" || (filter === "pending" ? !reviewedAt : !!reviewedAt)
   const visibleSubmissions = submissions
     .filter(
       (s) =>
+        matchesState(s.reviewedAt) &&
         (typeFilter === "all" || typeFilter === "entrega") &&
         (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
         (itemFilter === "all" || s.item.title === itemFilter)
@@ -94,10 +99,23 @@ export default function EntregasPage() {
   const visiblePractices = practices
     .filter(
       (r) =>
+        matchesState(r.reviewedAt) &&
         (typeFilter === "all" || typeFilter === "registro") &&
         (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
         (itemFilter === "all" || r.item.title === itemFilter)
     )
+  // Tab counts follow the other filters (CIC/Tipo/Tarea) but not the state tab itself.
+  const matchesOthers = (kind: "entrega" | "registro", cohorts: string[], title: string) =>
+    (typeFilter === "all" || typeFilter === kind) &&
+    (cohortFilter === "all" || cohorts.includes(cohortFilter)) &&
+    (itemFilter === "all" || title === itemFilter)
+  const allRows = [
+    ...submissions.filter((s) => matchesOthers("entrega", s.cohorts, s.item.title)),
+    ...practices.filter((r) => matchesOthers("registro", r.cohorts, r.item.title)),
+  ]
+  const pendingCount = allRows.filter((r) => !r.reviewedAt).length
+  const reviewedCount = allRows.length - pendingCount
+
   type FeedItem =
     | { kind: "entrega"; sortKey: string; sortName: string; data: Submission }
     | { kind: "registro"; sortKey: string; sortName: string; data: PracticeRecord }
@@ -164,17 +182,6 @@ export default function EntregasPage() {
 
       <div className="flex items-end gap-2 flex-wrap">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Estado</Label>
-          <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">Sin devolver</SelectItem>
-              <SelectItem value="reviewed">Devueltas</SelectItem>
-              <SelectItem value="all">Todas</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">CIC</Label>
           <Select value={cohortFilter} onValueChange={setCohortFilter}>
             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -220,6 +227,19 @@ export default function EntregasPage() {
           </Select>
         </div>
       </div>
+
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+        <TabsList>
+          <TabsTrigger value="pending">
+            Sin devolver{" "}
+            {pendingCount > 0 && (
+              <Badge className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-100">{pendingCount}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="reviewed">Devueltas ({reviewedCount})</TabsTrigger>
+          <TabsTrigger value="all">Todas ({allRows.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {loading ? (
         <LoadingBadge />

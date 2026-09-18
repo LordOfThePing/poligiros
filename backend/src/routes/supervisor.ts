@@ -1642,42 +1642,6 @@ supervisor.get("/module-progress", async (c) => {
 })
 
 /* ─────────────────────────────────────────
-   Sessions (supervisor view)
-───────────────────────────────────────── */
-
-/** GET /supervisor/sessions */
-supervisor.get("/sessions", async (c) => {
-  const studentId = c.req.query("studentId")
-  const clientId = c.req.query("clientId")
-  const cohortId = c.req.query("cohortId")
-
-  const sessions = await prisma.sessionRecord.findMany({
-    where: {
-      ...(studentId ? { studentId } : {}),
-      ...(clientId ? { clientId } : {}),
-      ...(cohortId ? { student: { enrollments: { some: { cohortId } } } } : {}),
-    },
-    include: {
-      student: {
-        select: {
-          id: true,
-          name: true,
-          enrollments: { include: { cohort: { select: { id: true, name: true } } } },
-        },
-      },
-      client: true,
-    },
-    orderBy: { createdAt: "desc" },
-  })
-  return c.json(
-    sessions.map((s) => ({
-      ...s,
-      student: { id: s.student.id, name: s.student.name, cohorts: s.student.enrollments.map((e) => e.cohort) },
-    }))
-  )
-})
-
-/* ─────────────────────────────────────────
    Tests (shared listing)
 ───────────────────────────────────────── */
 

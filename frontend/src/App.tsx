@@ -19,7 +19,6 @@ import SupervisorAlumnosPage from "@/pages/supervisor/AlumnosPage"
 import SupervisorAlumnoDetailPage from "@/pages/supervisor/AlumnoDetailPage"
 import SupervisorSupervisionPage from "@/pages/supervisor/SupervisionPage"
 import SupervisorSupervisionDetailPage from "@/pages/supervisor/SupervisionDetailPage"
-import SupervisorRegistrosPage from "@/pages/supervisor/RegistrosPage"
 import SupervisorModulosPage from "@/pages/supervisor/ModulosPage"
 import SupervisorCohortesPage from "@/pages/supervisor/CohortesPage"
 import SupervisorPoolsPage from "@/pages/supervisor/PoolsPage"
@@ -129,7 +128,6 @@ export default function App() {
             <Route path="alumnos/:id" element={<SupervisorAlumnoDetailPage />} />
             <Route path="supervision" element={<SupervisorSupervisionPage />} />
             <Route path="supervision/:id" element={<SupervisorSupervisionDetailPage />} />
-            <Route path="registros" element={<SupervisorRegistrosPage />} />
             <Route path="modulos" element={<SupervisorModulosPage />} />
             <Route path="cohortes" element={<SupervisorCohortesPage />} />
             <Route path="pools" element={<SupervisorPoolsPage />} />

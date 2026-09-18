@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Users,
   ClipboardCheck,
-  FileText,
   BookOpen,
   GraduationCap,
   UserPlus,
@@ -38,9 +37,8 @@ const groups: NavGroup[] = [
   {
     title: "Seguimiento",
     items: [
-      { href: "/supervisor/supervision", label: "Tests a revisar", icon: ClipboardCheck },
-      { href: "/supervisor/entregas", label: "Tareas a revisar", icon: Inbox },
-      { href: "/supervisor/registros", label: "Registros de sesión", icon: FileText },
+      { href: "/supervisor/supervision", label: "Tests", icon: ClipboardCheck },
+      { href: "/supervisor/entregas", label: "Tareas", icon: Inbox },
     ],
   },
   {
