@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
 import { discardDraft, loadDraft, useAutosave } from "@/lib/draft"
+import { SaveIndicator } from "@/components/SaveIndicator"
 
 const DRAFT_KEY = (id: string) => `piramide-draft-${id}`
 
@@ -260,7 +261,10 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
               )}
               onFocus={() => setActiveLevel(section.key)}
             >
-              <h2 className="font-serif text-lg text-foreground">{section.title}</h2>
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="font-serif text-lg text-foreground">{section.title}</h2>
+                <SaveIndicator value={section.value} draftKey={DRAFT_KEY(assignmentId)} enabled={hydrated} />
+              </div>
               <p className="text-sm text-muted-foreground">{section.instruction}</p>
 
               {section.helperLabel && (

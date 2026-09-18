@@ -4,6 +4,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils"
 import { ChevronDown, Plus, X, RotateCcw } from "lucide-react"
 import { InfoHint } from "./InfoHint"
+import { SaveIndicator } from "@/components/SaveIndicator"
 import { INSTRUCTIONS, resolveCanvasBlocks, type CanvasConfig } from "./canvasModel"
 
 interface Props {
@@ -61,6 +62,9 @@ export function BusinessModelCanvas({
       extra: (config?.extra ?? []).map((e) => (e.key === key ? { ...e, label } : e)),
     })
 
+  // BlockHeader/BlockBody are called as plain functions below, not rendered as
+  // <BlockHeader />: declared inside this render, they would be a new component
+  // type every keystroke and React would remount (and blur) the textarea.
   function BlockHeader({
     blockKey,
     label,
@@ -114,12 +118,15 @@ export function BusinessModelCanvas({
       )
     }
     return (
-      <Textarea
-        value={value}
-        onChange={(e) => onChange?.(blockKey, e.target.value)}
-        placeholder={question || "Escribí acá..."}
-        className="min-h-[110px] flex-1 resize-none border-0 bg-white/70 text-sm placeholder:text-muted-foreground/60 focus-visible:ring-1"
-      />
+      <>
+        <Textarea
+          value={value}
+          onChange={(e) => onChange?.(blockKey, e.target.value)}
+          placeholder={question || "Escribí acá..."}
+          className="min-h-[110px] flex-1 resize-none border-0 bg-white/70 text-sm placeholder:text-muted-foreground/60 focus-visible:ring-1"
+        />
+        <SaveIndicator value={value} className="mt-1 self-end" />
+      </>
     )
   }
 
@@ -146,12 +153,17 @@ export function BusinessModelCanvas({
                 {story?.trim() || <span className="text-muted-foreground">—</span>}
               </p>
             ) : (
-              <Textarea
-                value={story ?? ""}
-                onChange={(e) => onStoryChange?.(e.target.value)}
-                placeholder="Ej: Quiero ayudar a pequeñas pymes a ordenar sus finanzas..."
-                className="min-h-[100px] bg-white text-sm"
-              />
+              <>
+                <Textarea
+                  value={story ?? ""}
+                  onChange={(e) => onStoryChange?.(e.target.value)}
+                  placeholder="Ej: Quiero ayudar a pequeñas pymes a ordenar sus finanzas..."
+                  className="min-h-[100px] bg-white text-sm"
+                />
+                <div className="mt-1 flex justify-end">
+                  <SaveIndicator value={story ?? ""} />
+                </div>
+              </>
             )}
           </div>
         )}
@@ -189,14 +201,14 @@ export function BusinessModelCanvas({
                 className={cn("flex flex-col rounded-xl border p-3", b.tint)}
                 style={{ gridArea: b.area }}
               >
-                <BlockHeader
-                  blockKey={b.key}
-                  label={b.label}
-                  question={b.question}
-                  onRemove={editingLabels ? () => removeBaseBlock(b.key) : undefined}
-                  onRename={editingLabels ? (v) => renameBlock(b.key, v) : undefined}
-                />
-                <BlockBody blockKey={b.key} question={b.question} />
+                {BlockHeader({
+                  blockKey: b.key,
+                  label: b.label,
+                  question: b.question,
+                  onRemove: editingLabels ? () => removeBaseBlock(b.key) : undefined,
+                  onRename: editingLabels ? (v) => renameBlock(b.key, v) : undefined,
+                })}
+                {BlockBody({ blockKey: b.key, question: b.question })}
               </div>
             ))}
           </div>
@@ -206,14 +218,14 @@ export function BusinessModelCanvas({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {extra.map((b) => (
                 <div key={b.key} className={cn("flex flex-col rounded-xl border p-3", b.tint)}>
-                  <BlockHeader
-                    blockKey={b.key}
-                    label={b.label}
-                    question={b.question}
-                    onRemove={editingLabels ? () => removeExtraBlock(b.key) : undefined}
-                    onRename={editingLabels ? (v) => renameExtraBlock(b.key, v) : undefined}
-                  />
-                  <BlockBody blockKey={b.key} question={b.question} />
+                  {BlockHeader({
+                    blockKey: b.key,
+                    label: b.label,
+                    question: b.question,
+                    onRemove: editingLabels ? () => removeExtraBlock(b.key) : undefined,
+                    onRename: editingLabels ? (v) => renameExtraBlock(b.key, v) : undefined,
+                  })}
+                  {BlockBody({ blockKey: b.key, question: b.question })}
                 </div>
               ))}
             </div>

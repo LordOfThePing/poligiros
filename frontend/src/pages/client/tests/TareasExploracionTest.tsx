@@ -5,6 +5,7 @@ import { Plus, X, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { TestApi } from "@/lib/testApi"
 import { readDraft, writeDraft, clearDraft } from "@/lib/draft"
+import { SaveIndicator } from "@/components/SaveIndicator"
 
 interface TareasExploracionTestProps {
   api: TestApi
@@ -101,6 +102,7 @@ export default function TareasExploracionTest({ api, assignmentId, initialRespon
               placeholder={"Ej: Investigar cursos de filmmaking deportivo"}
               className="text-sm"
             />
+            <SaveIndicator value={val} draftKey={draftKey} enabled={hydrated} compact className="shrink-0 w-4" />
             {tasks.length > 1 && (
               <button
                 type="button"

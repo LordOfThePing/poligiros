@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Briefcase, Lightbulb, UserRound, Send, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
-import { discardDraft, loadDraft, useAutosave } from "@/lib/draft"
+import { DraftStatusContext, discardDraft, loadDraft, useAutosave } from "@/lib/draft"
+import { SaveIndicator } from "@/components/SaveIndicator"
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
 
@@ -106,6 +107,7 @@ export function ModeloNegocioTest({
     h === "short" ? (addSecond ? "Corto / mediano plazo" : null) : "Largo plazo"
 
   return (
+    <DraftStatusContext.Provider value={{ draftKey: DRAFT_KEY(assignmentId), enabled: hydrated }}>
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Exploración</h1>
@@ -159,6 +161,7 @@ export function ModeloNegocioTest({
         </Button>
       )}
     </div>
+    </DraftStatusContext.Provider>
   )
 }
 
@@ -222,6 +225,9 @@ function IdeaWorkspace({
             placeholder={ideas.length > 0 ? "Otra idea..." : "Escribí la idea a explorar..."}
             className="text-foreground"
           />
+          <div className="flex justify-end">
+            <SaveIndicator value={state.idea} />
+          </div>
         </div>
 
         {/* Kind picker — only shows once an idea is chosen */}
@@ -308,7 +314,10 @@ function FieldsForm({
     <div className="space-y-3 rounded-xl border border-border bg-white p-5">
       {fields.map((f) => (
         <div key={f.key}>
-          <p className="text-xs font-medium text-muted-foreground mb-1">{f.label}</p>
+          <div className="flex items-baseline justify-between gap-2 mb-1">
+            <p className="text-xs font-medium text-muted-foreground">{f.label}</p>
+            <SaveIndicator value={content[f.key] ?? ""} />
+          </div>
           <Textarea
             value={content[f.key] ?? ""}
             onChange={(e) => onChange(f.key, e.target.value)}
@@ -318,7 +327,10 @@ function FieldsForm({
         </div>
       ))}
       <div>
-        <p className="text-xs font-medium text-muted-foreground mb-1">Contá tu idea</p>
+        <div className="flex items-baseline justify-between gap-2 mb-1">
+          <p className="text-xs font-medium text-muted-foreground">Contá tu idea</p>
+          <SaveIndicator value={story} />
+        </div>
         <Textarea
           value={story}
           onChange={(e) => onStoryChange(e.target.value)}

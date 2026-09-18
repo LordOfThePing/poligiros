@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
 import { readDraft, writeDraft, clearDraft } from "@/lib/draft"
+import { SaveIndicator } from "@/components/SaveIndicator"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { RegistroCard } from "@/components/modules/RegistroCard"
@@ -63,6 +64,9 @@ export default function ProgramaPage() {
   const navigate = useNavigate()
   // Draft text for the ENTREGA card currently open.
   const [entrega, setEntrega] = useState("")
+  // Which card `entrega` was last loaded for. The save indicator waits for it
+  // to match the open card, so loading a draft never reads as typing.
+  const [entregaLoadedFor, setEntregaLoadedFor] = useState<string | null>(null)
   // Correcting an already-returned ENTREGA (her devolución reopens it).
   const [editingEntrega, setEditingEntrega] = useState(false)
 
@@ -121,6 +125,7 @@ export default function ProgramaPage() {
     const item = mod?.items.find((i) => i.id === selected.itemId)
     const saved = item?.submission?.text ?? ""
     setEntrega(item ? readDraft(`entrega-${item.id}`, saved) : saved)
+    setEntregaLoadedFor(item?.id ?? null)
     setEditingEntrega(false)
   }, [selected, modules])
 
@@ -536,7 +541,14 @@ export default function ProgramaPage() {
                       ) : (
                         <>
                           <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-foreground">Tu entrega</p>
+                            <div className="flex items-baseline gap-3">
+                              <p className="text-sm font-medium text-foreground">Tu entrega</p>
+                              <SaveIndicator
+                                value={entrega}
+                                draftKey={`entrega-${current.item.id}`}
+                                enabled={entregaLoadedFor === current.item.id}
+                              />
+                            </div>
                             {editingEntrega && (
                               <Button variant="ghost" size="sm" onClick={() => setEditingEntrega(false)}>
                                 Cancelar

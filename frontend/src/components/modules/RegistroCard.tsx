@@ -11,6 +11,7 @@ import { apiJson, apiTry } from "@/lib/api"
 import { useDraft } from "@/lib/draft"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { SaveIndicator } from "@/components/SaveIndicator"
 import ResultsView from "@/pages/client/ResultsView"
 import type { DuplaCandidate, StudentModuleItem } from "@/lib/modules"
 
@@ -292,7 +293,10 @@ export function RegistroCard({
           )}
 
           <div className="space-y-2">
-            <Label>Fecha de la sesión</Label>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Fecha de la sesión</Label>
+              <SaveIndicator value={sessionDate} draftKey={`${draftKey}.date`} />
+            </div>
             <Input
               type="date"
               value={sessionDate}
@@ -302,7 +306,10 @@ export function RegistroCard({
           </div>
 
           <div className="space-y-2">
-            <Label>Principales emergentes</Label>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Principales emergentes</Label>
+              <SaveIndicator value={mainOutputs} draftKey={`${draftKey}.main`} />
+            </div>
             <MarkdownEditor
               value={mainOutputs}
               onChange={setMainOutputs}
@@ -312,7 +319,10 @@ export function RegistroCard({
           </div>
 
           <div className="space-y-2">
-            <Label>Herramientas y resultados</Label>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Herramientas y resultados</Label>
+              <SaveIndicator value={toolsAndResults} draftKey={`${draftKey}.tools`} />
+            </div>
             <MarkdownEditor
               value={toolsAndResults}
               onChange={setToolsAndResults}
@@ -322,7 +332,10 @@ export function RegistroCard({
           </div>
 
           <div className="space-y-2">
-            <Label>Conclusiones</Label>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label>Conclusiones</Label>
+              <SaveIndicator value={conclusions} draftKey={`${draftKey}.conclusions`} />
+            </div>
             <MarkdownEditor
               value={conclusions}
               onChange={setConclusions}

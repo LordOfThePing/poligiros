@@ -10,6 +10,7 @@ import type { TestApi } from "@/lib/testApi"
 import { PV_SECTIONS, type PvSectionKey } from "@/lib/planVital"
 import { FixedBottomBar } from "@/components/FixedBottomBar"
 import { discardDraft, loadDraft, useAutosave } from "@/lib/draft"
+import { SaveIndicator } from "@/components/SaveIndicator"
 
 const DRAFT_KEY = (id: string) => `plan-vital-draft-${id}`
 
@@ -334,6 +335,14 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
             placeholder={section.placeholder}
             className="min-h-[220px] text-sm leading-relaxed resize-y"
           />
+          <div className="flex justify-end -mt-2 min-h-4">
+            <SaveIndicator
+              key={section.key}
+              value={answers[section.key]}
+              draftKey={DRAFT_KEY(assignmentId)}
+              enabled={hydrated}
+            />
+          </div>
 
           {section.optional && (
             <p className="text-xs text-muted-foreground italic">
@@ -388,6 +397,13 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
                   onChange={(e) => setEstimulos((prev) => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
                   placeholder="Describí el estímulo de forma específica..."
                   className="text-sm"
+                />
+                <SaveIndicator
+                  value={val}
+                  draftKey={DRAFT_KEY(assignmentId)}
+                  enabled={hydrated}
+                  compact
+                  className="shrink-0 w-4"
                 />
                 {estimulos.length > 1 && (
                   <button

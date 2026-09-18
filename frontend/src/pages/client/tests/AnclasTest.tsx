@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { selectBonusCandidates, QUESTIONS, calcScores, rankAnchors } from "@/lib/anclas"
 import { useDraft, clearDraft } from "@/lib/draft"
 import { AnclasResult } from "@/components/results/AnclasResult"
+import { SaveIndicator } from "@/components/SaveIndicator"
 import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
 import type { TestApi } from "@/lib/testApi"
 
@@ -347,6 +348,11 @@ export default function AnclasTest({ api, assignmentId }: AnclasTestProps) {
                       {val}
                     </button>
                   ))}
+                  <SaveIndicator
+                    value={answers[idx]}
+                    draftKey={`${draftKey}.answers`}
+                    className="ml-auto self-center"
+                  />
                 </div>
                 {idx === 0 && (
                   <div className="flex justify-between text-xs text-muted-foreground pt-1">
@@ -382,7 +388,10 @@ export default function AnclasTest({ api, assignmentId }: AnclasTestProps) {
     return (
       <div ref={rootRef} className="max-w-2xl mx-auto space-y-6">
         <div>
-          <h2 className="font-serif text-3xl text-foreground mb-1">Seleccioná tus top 3</h2>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-serif text-3xl text-foreground mb-1">Seleccioná tus top 3</h2>
+            <SaveIndicator value={bonusItems} draftKey={`${draftKey}.bonus`} />
+          </div>
           <p className="text-sm text-muted-foreground">
             De las afirmaciones que más te representaron, elegí exactamente las <strong>3</strong> que mejor describen quién sos en tu carrera
           </p>

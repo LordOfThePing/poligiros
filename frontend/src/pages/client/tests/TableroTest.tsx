@@ -8,6 +8,8 @@ import { Plus, X, Sparkles, Check, Heart, AlertTriangle, RotateCcw } from "lucid
 import { SortableList, type RankItem } from "@/components/tablero/SortableList"
 import { FixedBottomBar } from "@/components/FixedBottomBar"
 import type { TestApi } from "@/lib/testApi"
+import { useAutosave } from "@/lib/draft"
+import { SaveIndicator } from "@/components/SaveIndicator"
 
 const DRAFT_KEY = (id: string) => `tablero-ideas-draft-${id}`
 
@@ -127,7 +129,6 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   const [querer, setQuerer] = useState<string[]>(Array(5).fill(""))
   const [sonar, setSonar] = useState<string[]>(Array(5).fill(""))
   const [explorationTasks, setExplorationTasks] = useState<string[]>(Array(3).fill(""))
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
   // ── Derived items with stable ids ───────────────────────────────────────────
   const [saberItems, setSaberItems] = useState<RankItem[]>([])
@@ -253,8 +254,12 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ideaCards, hydrated, done])
 
-  function saveDraft() {
-    const draft = {
+  // Persist the saved slice while they work — debounced and flushed on tab
+  // close by useAutosave. Off until hydration has run, so the empty initial
+  // state never clobbers an existing draft on mount.
+  useAutosave(
+    DRAFT_KEY(assignmentId),
+    {
       v: 2,
       saber,
       querer,
@@ -269,33 +274,9 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
       selectedIdea,
       explorationTasks,
       stageIndex,
-    }
-    localStorage.setItem(DRAFT_KEY(assignmentId), JSON.stringify(draft))
-    setLastSaved(new Date())
-  }
-
-  // Persist whenever the saved slice changes — once hydration has run, so we
-  // never clobber an existing draft with the empty initial state on mount.
-  useEffect(() => {
-    if (!hydrated || done) return
-    saveDraft()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    hydrated,
-    saber,
-    querer,
-    sonar,
-    saberRank,
-    quererRank,
-    sonarRank,
-    passionIds,
-    ideaCards,
-    aiIdeaCards,
-    aiDisabledTexts,
-    selectedIdea,
-    explorationTasks,
-    stageIndex,
-  ])
+    },
+    hydrated && !done,
+  )
 
   // ── Column accessors ─────────────────────────────────────────────────────────
   function colState(key: ColKey) {
@@ -559,7 +540,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
         <h1 className="font-serif text-3xl text-foreground mb-1">Tablero de Ideas</h1>
         <p className="text-sm text-muted-foreground">
           {subtitle}
-          {lastSaved && stage.phase !== "brainstorm" && (
+          {hydrated && stage.phase !== "brainstorm" && (
             <span className="ml-2 text-xs text-green-600">· Guardado automáticamente</span>
           )}
         </p>
@@ -588,12 +569,19 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
               {colState(stage.col)[0].map((val, i) => {
                 const setter = colState(stage.col)[1]
                 return (
-                  <div key={i} className="flex items-center gap-1">
+                  <div key={`${stage.col}-${i}`} className="flex items-center gap-1">
                     <Input
                       value={val}
                       onChange={(e) => updateRow(setter, i, e.target.value)}
                       placeholder={COLUMNS[stage.col].placeholder}
                       className="text-sm"
+                    />
+                    <SaveIndicator
+                      value={val}
+                      draftKey={DRAFT_KEY(assignmentId)}
+                      enabled={hydrated}
+                      compact
+                      className="shrink-0 w-4"
                     />
                     {colState(stage.col)[0].length > 1 && (
                       <button
@@ -918,6 +906,13 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                     onChange={(e) => updateRow(setExplorationTasks, i, e.target.value)}
                     placeholder="Ej: Investigar cursos de filmmaking deportivo"
                     className="text-sm"
+                  />
+                  <SaveIndicator
+                    value={val}
+                    draftKey={DRAFT_KEY(assignmentId)}
+                    enabled={hydrated}
+                    compact
+                    className="shrink-0 w-4"
                   />
                   {explorationTasks.length > 1 && (
                     <button
