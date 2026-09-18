@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Plus, X, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { TestApi } from "@/lib/testApi"
+import { readDraft, writeDraft, clearDraft } from "@/lib/draft"
 
 interface TareasExploracionTestProps {
   api: TestApi
@@ -16,15 +17,22 @@ interface TareasExploracionTestProps {
  * "Tareas de exploración" — test separado (post-Tablero). El coach anota qué
  * va a investigar después: cursos, eventos, nichos o industrias ligadas a sus ideas.
  */
-export default function TareasExploracionTest({ api, initialResponses, onDone }: TareasExploracionTestProps) {
+export default function TareasExploracionTest({ api, assignmentId, initialResponses, onDone }: TareasExploracionTestProps) {
   const { toast } = useToast()
   const [tasks, setTasks] = useState<string[]>(Array(3).fill(""))
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [hydrated, setHydrated] = useState(false)
 
+  const draftKey = `tareas-exploracion-${assignmentId}`
+
+  // An unsent draft is newer than whatever the server holds, so it wins over
+  // `initialResponses`.
   useEffect(() => {
-    if (initialResponses && Array.isArray((initialResponses.tasks as unknown) ?? initialResponses.explorationTasks)) {
+    const draft = readDraft<string[] | null>(draftKey, null)
+    if (draft && draft.length) {
+      setTasks(draft)
+    } else if (initialResponses && Array.isArray((initialResponses.tasks as unknown) ?? initialResponses.explorationTasks)) {
       const arr = Array.isArray(initialResponses.tasks) ? initialResponses.tasks : (initialResponses.explorationTasks as unknown[])
       const strs = (arr as unknown[]).filter((x): x is string => typeof x === "string")
       if (strs.length) setTasks([...strs, ...Array(Math.max(0, 3 - strs.length)).fill("")])
@@ -32,6 +40,12 @@ export default function TareasExploracionTest({ api, initialResponses, onDone }:
     setHydrated(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    const t = setTimeout(() => writeDraft(draftKey, tasks), 500)
+    return () => clearTimeout(t)
+  }, [hydrated, draftKey, tasks])
 
   function update(i: number, v: string) {
     setTasks((prev) => prev.map((x, idx) => (idx === i ? v : x)))
@@ -44,6 +58,7 @@ export default function TareasExploracionTest({ api, initialResponses, onDone }:
     const res = await api.submit({ tasks: tasks.map((s) => s.trim()).filter(Boolean) })
     setSaving(false)
     if (res.ok) {
+      clearDraft(draftKey)
       if (onDone) onDone();
       else { setDone(true); }
     } else {

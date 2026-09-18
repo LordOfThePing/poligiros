@@ -7,6 +7,7 @@ import { checkUpload, buildObjectKey, ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES } fro
 import {
   sendSupervisionReviewedEmail,
   sendCoachInviteEmail,
+  sendPoolAddedEmail,
   sendSignupApprovedEmail,
   sendSubmissionReviewedEmail,
   sendCoachPasswordResetEmail,
@@ -830,27 +831,76 @@ supervisor.put("/pools/:id", async (c) => {
   return c.json(pool)
 })
 
-/** POST /supervisor/pools/:id/enroll — body: { email } */
+/**
+ * POST /supervisor/pools/:id/enroll — body: { email, name? }
+ *
+ * Adding somebody to a pool is always an invitation, so it always ends in a
+ * mail. If the email already has an account we just add the membership and
+ * tell them; if it does not, we create the pending coach here (same shape as
+ * /coaches/invite) instead of making the supervisor copy a signup link by
+ * hand and paste it into her own mail client.
+ */
 supervisor.post("/pools/:id/enroll", async (c) => {
+  const supervisorUser = c.get("user")
   const id = c.req.param("id")
-  const { email } = await c.req.json()
+  const body = await c.req.json()
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+  const name = typeof body.name === "string" ? body.name.trim() : ""
+  if (!email) return c.json({ error: "Email requerido" }, 400)
 
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    return c.json({ error: "Usuario no encontrado con ese email" }, 404)
-  }
-  if (user.role !== "STUDENT_COACH") {
+  const pool = await prisma.coachPool.findUnique({ where: { id } })
+  if (!pool) return c.json({ error: "Pool no encontrado" }, 404)
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing && existing.role !== "STUDENT_COACH") {
     return c.json({ error: "El usuario no es un student coach" }, 400)
   }
 
+  // Nobody with that email yet → invite them into the pool.
+  if (!existing) {
+    if (!name) {
+      return c.json(
+        { error: "Ese email todavía no tiene cuenta: agregá el nombre para invitarlo" },
+        400
+      )
+    }
+    const inviteToken = randomBytes(32).toString("base64url")
+    const coach = await prisma.user.create({
+      data: {
+        email,
+        name,
+        role: "STUDENT_COACH",
+        password: null,
+        inviteToken,
+        inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      },
+    })
+    await prisma.poolMembership.create({ data: { userId: coach.id, poolId: id } })
+    // Coach-as-coachee Client, so they can take tests later. Same as /coaches/invite.
+    await prisma.client
+      .create({ data: { studentId: supervisorUser.id, userId: coach.id, name, email } })
+      .catch(() => {})
+
+    const link = inviteLink(inviteToken)
+    sendCoachInviteEmail(email, name, link, pool.name).catch(() => {})
+
+    const membership = await prisma.poolMembership.findUniqueOrThrow({
+      where: { userId_poolId: { userId: coach.id, poolId: id } },
+      include: { user: true },
+    })
+    return c.json({ ...membership, invited: true, link }, 201)
+  }
+
   const membership = await prisma.poolMembership.upsert({
-    where: { userId_poolId: { userId: user.id, poolId: id } },
+    where: { userId_poolId: { userId: existing.id, poolId: id } },
     update: {},
-    create: { userId: user.id, poolId: id },
+    create: { userId: existing.id, poolId: id },
     include: { user: true },
   })
 
-  return c.json(membership, 201)
+  sendPoolAddedEmail(existing.email, existing.name, pool.name).catch(() => {})
+
+  return c.json({ ...membership, invited: false }, 201)
 })
 
 /* ─────────────────────────────────────────

@@ -61,12 +61,36 @@ export async function sendSupervisionReviewedEmail(
     `)
 }
 
-export async function sendCoachInviteEmail(coachEmail: string, name: string, link: string) {
+/**
+ * `poolName` distinguishes the two invitations that share this mail: joining
+ * the certification (a CIC) and being added to a group of already certified
+ * coaches, which is not a course and has no classes.
+ */
+export async function sendCoachInviteEmail(
+  coachEmail: string,
+  name: string,
+  link: string,
+  poolName?: string | null
+) {
   await send(coachEmail, "Te invitaron a Poligiros", `
       <p>Hola ${name || ""},</p>
-      <p>Gaby te invitó a sumarte a su programa de coaching en Poligiros.</p>
+      <p>${
+        poolName
+          ? `Gaby te sumó a <strong>${poolName}</strong>, el grupo de coaches certificados de Poligiros.`
+          : "Gaby te invitó a sumarte a su programa de coaching en Poligiros."
+      }</p>
       <p>Completá tu registro desde este enlace: <a href="${link}">${link}</a></p>
       <p>El enlace vence en 7 días.</p>
+    `)
+}
+
+/** Sent when an existing coach is added to a pool — they already have a login. */
+export async function sendPoolAddedEmail(coachEmail: string, name: string, poolName: string) {
+  await send(coachEmail, `Te sumaron a ${poolName}`, `
+      <p>Hola ${name || ""},</p>
+      <p>Gaby te sumó a <strong>${poolName}</strong>, el grupo de coaches certificados de Poligiros.</p>
+      <p>Desde ahí podés cargar a tus coachees y tomarles los tests habilitados.</p>
+      <p><a href="${APP_URL}/login">Ingresar →</a></p>
     `)
 }
 
@@ -80,6 +104,33 @@ export async function sendTestCompletedToCoach(
       <p>Hola ${coachName || ""},</p>
       <p>Tu coachee <strong>${clientName}</strong> acaba de completar el ejercicio <strong>${testName}</strong>.</p>
       <p><a href="${APP_URL}/student/my-tests">Ver mis tests →</a></p>
+    `)
+}
+
+/**
+ * Sent to the coachee when their coach assigns (or re-sends) a test. The magic
+ * link IS the credential — a coachee has no login — so this mail is the only
+ * way it reaches them unless the coach copies it by hand.
+ */
+export async function sendTestAssignedToClient(
+  clientEmail: string,
+  clientName: string,
+  coachName: string,
+  testName: string,
+  magicLink: string,
+  completeBy: Date
+) {
+  const deadline = completeBy.toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+  await send(clientEmail, `${coachName} te compartió: ${testName}`, `
+      <p>Hola ${clientName || ""},</p>
+      <p><strong>${coachName}</strong> te compartió el ejercicio <strong>${testName}</strong> para que lo completes antes de su sesión.</p>
+      <p>Entrá desde este enlace — es personal, no hace falta usuario ni contraseña:</p>
+      <p><a href="${magicLink}">${magicLink}</a></p>
+      <p>Tenés tiempo hasta el <strong>${deadline}</strong>.</p>
     `)
 }
 

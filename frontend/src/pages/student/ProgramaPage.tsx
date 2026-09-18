@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiJson, apiTry } from "@/lib/api"
+import { readDraft, writeDraft, clearDraft } from "@/lib/draft"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { RegistroCard } from "@/components/modules/RegistroCard"
@@ -112,14 +113,24 @@ export default function ProgramaPage() {
   }, [selected, modules])
 
   // Reset the draft to whatever is stored when a different card opens, so
-  // switching cards never carries someone else text over.
+  // switching cards never carries someone else text over. An unsent draft in
+  // localStorage wins over the server copy: it is what they were writing.
   useEffect(() => {
     if (!selected) return
     const mod = modules.find((m) => m.id === selected.moduleId)
     const item = mod?.items.find((i) => i.id === selected.itemId)
-    setEntrega(item?.submission?.text ?? "")
+    const saved = item?.submission?.text ?? ""
+    setEntrega(item ? readDraft(`entrega-${item.id}`, saved) : saved)
     setEditingEntrega(false)
   }, [selected, modules])
+
+  // Persist what they are typing, so a refresh mid-entrega does not lose it.
+  useEffect(() => {
+    const itemId = selected?.itemId
+    if (!itemId) return
+    const t = setTimeout(() => writeDraft(`entrega-${itemId}`, entrega), 500)
+    return () => clearTimeout(t)
+  }, [selected, entrega])
 
   async function submitEntrega(item: StudentModuleItem) {
     if (!entrega.trim()) return
@@ -130,6 +141,7 @@ export default function ProgramaPage() {
     })
     setSaving(false)
     if (!res.ok) return
+    clearDraft(`entrega-${item.id}`)
     setEditingEntrega(false)
     // The card completion and module progress are derived server-side.
     apiJson<StudentModule[]>("/student/modules").then(setModules).catch(() => {})

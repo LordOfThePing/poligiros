@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { selectBonusCandidates, QUESTIONS, calcScores, rankAnchors } from "@/lib/anclas"
+import { useDraft, clearDraft } from "@/lib/draft"
 import { AnclasResult } from "@/components/results/AnclasResult"
 import { Sparkles, ChevronRight, Keyboard, Check } from "lucide-react"
 import type { TestApi } from "@/lib/testApi"
@@ -15,12 +16,20 @@ interface AnclasTestProps {
   assignmentId: string
 }
 
-export default function AnclasTest({ api }: AnclasTestProps) {
+export default function AnclasTest({ api, assignmentId }: AnclasTestProps) {
   // 0 = consigna, 1 = statements, 2 = bonus, 3 = results.
-  const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState<(number | null)[]>(Array(40).fill(null))
+  // 40 statements is a long sit: the answers are drafted so a refresh (or a
+  // phone that locks itself) does not send the coachee back to statement 1.
+  // The step is drafted too but never past 2 — steps 3+ are derived from a
+  // submit that only lives in memory.
+  const draftKey = `anclas-${assignmentId}`
+  const [step, setStep] = useDraft<number>(`${draftKey}.step`, 0)
+  const [answers, setAnswers] = useDraft<(number | null)[]>(
+    `${draftKey}.answers`,
+    Array(40).fill(null)
+  )
   const [unanswered, setUnanswered] = useState<Set<number>>(new Set())
-  const [bonusItems, setBonusItems] = useState<number[]>([])
+  const [bonusItems, setBonusItems] = useDraft<number[]>(`${draftKey}.bonus`, [])
   const [scores, setScores] = useState<Record<string, number>>({})
   const [ranking, setRanking] = useState<string[]>([])
   const [aiInsight, setAiInsight] = useState<string | null>(null)
@@ -44,6 +53,12 @@ export default function AnclasTest({ api }: AnclasTestProps) {
 
   const answered = answers.filter((a) => a !== null).length
   const progressPct = Math.round((answered / 40) * 100)
+
+  // A draft can only bring the coachee back to a step they can still act on.
+  useEffect(() => {
+    setStep((prev) => (prev > 2 ? 2 : prev))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const bonusCandidates = step >= 2 ? selectBonusCandidates(answers) : []
 
@@ -132,6 +147,9 @@ export default function AnclasTest({ api }: AnclasTestProps) {
         aiInsight: insight,
       })
       if (res.ok || res.status === 409) {
+        clearDraft(`${draftKey}.step`)
+        clearDraft(`${draftKey}.answers`)
+        clearDraft(`${draftKey}.bonus`)
         setDone(true)
       } else {
         setSubmitError(true)

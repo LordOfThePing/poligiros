@@ -553,7 +553,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   const subtitle = stageSubtitle(stage)
 
   return (
-    <div className="space-y-8 pb-32 sm:pb-24">
+    <div className="space-y-8">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Tablero de Ideas</h1>
         <p className="text-sm text-muted-foreground">
@@ -964,6 +964,15 @@ function stageSubtitle(stage: Stage): string {
   }
 }
 
+/**
+ * The fixed progress/next bar every step ends with.
+ *
+ * Because it is `fixed`, it sits on top of the page instead of in the flow, so
+ * the last bit of content needs room reserved below it. A hardcoded padding
+ * never survived contact with mobile — the bar stacks into two rows there, and
+ * the safe-area inset piles on top — so the bar measures itself and renders a
+ * spacer of exactly its own height in its place.
+ */
 function StepBar({
   step,
   total,
@@ -975,19 +984,40 @@ function StepBar({
   pct: number
   children: React.ReactNode
 }) {
+  const barRef = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState(0)
+
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const measure = () => setHeight(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    window.addEventListener("resize", measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", measure)
+    }
+  }, [])
+
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur px-4 pt-3 z-10"
-      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-    >
-      <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-1">Paso {step} de {total}</p>
-          <Progress value={pct} className="h-1.5" />
+    <>
+      <div aria-hidden style={{ height: height || 112 }} />
+      <div
+        ref={barRef}
+        className="fixed bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur px-4 pt-3 z-10"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-1">Paso {step} de {total}</p>
+            <Progress value={pct} className="h-1.5" />
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 [&>*]:flex-1 sm:[&>*]:flex-none">{children}</div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 [&>*]:flex-1 sm:[&>*]:flex-none">{children}</div>
       </div>
-    </div>
+    </>
   )
 }
 

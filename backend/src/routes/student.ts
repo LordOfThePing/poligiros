@@ -5,6 +5,7 @@ import {
   sendSupervisionSubmittedEmail,
   sendSessionRecordedEmail,
   sendSubmissionReceivedEmail,
+  sendTestAssignedToClient,
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { latestTableroIdea } from "./client.js"
@@ -150,6 +151,16 @@ student.post("/clients/:id/assign", async (c) => {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173"
   const link = `${frontendUrl}/t/${assignment.accessToken}`
 
+  // The coachee has no account: this mail is how the link reaches them.
+  sendTestAssignedToClient(
+    clientRecord.email,
+    clientRecord.name,
+    user.name,
+    assignment.test.title,
+    link,
+    completeBy
+  ).catch(() => {})
+
   return c.json({ assignment, link }, 201)
 })
 
@@ -170,6 +181,7 @@ student.post("/assignments/:id/resend", async (c) => {
   // Verify assignment belongs to one of this student's clients
   const assignment = await prisma.testAssignment.findFirst({
     where: { id, client: { studentId: user.id } },
+    include: { client: true, test: true },
   })
   if (!assignment) return c.json({ error: "Not found" }, 404)
 
@@ -184,6 +196,17 @@ student.post("/assignments/:id/resend", async (c) => {
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173"
   const link = `${frontendUrl}/t/${updated.accessToken}`
+
+  // Re-sending is precisely "the coachee never got / lost the link", so the
+  // mail matters even more here than on the first assign.
+  sendTestAssignedToClient(
+    assignment.client.email,
+    assignment.client.name,
+    user.name,
+    assignment.test.title,
+    link,
+    completeBy
+  ).catch(() => {})
 
   return c.json({ link })
 })

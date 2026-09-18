@@ -17,7 +17,16 @@ type PublicCohort = { id: string; name: string }
 type LinkState =
   | { kind: "loading" }
   | { kind: "dead"; message: string }
-  | { kind: "open"; expiresAt: string; boundCohortId: string | null; cohorts: PublicCohort[] }
+  | {
+      kind: "open"
+      expiresAt: string
+      boundCohortId: string | null
+      /** Set when the link points at a coach pool instead of a CIC — the two
+       *  flows look the same but read very differently to the candidate. */
+      boundPoolId: string | null
+      boundPoolName: string | null
+      cohorts: PublicCohort[]
+    }
 
 /**
  * Public self-signup, reached through an expiring shared link
@@ -50,6 +59,8 @@ export default function InscripcionPage() {
             kind: "open",
             expiresAt: json.expiresAt,
             boundCohortId: json.boundCohortId,
+            boundPoolId: json.boundPoolId ?? null,
+            boundPoolName: json.boundPoolName ?? null,
             cohorts: json.cohorts ?? [],
           })
           if (json.boundCohortId) setCohortId(json.boundCohortId)
@@ -92,13 +103,20 @@ export default function InscripcionPage() {
     setLoading(false)
   }
 
+  // A link bound to a pool is an invitation to join a group of already
+  // certified coaches, not to enroll in the certification — same form, very
+  // different story, so every bit of copy below branches on it.
+  const poolName = link.kind === "open" ? link.boundPoolName : null
+
   const shell = (children: React.ReactNode) => (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4">
       <div className="w-full max-w-lg py-8">
         <div className="text-center mb-8">
           <h1 className="font-serif text-4xl text-brand-accent mb-2">Poligiros</h1>
           <p className="text-muted-foreground text-sm">
-            Certificación en Coaching de Carrera y Bienestar Laboral
+            {poolName
+              ? "Comunidad de coaches certificados"
+              : "Certificación en Coaching de Carrera y Bienestar Laboral"}
           </p>
         </div>
         {children}
@@ -134,8 +152,9 @@ export default function InscripcionPage() {
           <CheckCircle2 className="h-10 w-10 text-brand-accent mx-auto" />
           <h2 className="font-serif text-2xl text-foreground">¡Listo!</h2>
           <p className="text-sm text-muted-foreground">
-            Recibimos tu inscripción. Cuando sea aprobada te vamos a avisar por email y vas a
-            poder ingresar con la contraseña que elegiste.
+            {poolName ? "Recibimos tu solicitud." : "Recibimos tu inscripción."} Cuando sea
+            aprobada te vamos a avisar por email y vas a poder ingresar con la contraseña que
+            elegiste.
           </p>
           <Link to="/login" className="text-sm text-brand-accent hover:underline inline-block">
             Ir al inicio de sesión
@@ -152,12 +171,17 @@ export default function InscripcionPage() {
   return shell(
     <Card className="border-border shadow-sm">
       <CardHeader>
-        <CardTitle className="font-serif text-2xl">Inscribite al CIC</CardTitle>
+        <CardTitle className="font-serif text-2xl">
+          {poolName ? `Sumate a ${poolName}` : "Inscribite al CIC"}
+        </CardTitle>
         <CardDescription>
-          {boundCohort
-            ? `Te estás inscribiendo a ${boundCohort.name}. `
-            : ""}
-          Completá tus datos. Vamos a revisar tu inscripción y te avisamos por email.
+          {poolName
+            ? "Es el grupo de coaches ya certificados: desde ahí vas a poder cargar a tus coachees y tomarles los tests. "
+            : boundCohort
+              ? `Te estás inscribiendo a ${boundCohort.name}. `
+              : ""}
+          Completá tus datos. Vamos a revisar tu{" "}
+          {poolName ? "solicitud" : "inscripción"} y te avisamos por email.
         </CardDescription>
         <p className="text-xs text-muted-foreground pt-1">
           Este link vence el {formatShortDate(link.expiresAt)}.

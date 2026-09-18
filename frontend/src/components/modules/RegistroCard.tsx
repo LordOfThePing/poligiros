@@ -8,6 +8,7 @@ import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, Users, Pencil 
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
+import { useDraft } from "@/lib/draft"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import ResultsView from "@/pages/client/ResultsView"
@@ -19,6 +20,50 @@ type PartnerResult = {
   completedAt?: string
   testType?: string
   responses?: Record<string, unknown> | null
+}
+
+/**
+ * The registro is the same three fields for every card, but what the coach has
+ * to write about depends on the test they ran the session on. Keeping the
+ * Anclas wording on a Tablero or a Plan Vital session sent them looking for a
+ * ranking of 8 anclas that that test never produces.
+ */
+const REGISTRO_PLACEHOLDERS: Record<string, { mainOutputs: string; toolsAndResults: string }> = {
+  ANCLAS_CARRERA: {
+    mainOutputs:
+      "Qué apareció en la entrevista: felicidad laboral, insatisfacción y desde cuándo, qué disfruta...",
+    toolsAndResults:
+      "El ranking de las 8 anclas y cómo resultó la devolución (mirada de lupa y de faro)...",
+  },
+  TABLERO_IDEAS: {
+    mainOutputs:
+      "Qué apareció al recorrer el saber, el querer y el soñar: qué le costó más, dónde se entusiasmó...",
+    toolsAndResults:
+      "Los top 3 de cada columna, las ideas del brainstorming y cuál eligió — y cómo resultó la devolución...",
+  },
+  PLAN_VITAL: {
+    mainOutputs:
+      "Qué apareció al mirar las 8 áreas: cuáles puntuó más bajo, qué desequilibrio reconoce, qué la moviliza...",
+    toolsAndResults:
+      "El puntaje por área, los Estímulos que eligió y cómo resultó la devolución...",
+  },
+  PIRAMIDE_PROPOSITO: {
+    mainOutputs:
+      "Qué apareció al construir la pirámide: rol, valores, fortalezas, contextos — dónde dudó más...",
+    toolsAndResults:
+      "Cómo quedó formulado el propósito final y cómo resultó la devolución...",
+  },
+  MODELO_NEGOCIO: {
+    mainOutputs:
+      "Qué apareció al explorar la idea: qué tiene clara, qué está en pañales, qué la frena...",
+    toolsAndResults:
+      "Los bloques del Canvas (o la investigación del puesto) y cómo resultó la devolución...",
+  },
+}
+
+const DEFAULT_PLACEHOLDERS = {
+  mainOutputs: "Qué apareció en la entrevista: lo que trajo, lo que la moviliza, lo que la frena...",
+  toolsAndResults: "Los resultados de la herramienta que usaste y cómo resultó la devolución...",
 }
 
 /**
@@ -37,11 +82,27 @@ export function RegistroCard({
 }) {
   const { toast } = useToast()
   const [candidates, setCandidates] = useState<DuplaCandidate[]>([])
+  // The registro is long-form writing that used to live only in React state:
+  // a refresh mid-write threw it away. It is drafted to localStorage now, and
+  // only cleared once the server has it.
+  const draftKey = `registro-${item.id}`
   const [coacheeId, setCoacheeId] = useState(item.practice?.coachee.id ?? "")
-  const [sessionDate, setSessionDate] = useState(item.practice?.sessionDate?.slice(0, 10) ?? "")
-  const [mainOutputs, setMainOutputs] = useState(item.practice?.mainOutputs ?? "")
-  const [toolsAndResults, setToolsAndResults] = useState(item.practice?.toolsAndResults ?? "")
-  const [conclusions, setConclusions] = useState(item.practice?.conclusions ?? "")
+  const [sessionDate, setSessionDate, clearDateDraft] = useDraft(
+    `${draftKey}.date`,
+    item.practice?.sessionDate?.slice(0, 10) ?? ""
+  )
+  const [mainOutputs, setMainOutputs, clearMainDraft] = useDraft(
+    `${draftKey}.main`,
+    item.practice?.mainOutputs ?? ""
+  )
+  const [toolsAndResults, setToolsAndResults, clearToolsDraft] = useDraft(
+    `${draftKey}.tools`,
+    item.practice?.toolsAndResults ?? ""
+  )
+  const [conclusions, setConclusions, clearConclusionsDraft] = useDraft(
+    `${draftKey}.conclusions`,
+    item.practice?.conclusions ?? ""
+  )
   const [saving, setSaving] = useState(false)
 
   // The partner's test result, loaded on demand once a partner is picked.
@@ -104,6 +165,10 @@ export function RegistroCard({
       toast({ title: j.error || "No se pudo guardar", variant: "destructive" })
       return
     }
+    clearDateDraft()
+    clearMainDraft()
+    clearToolsDraft()
+    clearConclusionsDraft()
     toast({
       title: item.practice ? "Registro actualizado" : "Registro enviado",
       description: postReviewEdit ? "Vuelve a Gaby para una nueva devolución." : undefined,
@@ -113,6 +178,8 @@ export function RegistroCard({
   }
 
   const partnerName = candidates.find((c) => c.id === coacheeId)?.name
+  const placeholders =
+    (item.test && REGISTRO_PLACEHOLDERS[item.test.type]) || DEFAULT_PLACEHOLDERS
 
   return (
     <div className="space-y-5">
@@ -240,7 +307,7 @@ export function RegistroCard({
               value={mainOutputs}
               onChange={setMainOutputs}
               rows={7}
-              placeholder="Qué apareció en la entrevista: felicidad laboral, insatisfacción y desde cuándo, qué disfruta..."
+              placeholder={placeholders.mainOutputs}
             />
           </div>
 
@@ -250,7 +317,7 @@ export function RegistroCard({
               value={toolsAndResults}
               onChange={setToolsAndResults}
               rows={7}
-              placeholder="El ranking de las 8 anclas y cómo resultó la devolución (mirada de lupa y de faro)..."
+              placeholder={placeholders.toolsAndResults}
             />
           </div>
 

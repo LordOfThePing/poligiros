@@ -39,6 +39,7 @@ export default function PoolsPage() {
   const [newName, setNewName] = useState("")
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   const [enrollEmail, setEnrollEmail] = useState("")
+  const [enrollName, setEnrollName] = useState("")
   const [enrollingPoolId, setEnrollingPoolId] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<SignupLink | null>(null)
   const [loadingInvite, setLoadingInvite] = useState(false)
@@ -144,13 +145,20 @@ export default function PoolsPage() {
     const res = await apiTry(`/supervisor/pools/${enrollingPoolId}/enroll`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: enrollEmail }),
+      body: JSON.stringify({ email: enrollEmail, name: enrollName }),
     })
     if (res.ok) {
+      const json = await res.json().catch(() => ({ invited: false }))
       apiJson<Pool[]>("/supervisor/pools").then(setPools).catch(() => {})
       setEnrollEmail("")
+      setEnrollName("")
       setEnrollingPoolId(null)
-      toast({ title: "Coach agregado" })
+      toast({
+        title: json.invited ? "Invitación enviada" : "Coach agregado",
+        description: json.invited
+          ? "Le llegó un mail para crear su cuenta."
+          : "Le avisamos por mail que ya puede entrar.",
+      })
     } else {
       const json = await res.json().catch(() => ({ error: "Error" }))
       toast({ title: json.error || "Error al agregar", variant: "destructive" })
@@ -302,7 +310,20 @@ export default function PoolsPage() {
                 placeholder="coach@email.com"
                 onKeyDown={(e) => e.key === "Enter" && handleEnroll()}
               />
-              <p className="text-xs text-muted-foreground">Agrega a alguien que ya tiene cuenta.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nombre y apellido</Label>
+              <Input
+                value={enrollName}
+                onChange={(e) => setEnrollName(e.target.value)}
+                placeholder="Solo si todavía no tiene cuenta"
+                onKeyDown={(e) => e.key === "Enter" && handleEnroll()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Si ya tiene cuenta, la sumamos al pool y le avisamos por mail. Si no, le mandamos
+                una invitación para que cree su cuenta — para eso necesitamos el nombre.
+              </p>
             </div>
 
             <div className="border-t border-border pt-4 space-y-2">
