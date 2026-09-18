@@ -48,6 +48,7 @@ type PracticeRecord = {
 
 type Filter = "pending" | "reviewed" | "all"
 type SortOrder = "recent" | "name"
+type TypeFilter = "all" | "entrega" | "registro"
 
 export default function EntregasPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -57,6 +58,7 @@ export default function EntregasPage() {
   const [filter, setFilter] = useState<Filter>("pending")
   const [cohortFilter, setCohortFilter] = useState<string>("all")
   const [itemFilter, setItemFilter] = useState<string>("all")
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent")
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState<Submission | null>(null)
@@ -85,6 +87,7 @@ export default function EntregasPage() {
   const visibleSubmissions = submissions
     .filter(
       (s) =>
+        (typeFilter === "all" || typeFilter === "entrega") &&
         (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
         (itemFilter === "all" || s.item.title === itemFilter)
     )
@@ -96,6 +99,7 @@ export default function EntregasPage() {
   const visiblePractices = practices
     .filter(
       (r) =>
+        (typeFilter === "all" || typeFilter === "registro") &&
         (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
         (itemFilter === "all" || r.item.title === itemFilter)
     )
@@ -104,6 +108,21 @@ export default function EntregasPage() {
         ? a.coach.name.localeCompare(b.coach.name)
         : new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
     )
+  type FeedItem =
+    | { kind: "entrega"; sortKey: string; sortName: string; data: Submission }
+    | { kind: "registro"; sortKey: string; sortName: string; data: PracticeRecord }
+  const feed: FeedItem[] = [
+    ...visibleSubmissions.map(
+      (s): FeedItem => ({ kind: "entrega", sortKey: s.submittedAt, sortName: s.coach.name, data: s })
+    ),
+    ...visiblePractices.map(
+      (r): FeedItem => ({ kind: "registro", sortKey: r.submittedAt, sortName: r.coach.name, data: r })
+    ),
+  ].sort((a, b) =>
+    sortOrder === "name"
+      ? a.sortName.localeCompare(b.sortName)
+      : new Date(b.sortKey).getTime() - new Date(a.sortKey).getTime()
+  )
 
   async function submitPracticeReview() {
     if (!reviewingPractice || !feedback.trim()) return
