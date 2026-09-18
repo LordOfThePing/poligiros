@@ -91,22 +91,12 @@ export default function EntregasPage() {
         (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
         (itemFilter === "all" || s.item.title === itemFilter)
     )
-    .sort((a, b) =>
-      sortOrder === "name"
-        ? a.coach.name.localeCompare(b.coach.name)
-        : new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
-    )
   const visiblePractices = practices
     .filter(
       (r) =>
         (typeFilter === "all" || typeFilter === "registro") &&
         (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
         (itemFilter === "all" || r.item.title === itemFilter)
-    )
-    .sort((a, b) =>
-      sortOrder === "name"
-        ? a.coach.name.localeCompare(b.coach.name)
-        : new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
     )
   type FeedItem =
     | { kind: "entrega"; sortKey: string; sortName: string; data: Submission }
@@ -167,12 +157,12 @@ export default function EntregasPage() {
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Tareas</h1>
         <p className="text-muted-foreground text-sm">
-          Lo que los coaches entregan en las tarjetas de tipo Entrega. Al devolver, el coach recibe
-          un mail y lo ve en su clase.
+          Lo que los coaches entregan en las tarjetas de tipo Entrega y sus registros de sesión.
+          Al devolver, el coach recibe un mail y lo ve en su clase.
         </p>
       </div>
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2 flex-wrap">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Estado</Label>
           <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
@@ -193,6 +183,17 @@ export default function EntregasPage() {
               {cohortNames.map((n) => (
                 <SelectItem key={n} value={n}>{n}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Tipo</Label>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="entrega">Entregas</SelectItem>
+              <SelectItem value="registro">Registros de sesión</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -222,175 +223,120 @@ export default function EntregasPage() {
 
       {loading ? (
         <LoadingBadge />
-      ) : visibleSubmissions.length === 0 && visiblePractices.length === 0 ? (
+      ) : feed.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
-          No hay entregas {filter === "pending" ? "sin devolver" : "en este estado"}.
+          No hay tareas {filter === "pending" ? "sin devolver" : "en este estado"}.
         </p>
-      ) : visibleSubmissions.length === 0 ? null : (
+      ) : (
         <div className="space-y-3">
-          {visibleSubmissions.map((s) => (
-            <Collapsible key={s.id} asChild>
-              <Card className="bg-white">
-                <CardContent className="pt-6 space-y-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-foreground">{s.coach.name}</h3>
-                        {s.cohorts.map((c) => (
-                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
-                        ))}
-                        {s.reviewedAt ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                            Devuelta
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                            Sin devolver
-                          </Badge>
-                        )}
-                        {s.editedAt && (
+          {feed.map((f) => {
+            const d = f.data
+            return (
+              <Collapsible key={`${f.kind}-${d.id}`} asChild>
+                <Card className="bg-white">
+                  <CardContent className="pt-6 space-y-3">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">
-                            Editado tras tu devolución
+                            {f.kind === "entrega" ? "Entrega" : "Registro"}
                           </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {s.module.title} · {s.item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Mail className="h-3 w-3" /> {s.coach.email} · entregó el{" "}
-                        {formatShortDate(s.submittedAt)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant={s.reviewedAt ? "outline" : "default"}
-                        className={s.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
-                        onClick={() => { setReviewing(s); setFeedback(s.feedback ?? "") }}
-                      >
-                        {s.reviewedAt ? "Editar devolución" : "Devolver"}
-                      </Button>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="group h-8 w-8 p-0">
-                          <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                  </div>
-
-                  <CollapsibleContent className="space-y-3">
-                    <div className="bg-muted/40 rounded-lg p-3">
-                      <Markdown>{s.text}</Markdown>
-                    </div>
-
-                    {s.feedback && (
-                      <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
-                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                          <Check className="h-3 w-3" /> Tu devolución
-                        </p>
-                        <Markdown>{s.feedback}</Markdown>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </CardContent>
-              </Card>
-            </Collapsible>
-          ))}
-        </div>
-      )}
-
-      {visiblePractices.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <div>
-            <h2 className="font-serif text-xl text-foreground">Registros de sesión</h2>
-            <p className="text-sm text-muted-foreground">
-              Prácticas en duplas: quién entrevistó a quién dentro de una clase.
-            </p>
-          </div>
-
-          {visiblePractices.map((r) => (
-            <Collapsible key={r.id} asChild>
-              <Card className="bg-white">
-                <CardContent className="pt-6 space-y-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-foreground">{r.coach.name}</h3>
-                        <span className="text-sm text-muted-foreground">entrevistó a</span>
-                        <h3 className="font-medium text-foreground">{r.coachee.name}</h3>
-                        {r.cohorts.map((c) => (
-                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
-                        ))}
-                        {r.reviewedAt ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                            Devuelta
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                            Sin devolver
-                          </Badge>
-                        )}
-                        {r.editedAt && (
-                          <Badge variant="outline" className="text-xs">
-                            Editado tras tu devolución
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {r.module.title} · {r.item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {r.sessionDate && `Sesión del ${formatShortDate(r.sessionDate)} · `}
-                        entregado el {formatShortDate(r.submittedAt)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant={r.reviewedAt ? "outline" : "default"}
-                        className={r.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
-                        onClick={() => { setReviewingPractice(r); setFeedback(r.feedback ?? "") }}
-                      >
-                        {r.reviewedAt ? "Editar devolución" : "Devolver"}
-                      </Button>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="group h-8 w-8 p-0">
-                          <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                  </div>
-
-                  <CollapsibleContent className="space-y-3">
-                    <div className="bg-muted/40 rounded-lg p-3 space-y-3">
-                      {[
-                        ["Principales emergentes", r.mainOutputs],
-                        ["Herramientas y resultados", r.toolsAndResults],
-                        ["Conclusiones", r.conclusions],
-                      ].map(([label, body]) => (
-                        <div key={label}>
-                          <p className="text-xs font-medium text-foreground mb-1">{label}</p>
-                          <Markdown>{body}</Markdown>
+                          <h3 className="font-medium text-foreground">{d.coach.name}</h3>
+                          {f.kind === "registro" && (
+                            <>
+                              <span className="text-sm text-muted-foreground">entrevistó a</span>
+                              <h3 className="font-medium text-foreground">{f.data.coachee.name}</h3>
+                            </>
+                          )}
+                          {d.cohorts.map((c) => (
+                            <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                          ))}
+                          {d.reviewedAt ? (
+                            <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                              Devuelta
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                              Sin devolver
+                            </Badge>
+                          )}
+                          {d.editedAt && (
+                            <Badge variant="outline" className="text-xs">
+                              Editado tras tu devolución
+                            </Badge>
+                          )}
                         </div>
-                      ))}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {d.module.title} · {d.item.title}
+                        </p>
+                        {f.kind === "entrega" ? (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Mail className="h-3 w-3" /> {d.coach.email} · entregó el{" "}
+                            {formatShortDate(d.submittedAt)}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {f.data.sessionDate && `Sesión del ${formatShortDate(f.data.sessionDate)} · `}
+                            entregado el {formatShortDate(d.submittedAt)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant={d.reviewedAt ? "outline" : "default"}
+                          className={d.reviewedAt ? "" : "bg-brand-accent hover:bg-brand-accent-dark"}
+                          onClick={() => {
+                            if (f.kind === "entrega") setReviewing(f.data)
+                            else setReviewingPractice(f.data)
+                            setFeedback(d.feedback ?? "")
+                          }}
+                        >
+                          {d.reviewedAt ? "Editar devolución" : "Devolver"}
+                        </Button>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="group h-8 w-8 p-0">
+                            <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
                     </div>
 
-                    {r.feedback && (
-                      <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
-                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                          <Check className="h-3 w-3" /> Tu devolución
-                        </p>
-                        <Markdown>{r.feedback}</Markdown>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </CardContent>
-              </Card>
-            </Collapsible>
-          ))}
+                    <CollapsibleContent className="space-y-3">
+                      {f.kind === "entrega" ? (
+                        <div className="bg-muted/40 rounded-lg p-3">
+                          <Markdown>{f.data.text}</Markdown>
+                        </div>
+                      ) : (
+                        <div className="bg-muted/40 rounded-lg p-3 space-y-3">
+                          {[
+                            ["Principales emergentes", f.data.mainOutputs],
+                            ["Herramientas y resultados", f.data.toolsAndResults],
+                            ["Conclusiones", f.data.conclusions],
+                          ].map(([label, body]) => (
+                            <div key={label}>
+                              <p className="text-xs font-medium text-foreground mb-1">{label}</p>
+                              <Markdown>{body}</Markdown>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {d.feedback && (
+                        <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
+                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Tu devolución
+                          </p>
+                          <Markdown>{d.feedback}</Markdown>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </CardContent>
+                </Card>
+              </Collapsible>
+            )
+          })}
         </div>
       )}
 

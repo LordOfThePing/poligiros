@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, X, Sparkles, Check, Heart, AlertTriangle, RotateCcw } from "lucide-react"
 import { SortableList, type RankItem } from "@/components/tablero/SortableList"
+import { FixedBottomBar } from "@/components/FixedBottomBar"
 import type { TestApi } from "@/lib/testApi"
 
 const DRAFT_KEY = (id: string) => `tablero-ideas-draft-${id}`
@@ -984,40 +985,14 @@ function StepBar({
   pct: number
   children: React.ReactNode
 }) {
-  const barRef = useRef<HTMLDivElement>(null)
-  const [height, setHeight] = useState(0)
-
-  useEffect(() => {
-    const el = barRef.current
-    if (!el) return
-    const measure = () => setHeight(el.offsetHeight)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    window.addEventListener("resize", measure)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener("resize", measure)
-    }
-  }, [])
-
   return (
-    <>
-      <div aria-hidden style={{ height: height || 112 }} />
-      <div
-        ref={barRef}
-        className="fixed bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur px-4 pt-3 z-10"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-      >
-        <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-1">Paso {step} de {total}</p>
-            <Progress value={pct} className="h-1.5" />
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 [&>*]:flex-1 sm:[&>*]:flex-none">{children}</div>
-        </div>
+    <FixedBottomBar innerClassName="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex-1">
+        <p className="text-xs text-muted-foreground mb-1">Paso {step} de {total}</p>
+        <Progress value={pct} className="h-1.5" />
       </div>
-    </>
+      <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 [&>*]:flex-1 sm:[&>*]:flex-none">{children}</div>
+    </FixedBottomBar>
   )
 }
 

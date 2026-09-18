@@ -62,22 +62,24 @@ export async function sendSupervisionReviewedEmail(
 }
 
 /**
- * `poolName` distinguishes the two invitations that share this mail: joining
- * the certification (a CIC) and being added to a group of already certified
- * coaches, which is not a course and has no classes.
+ * `group` distinguishes the invitations that share this mail: joining the
+ * certification (a CIC) and being added to a group of already certified
+ * coaches (a pool), which is not a course and has no classes.
  */
 export async function sendCoachInviteEmail(
   coachEmail: string,
   name: string,
   link: string,
-  poolName?: string | null
+  group?: { kind: "pool" | "cohort"; name: string } | null
 ) {
   await send(coachEmail, "Te invitaron a Poligiros", `
       <p>Hola ${name || ""},</p>
       <p>${
-        poolName
-          ? `Gaby te sumó a <strong>${poolName}</strong>, el grupo de coaches certificados de Poligiros.`
-          : "Gaby te invitó a sumarte a su programa de coaching en Poligiros."
+        group?.kind === "pool"
+          ? `Gaby te sumó a <strong>${group.name}</strong>, el grupo de coaches certificados de Poligiros.`
+          : group?.kind === "cohort"
+            ? `Gaby te inscribió en <strong>${group.name}</strong>, la Certificación en Coaching de Carrera y Bienestar Laboral de Poligiros.`
+            : "Gaby te invitó a sumarte a su programa de coaching en Poligiros."
       }</p>
       <p>Completá tu registro desde este enlace: <a href="${link}">${link}</a></p>
       <p>El enlace vence en 7 días.</p>
@@ -90,6 +92,15 @@ export async function sendPoolAddedEmail(coachEmail: string, name: string, poolN
       <p>Hola ${name || ""},</p>
       <p>Gaby te sumó a <strong>${poolName}</strong>, el grupo de coaches certificados de Poligiros.</p>
       <p>Desde ahí podés cargar a tus coachees y tomarles los tests habilitados.</p>
+      <p><a href="${APP_URL}/login">Ingresar →</a></p>
+    `)
+}
+
+/** Sent when an existing coach is enrolled in a CIC — they already have a login. */
+export async function sendCohortAddedEmail(coachEmail: string, name: string, cohortName: string) {
+  await send(coachEmail, `Te inscribieron en ${cohortName}`, `
+      <p>Hola ${name || ""},</p>
+      <p>Gaby te inscribió en <strong>${cohortName}</strong>. Las clases aparecen en Mi Programa a medida que se liberan.</p>
       <p><a href="${APP_URL}/login">Ingresar →</a></p>
     `)
 }
@@ -224,11 +235,17 @@ export async function sendCoachPasswordResetEmail(coachEmail: string, tempPasswo
     subject: "Tu contraseña de Poligiros fue restablecida",
     html: `
       <p>Hola,</p>
-      <p>Te restablecimos la contraseña de la plataforma Poligiros.</p>
-      <p>Ingresá con esta contraseña temporal:</p>
-      <p style="font-size:18px;font-weight:600">${tempPassword}</p>
-      <p>Al entrar te vamos a pedir que elijas una contraseña nueva.</p>
-      <p><a href="${APP_URL}/login">Ir al inicio de sesión →</a></p>
+      <p>Gaby restableció tu contraseña de Poligiros. Tu contraseña anterior ya no funciona.</p>
+      <p>Para volver a entrar:</p>
+      <ol>
+        <li>Abrí <a href="${APP_URL}/login?email=${encodeURIComponent(coachEmail)}">el inicio de sesión</a>.</li>
+        <li>Ingresá con tu email <strong>${coachEmail}</strong> y esta contraseña temporal
+          (copiala tal cual, respeta mayúsculas y minúsculas):
+          <p style="font-size:18px;font-weight:600;font-family:monospace">${tempPassword}</p>
+        </li>
+        <li>Apenas entres te vamos a pedir que elijas una contraseña nueva. Esa es la que vas a usar de ahora en adelante.</li>
+      </ol>
+      <p>Si no pediste este cambio, escribile a Gaby.</p>
     `,
   })
 }

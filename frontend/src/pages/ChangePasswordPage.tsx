@@ -57,7 +57,8 @@ export default function ChangePasswordPage() {
           <CardHeader>
             <CardTitle className="font-serif text-2xl">Elegí una contraseña nueva</CardTitle>
             <CardDescription>
-              Tu contraseña fue restablecida. Ingresá una nueva para continuar.
+              Entraste con la contraseña temporal que te llegó por mail. Elegí ahora la que vas a
+              usar de acá en adelante — la temporal deja de funcionar al guardar.
             </CardDescription>
           </CardHeader>
           <CardContent>

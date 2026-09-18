@@ -12,7 +12,9 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login, user, loading: authLoading } = useAuth()
-  const [email, setEmail] = useState("")
+  // Pre-filled from the password-reset mail's link, so the coach only has to
+  // paste the temporary password.
+  const [email, setEmail] = useState(searchParams.get("email") ?? "")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")

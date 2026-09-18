@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Briefcase, Lightbulb, UserRound, Send, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
+import { discardDraft, loadDraft, useAutosave } from "@/lib/draft"
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
 
@@ -39,33 +40,25 @@ export function ModeloNegocioTest({
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
+  const [hydrated, setHydrated] = useState(false)
+
   useEffect(() => {
-    const raw = localStorage.getItem(DRAFT_KEY(assignmentId))
-    if (raw) {
-      try {
-        const d = JSON.parse(raw)
-        if (d.primary) setPrimary((prev) => ({ ...prev, ...d.primary }))
-        if (typeof d.addSecond === "boolean") setAddSecond(d.addSecond)
-        if (d.secondary) setSecondary((prev) => ({ ...prev, ...d.secondary }))
-      } catch {}
+    const d = loadDraft<{ primary?: IdeaState; addSecond?: boolean; secondary?: IdeaState }>(
+      DRAFT_KEY(assignmentId),
+    )
+    if (d) {
+      if (d.primary) setPrimary((prev) => ({ ...prev, ...d.primary }))
+      if (typeof d.addSecond === "boolean") setAddSecond(d.addSecond)
+      if (d.secondary) setSecondary((prev) => ({ ...prev, ...d.secondary }))
     } else if (prefillIdeas.length > 0) {
       // Pre-select the first idea (the one they chose in Tablero)
       setPrimary((p) => ({ ...p, idea: prefillIdeas[0] }))
     }
+    setHydrated(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId])
 
-  const saveDraft = useCallback(() => {
-    localStorage.setItem(
-      DRAFT_KEY(assignmentId),
-      JSON.stringify({ primary, addSecond, secondary }),
-    )
-  }, [assignmentId, primary, addSecond, secondary])
-
-  useEffect(() => {
-    const interval = setInterval(saveDraft, 30_000)
-    return () => clearInterval(interval)
-  }, [saveDraft])
+  useAutosave(DRAFT_KEY(assignmentId), { primary, addSecond, secondary }, hydrated && !submitted)
 
   async function handleSubmit() {
     if (!primary.kind || !primary.idea.trim()) return
@@ -74,7 +67,6 @@ export function ModeloNegocioTest({
       return
     }
     setSaving(true)
-    saveDraft()
 
     const buildIdea = (s: IdeaState, horizon: "short" | "long") => ({
       horizon,
@@ -93,7 +85,7 @@ export function ModeloNegocioTest({
     const res = await api.submit({ ideas })
     setSaving(false)
     if (res.ok) {
-      localStorage.removeItem(DRAFT_KEY(assignmentId))
+      discardDraft(DRAFT_KEY(assignmentId))
       setSubmitted(true)
     } else {
       toast({ title: "Error al enviar", variant: "destructive" })

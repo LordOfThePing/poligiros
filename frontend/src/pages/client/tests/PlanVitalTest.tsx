@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
 import { PV_SECTIONS, type PvSectionKey } from "@/lib/planVital"
+import { FixedBottomBar } from "@/components/FixedBottomBar"
+import { discardDraft, loadDraft, useAutosave } from "@/lib/draft"
 
 const DRAFT_KEY = (id: string) => `plan-vital-draft-${id}`
 
@@ -154,26 +156,18 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    const raw = localStorage.getItem(DRAFT_KEY(assignmentId))
-    if (raw) {
-      try {
-        const d = JSON.parse(raw)
-        if (d.answers) setAnswers((prev) => ({ ...prev, ...d.answers }))
-        if (Array.isArray(d.estimulos)) setEstimulos(d.estimulos)
-        if (typeof d.step === "number") setStep(Math.min(Math.max(0, d.step), TOTAL_STEPS - 1))
-      } catch {}
+    const d = loadDraft<{ answers?: Record<string, string>; estimulos?: string[]; step?: number }>(
+      DRAFT_KEY(assignmentId),
+    )
+    if (d) {
+      if (d.answers) setAnswers((prev) => ({ ...prev, ...d.answers }))
+      if (Array.isArray(d.estimulos)) setEstimulos(d.estimulos)
+      if (typeof d.step === "number") setStep(Math.min(Math.max(0, d.step), TOTAL_STEPS - 1))
     }
     setHydrated(true)
   }, [assignmentId])
 
-  const saveDraft = useCallback(() => {
-    localStorage.setItem(DRAFT_KEY(assignmentId), JSON.stringify({ answers, estimulos, step }))
-  }, [assignmentId, answers, estimulos, step])
-
-  useEffect(() => {
-    if (!hydrated || done) return
-    saveDraft()
-  }, [hydrated, answers, estimulos, step, done, saveDraft])
+  useAutosave(DRAFT_KEY(assignmentId), { answers, estimulos, step }, hydrated && !done)
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
 
@@ -204,7 +198,7 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
         estimulos: estimulos.map((e) => e.trim()).filter(Boolean),
       })
       if (res.ok) {
-        localStorage.removeItem(DRAFT_KEY(assignmentId))
+        discardDraft(DRAFT_KEY(assignmentId))
         setDone(true)
         scrollTop()
       } else if (res.status === 409) {
@@ -290,7 +284,7 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
   const pct = Math.round((stepNum / TOTAL_STEPS) * 100)
 
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-8">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Plan Vital Integral</h1>
         <p className="text-sm text-muted-foreground">
@@ -419,28 +413,26 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
       )}
 
       {/* ── Step bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur px-4 py-3 z-10">
-        <div className="max-w-5xl mx-auto flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground mb-1">Paso {stepNum} de {TOTAL_STEPS}</p>
-            <Progress value={pct} className="h-1.5" />
-          </div>
-          <div className="flex gap-2 shrink-0">
-            {step > 0 && (
-              <Button variant="outline" onClick={goBack}>← Atrás</Button>
-            )}
-            {!isEstimulos ? (
-              <Button onClick={goNext} className="bg-brand-accent hover:bg-brand-accent-dark">
-                Continuar →
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
-                {saving ? "Enviando..." : "Finalizar y enviar"}
-              </Button>
-            )}
-          </div>
+      <FixedBottomBar innerClassName="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground mb-1">Paso {stepNum} de {TOTAL_STEPS}</p>
+          <Progress value={pct} className="h-1.5" />
         </div>
-      </div>
+        <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 [&>*]:flex-1 sm:[&>*]:flex-none">
+          {step > 0 && (
+            <Button variant="outline" onClick={goBack}>← Atrás</Button>
+          )}
+          {!isEstimulos ? (
+            <Button onClick={goNext} className="bg-brand-accent hover:bg-brand-accent-dark">
+              Continuar →
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
+              {saving ? "Enviando..." : "Finalizar y enviar"}
+            </Button>
+          )}
+        </div>
+      </FixedBottomBar>
     </div>
   )
 }

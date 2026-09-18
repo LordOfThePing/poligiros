@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
+import { discardDraft, loadDraft, useAutosave } from "@/lib/draft"
 
 const DRAFT_KEY = (id: string) => `piramide-draft-${id}`
 
@@ -125,28 +126,25 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   const [submitted, setSubmitted] = useState(false)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  const [hydrated, setHydrated] = useState(false)
+
   useEffect(() => {
-    const raw = localStorage.getItem(DRAFT_KEY(assignmentId))
-    if (raw) {
-      try {
-        const d = JSON.parse(raw)
-        if (d.rol) setRol(d.rol)
-        if (d.valores) setValores(d.valores)
-        if (d.fortalezas) setFortalezas(d.fortalezas)
-        if (d.contextos) setContextos(d.contextos)
-        if (d.especialidad) setEspecialidad(d.especialidad)
-      } catch {}
+    const d = loadDraft<Record<string, string>>(DRAFT_KEY(assignmentId))
+    if (d) {
+      if (d.rol) setRol(d.rol)
+      if (d.valores) setValores(d.valores)
+      if (d.fortalezas) setFortalezas(d.fortalezas)
+      if (d.contextos) setContextos(d.contextos)
+      if (d.especialidad) setEspecialidad(d.especialidad)
     }
+    setHydrated(true)
   }, [assignmentId])
 
-  const saveDraft = useCallback(() => {
-    localStorage.setItem(DRAFT_KEY(assignmentId), JSON.stringify({ rol, valores, fortalezas, contextos, especialidad }))
-  }, [assignmentId, rol, valores, fortalezas, contextos, especialidad])
-
-  useEffect(() => {
-    const interval = setInterval(saveDraft, 30000)
-    return () => clearInterval(interval)
-  }, [saveDraft])
+  useAutosave(
+    DRAFT_KEY(assignmentId),
+    { rol, valores, fortalezas, contextos, especialidad },
+    hydrated && !submitted,
+  )
 
   function handlePyramidClick(key: string) {
     setActiveLevel(key)
@@ -161,7 +159,6 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
 
   async function handleSubmit() {
     setSaving(true)
-    saveDraft()
 
     const propositoFinal = synth
     const res = await api.submit({ rol, valores, fortalezas, contextos, especialidad, propositoFinal })
@@ -169,7 +166,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
     setSaving(false)
 
     if (res.ok) {
-      localStorage.removeItem(DRAFT_KEY(assignmentId))
+      discardDraft(DRAFT_KEY(assignmentId))
       toast({ title: "¡Pirámide enviada!" })
       setSubmitted(true)
     } else {

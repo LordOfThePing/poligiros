@@ -8,6 +8,7 @@ import {
   sendSupervisionReviewedEmail,
   sendCoachInviteEmail,
   sendPoolAddedEmail,
+  sendCohortAddedEmail,
   sendSignupApprovedEmail,
   sendSubmissionReviewedEmail,
   sendCoachPasswordResetEmail,
@@ -738,27 +739,74 @@ supervisor.put("/cohorts/:id", async (c) => {
   return c.json(cohort)
 })
 
-/** POST /supervisor/cohorts/:id/enroll */
+/**
+ * POST /supervisor/cohorts/:id/enroll — body: { email, name? }
+ *
+ * Same behaviour as /pools/:id/enroll: always an invitation, always a mail.
+ * An existing coach is enrolled and told; an unknown email gets a pending
+ * account (like /coaches/invite) bound to this CIC plus the invite link.
+ */
 supervisor.post("/cohorts/:id/enroll", async (c) => {
+  const supervisorUser = c.get("user")
   const id = c.req.param("id")
-  const { email } = await c.req.json()
+  const body = await c.req.json()
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+  const name = typeof body.name === "string" ? body.name.trim() : ""
+  if (!email) return c.json({ error: "Email requerido" }, 400)
 
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    return c.json({ error: "Usuario no encontrado con ese email" }, 404)
-  }
-  if (user.role !== "STUDENT_COACH") {
+  const cohort = await prisma.cohort.findUnique({ where: { id } })
+  if (!cohort) return c.json({ error: "CIC no encontrado" }, 404)
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing && existing.role !== "STUDENT_COACH") {
     return c.json({ error: "El usuario no es un student coach" }, 400)
   }
 
+  // Nobody with that email yet → invite them into the CIC.
+  if (!existing) {
+    if (!name) {
+      return c.json(
+        { error: "Ese email todavía no tiene cuenta: agregá el nombre para invitarlo" },
+        400
+      )
+    }
+    const inviteToken = randomBytes(32).toString("base64url")
+    const coach = await prisma.user.create({
+      data: {
+        email,
+        name,
+        role: "STUDENT_COACH",
+        password: null,
+        inviteToken,
+        inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      },
+    })
+    await prisma.enrollment.create({ data: { userId: coach.id, cohortId: id } })
+    // Coach-as-coachee Client, so they can take tests later. Same as /coaches/invite.
+    await prisma.client
+      .create({ data: { studentId: supervisorUser.id, userId: coach.id, name, email } })
+      .catch(() => {})
+
+    const link = inviteLink(inviteToken)
+    sendCoachInviteEmail(email, name, link, { kind: "cohort", name: cohort.name }).catch(() => {})
+
+    const enrollment = await prisma.enrollment.findUniqueOrThrow({
+      where: { userId_cohortId: { userId: coach.id, cohortId: id } },
+      include: { user: true },
+    })
+    return c.json({ ...enrollment, invited: true, link }, 201)
+  }
+
   const enrollment = await prisma.enrollment.upsert({
-    where: { userId_cohortId: { userId: user.id, cohortId: id } },
+    where: { userId_cohortId: { userId: existing.id, cohortId: id } },
     update: {},
-    create: { userId: user.id, cohortId: id },
+    create: { userId: existing.id, cohortId: id },
     include: { user: true },
   })
 
-  return c.json(enrollment, 201)
+  sendCohortAddedEmail(existing.email, existing.name, cohort.name).catch(() => {})
+
+  return c.json({ ...enrollment, invited: false }, 201)
 })
 
 /* ─────────────────────────────────────────
@@ -882,7 +930,7 @@ supervisor.post("/pools/:id/enroll", async (c) => {
       .catch(() => {})
 
     const link = inviteLink(inviteToken)
-    sendCoachInviteEmail(email, name, link, pool.name).catch(() => {})
+    sendCoachInviteEmail(email, name, link, { kind: "pool", name: pool.name }).catch(() => {})
 
     const membership = await prisma.poolMembership.findUniqueOrThrow({
       where: { userId_poolId: { userId: coach.id, poolId: id } },
@@ -1731,8 +1779,9 @@ supervisor.post("/coaches/invite", async (c) => {
   const coach = await prisma.user.create({
     data: { email, name, role: "STUDENT_COACH", password: null, inviteToken, inviteExpiresAt },
   })
-  if (cohortId) {
-    await prisma.enrollment.create({ data: { userId: coach.id, cohortId } }).catch(() => {})
+  const cohort = cohortId ? await prisma.cohort.findUnique({ where: { id: cohortId } }) : null
+  if (cohort) {
+    await prisma.enrollment.create({ data: { userId: coach.id, cohortId: cohort.id } }).catch(() => {})
   }
   // Coach-as-coachee Client (so the coach can take tests later), owned by the supervisor.
   await prisma.client.create({
@@ -1740,7 +1789,7 @@ supervisor.post("/coaches/invite", async (c) => {
   })
 
   const link = inviteLink(inviteToken)
-  sendCoachInviteEmail(email, name, link).catch(() => {})
+  sendCoachInviteEmail(email, name, link, cohort ? { kind: "cohort", name: cohort.name } : null).catch(() => {})
   return c.json({ coach: { id: coach.id, name, email }, link }, 201)
 })
 

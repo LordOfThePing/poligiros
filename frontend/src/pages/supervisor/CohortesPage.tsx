@@ -175,6 +175,7 @@ export default function CohortesPage() {
   const [newName, setNewName] = useState("")
   const [newDate, setNewDate] = useState("")
   const [enrollEmail, setEnrollEmail] = useState("")
+  const [enrollName, setEnrollName] = useState("")
   const [enrollingCohortId, setEnrollingCohortId] = useState<string | null>(null)
   // The CIC being edited, held as a draft so Cancelar discards cleanly.
   const [editing, setEditing] = useState<
@@ -307,13 +308,20 @@ export default function CohortesPage() {
     const res = await apiTry(`/supervisor/cohorts/${enrollingCohortId}/enroll`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: enrollEmail }),
+      body: JSON.stringify({ email: enrollEmail, name: enrollName }),
     })
     if (res.ok) {
+      const json = await res.json().catch(() => ({ invited: false }))
       apiJson<Cohort[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
       setEnrollEmail("")
+      setEnrollName("")
       setEnrollingCohortId(null)
-      toast({ title: "Alumno inscripto" })
+      toast({
+        title: json.invited ? "Invitación enviada" : "Alumno inscripto",
+        description: json.invited
+          ? "Le llegó un mail para crear su cuenta."
+          : "Le avisamos por mail que ya puede entrar.",
+      })
     } else {
       const json = await res.json().catch(() => ({ error: "Error" }))
       toast({ title: json.error || "Error al inscribir", variant: "destructive" })
@@ -541,8 +549,19 @@ export default function CohortesPage() {
                 placeholder="alumno@email.com"
                 onKeyDown={(e) => e.key === "Enter" && handleEnroll()}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nombre y apellido</Label>
+              <Input
+                value={enrollName}
+                onChange={(e) => setEnrollName(e.target.value)}
+                placeholder="Solo si todavía no tiene cuenta"
+                onKeyDown={(e) => e.key === "Enter" && handleEnroll()}
+              />
               <p className="text-xs text-muted-foreground">
-                Inscribe a alguien que ya tiene cuenta.
+                Si ya tiene cuenta, la inscribimos y le avisamos por mail. Si no, le mandamos una
+                invitación para que cree su cuenta — para eso necesitamos el nombre.
               </p>
             </div>
 
