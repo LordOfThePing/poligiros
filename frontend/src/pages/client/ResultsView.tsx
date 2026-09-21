@@ -50,12 +50,12 @@ export default function ResultsView({
       )}
 
       {testType === "TABLERO_IDEAS" && (
-        <div className={cn("flex flex-col gap-0", constrainHeight && "lg:max-h-[calc(100dvh-190px)]")}>
+        <div className={cn("flex flex-col gap-0", constrainHeight && "max-h-[calc(100dvh-190px)]")}>
           <h2 className="font-serif text-2xl text-foreground shrink-0 mb-3">Tu Tablero de Ideas</h2>
 
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
             {/* Left: three columns — each with sticky header and independent scroll */}
-            <div className={cn("tablero-print-columns grid grid-cols-1 sm:grid-cols-3 gap-4", constrainHeight && "lg:h-full")}>
+            <div className={cn("tablero-print-columns grid grid-cols-1 sm:grid-cols-3 gap-4", constrainHeight && "h-full")}>
               {TABLERO_COLUMNS.map((col) => {
                 const ranked = (responses[col.rankKey] as string[] | undefined)?.filter(Boolean)
                 const raw = (responses[col.key] as string[] | undefined)?.filter(Boolean)
@@ -67,7 +67,7 @@ export default function ResultsView({
                       <h3 className="font-serif text-base font-medium">{col.title}</h3>
                       <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">{col.subtitle}</p>
                     </div>
-                    <ol className={cn("mt-2 flex-1 min-h-0 space-y-1.5", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
+                    <ol className={cn("mt-2 flex-1 min-h-0 space-y-1.5", constrainHeight && "overflow-y-auto pr-1")}>
                       {items.map((v, i) => {
                         const inTop3 = i < 3
                         return (
@@ -137,7 +137,7 @@ export default function ResultsView({
                     <h3 className="font-serif text-base font-medium">Brainstorming</h3>
                     <p className="text-[0.7rem] mt-0.5 opacity-90 leading-tight">Ideas conectando las tres columnas — la elegida está resaltada</p>
                   </div>
-                  <div className={cn("mt-2 flex-1 min-h-0 space-y-2", constrainHeight && "lg:overflow-y-auto lg:pr-1")}>
+                  <div className={cn("mt-2 flex-1 min-h-0 space-y-2", constrainHeight && "overflow-y-auto pr-1")}>
                     {ideas.map((v, i) => (
                       <Idea key={`b-${i}`} text={v} />
                     ))}

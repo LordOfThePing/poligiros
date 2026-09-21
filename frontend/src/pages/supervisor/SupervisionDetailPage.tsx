@@ -413,9 +413,10 @@ export default function SupervisionDetailPage() {
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
                 <div className="flex items-center gap-2">
-                  {testType === "TABLERO_IDEAS" ? (
-                    // Its 3-column + scroll layout only renders correctly at a
-                    // real full page, never nested in a modal — open a tab.
+                  {testType === "TABLERO_IDEAS" || testType === "PLAN_VITAL" ? (
+                    // Tablero's 3-column + scroll layout and PVI's long
+                    // section list only render well on a real full page,
+                    // never nested in a modal — open a tab.
                     <a href={`/supervisor/supervision/${req.id}/vista`} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4 mr-1.5" /> Ver vista completa
