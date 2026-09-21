@@ -33,22 +33,26 @@ export async function supervisorRecipient(): Promise<string | null> {
 }
 
 /**
- * The addresses to notify for this event, or an empty array when it must not be
- * sent — either the event is switched off, or there is nobody to send it to.
+ * Where to send this event's notification, or `null` when it must not be sent —
+ * either the event is switched off, or there is nobody to send it to.
  *
- * This is the primary (env override or the supervisor) plus any secondary email
- * configured in the app. Callers send one email per address:
- *   const to = await notifyTarget("submission")
- *   for (const addr of to) sendSomething(addr, ...).catch(() => {})
+ * `to` is the primary recipient (env override or the supervisor). `bcc` is any
+ * secondary email configured in the app, delivered as a real BCC on the same
+ * message so the primary recipient never sees the address. Callers do one send:
+ *   const target = await notifyTarget("submission")
+ *   if (target) sendSomething(target.to, ..., target.bcc).catch(() => {})
  */
-export async function notifyTarget(kind: NotifyKind): Promise<string[]> {
+export async function notifyTarget(
+  kind: NotifyKind
+): Promise<{ to: string; bcc: string[] } | null> {
   const settings = await getSettings()
-  if (!settings[SETTING_KEY[kind]]) return []
+  if (!settings[SETTING_KEY[kind]]) return null
 
   const primary = await supervisorRecipient()
-  if (!primary) return []
+  if (!primary) return null
 
   const extra = settings.notifySecondaryEmail?.trim()
-  // Avoid sending a duplicate when the secondary equals the primary.
-  return extra && extra !== primary ? [primary, extra] : [primary]
+  // Avoid bcc'ing the primary to itself.
+  const bcc = extra && extra !== primary ? [extra] : []
+  return { to: primary, bcc }
 }

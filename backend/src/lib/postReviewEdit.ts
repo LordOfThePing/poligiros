@@ -55,13 +55,14 @@ export async function applyPostReviewEdit(
     }),
   ])
 
-  const to = await notifyTarget("supervisionRequest")
-  for (const addr of to) {
+  const target = await notifyTarget("supervisionRequest")
+  if (target) {
     sendSupervisionSubmittedEmail(
-      addr,
+      target.to,
       supervision.student.name,
       supervision.assignment.client.name,
-      `${supervision.assignment.test.title} (editado tras la revisión)`
+      `${supervision.assignment.test.title} (editado tras la revisión)`,
+      target.bcc
     ).catch(() => {})
   }
 

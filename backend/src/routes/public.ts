@@ -148,13 +148,14 @@ publicRoutes.post("/signup/:token", async (c) => {
     include: { cohort: { select: { name: true } }, pool: { select: { name: true } } },
   })
 
-  const signupTo = await notifyTarget("signupRequest")
-  for (const to of signupTo) {
+  const signupTarget = await notifyTarget("signupRequest")
+  if (signupTarget) {
     sendSignupReceivedEmail(
-      to,
+      signupTarget.to,
       created.name,
       created.email,
-      created.cohort?.name ?? null
+      created.cohort?.name ?? null,
+      signupTarget.bcc
     ).catch(() => {})
   }
 

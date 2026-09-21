@@ -18,14 +18,27 @@ const APP_URL = process.env.FRONTEND_URL || "http://localhost:5173"
  * misconfigured key or an unverified domain looked exactly like "everything is
  * fine". This logs instead, so the container output says what happened.
  */
-async function send(to: string, subject: string, html: string): Promise<void> {
+async function send(
+  to: string,
+  subject: string,
+  html: string,
+  bcc?: string | string[]
+): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY sin configurar — no se envió "${subject}" a ${to}`)
     return
   }
 
+  const bccList = Array.isArray(bcc) ? bcc.filter(Boolean) : bcc ? [bcc] : []
+
   try {
-    const { error } = await resend.emails.send({ from: FROM, to, subject, html })
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject,
+      html,
+      ...(bccList.length ? { bcc: bccList } : {}),
+    })
     if (error) {
       console.error(`[email] Resend rechazó "${subject}" a ${to}:`, error.message)
     }
@@ -38,13 +51,14 @@ export async function sendSupervisionSubmittedEmail(
   supervisorEmail: string,
   studentName: string,
   clientName: string,
-  testName: string
+  testName: string,
+  bcc?: string | string[]
 ) {
   await send(supervisorEmail, `Nueva supervisión de ${studentName}`, `
       <p>Hola Gaby,</p>
       <p><strong>${studentName}</strong> envió el test <strong>${testName}</strong> de su cliente <strong>${clientName}</strong> para supervisión.</p>
       <p><a href="${APP_URL}/supervisor/supervision">Ver pendientes →</a></p>
-    `)
+    `, bcc)
 }
 
 export async function sendSupervisionReviewedEmail(
@@ -163,13 +177,14 @@ export async function sendSessionRecordedEmail(
   supervisorEmail: string,
   studentName: string,
   clientName: string,
-  sessionNum: number
+  sessionNum: number,
+  bcc?: string | string[]
 ) {
   await send(supervisorEmail, `Nuevo registro de sesión de ${studentName}`, `
       <p>Hola Gaby,</p>
       <p><strong>${studentName}</strong> registró la sesión #${sessionNum} con su cliente <strong>${clientName}</strong>.</p>
       <p><a href="${APP_URL}/supervisor/registros">Ver registros →</a></p>
-    `)
+    `, bcc)
 }
 
 /** Sent when the supervisor approves a public signup — the coach can log in already. */
@@ -187,13 +202,14 @@ export async function sendSignupReceivedEmail(
   supervisorEmail: string,
   name: string,
   email: string,
-  cohortName: string | null
+  cohortName: string | null,
+  bcc?: string | string[]
 ) {
   await send(supervisorEmail, `Nueva inscripción: ${name}`, `
       <p>Hola Gaby,</p>
       <p><strong>${name}</strong> (${email}) se inscribió${cohortName ? ` a <strong>${cohortName}</strong>` : ""} y está esperando aprobación.</p>
       <p><a href="${APP_URL}/supervisor/inscripciones">Ver solicitudes →</a></p>
-    `)
+    `, bcc)
 }
 
 /** Sent to the supervisor when a coach hands in an ENTREGA card. */
@@ -201,13 +217,14 @@ export async function sendSubmissionReceivedEmail(
   supervisorEmail: string,
   coachName: string,
   moduleTitle: string,
-  itemTitle: string
+  itemTitle: string,
+  bcc?: string | string[]
 ) {
   await send(supervisorEmail, `Nueva entrega de ${coachName}`, `
       <p>Hola Gaby,</p>
       <p><strong>${coachName}</strong> entregó <strong>${itemTitle}</strong> de ${moduleTitle}.</p>
       <p><a href="${APP_URL}/supervisor/entregas">Ver entregas →</a></p>
-    `)
+    `, bcc)
 }
 
 /** Sent to the coach when the supervisor reviews their submission. */

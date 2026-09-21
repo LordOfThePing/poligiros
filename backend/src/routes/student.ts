@@ -277,14 +277,15 @@ student.post("/supervision", async (c) => {
     },
   })
 
-  // Fire-and-forget email(s) to supervisor / any secondary address
-  const supervisionTo = await notifyTarget("supervisionRequest")
-  for (const to of supervisionTo) {
+  // Fire-and-forget email to supervisor (secondary email bcc'd)
+  const supervisionTarget = await notifyTarget("supervisionRequest")
+  if (supervisionTarget) {
     sendSupervisionSubmittedEmail(
-      to,
+      supervisionTarget.to,
       user.name,
       assignment.client.name,
-      assignment.test.title
+      assignment.test.title,
+      supervisionTarget.bcc
     ).catch(() => {})
   }
 
@@ -415,14 +416,15 @@ student.post("/sessions", async (c) => {
     include: { client: true, student: true },
   })
 
-  // Fire-and-forget email(s) to supervisor / any secondary address
-  const sessionTo = await notifyTarget("sessionRecorded")
-  for (const to of sessionTo) {
+  // Fire-and-forget email to supervisor (secondary email bcc'd)
+  const sessionTarget = await notifyTarget("sessionRecorded")
+  if (sessionTarget) {
     sendSessionRecordedEmail(
-      to,
+      sessionTarget.to,
       record.student.name,
       record.client.name,
-      record.sessionNum
+      record.sessionNum,
+      sessionTarget.bcc
     ).catch(() => {})
   }
 
@@ -812,16 +814,20 @@ student.put("/module-items/:itemId/submission", async (c) => {
   // Every hand-in needs her eyes: the first one, and each correction made after
   // a devolución (which is what reopened the card).
   {
-    const submissionTo = await notifyTarget("submission")
+    const submissionTarget = await notifyTarget("submission")
     const card = await prisma.moduleItem.findUnique({
       where: { id: itemId },
       select: { title: true, module: { select: { title: true } } },
     })
-    if (card) {
+    if (card && submissionTarget) {
       const title = postReviewEdit ? `${card.title} (editado tras la devolución)` : card.title
-      for (const to of submissionTo) {
-        sendSubmissionReceivedEmail(to, user.name, card.module.title, title).catch(() => {})
-      }
+      sendSubmissionReceivedEmail(
+        submissionTarget.to,
+        user.name,
+        card.module.title,
+        title,
+        submissionTarget.bcc
+      ).catch(() => {})
     }
   }
 
@@ -1024,11 +1030,16 @@ student.put("/module-items/:itemId/registro", async (c) => {
       where: { id: itemId },
       select: { title: true, module: { select: { title: true } } },
     })
-    if (card) {
+    const submissionTarget = await notifyTarget("submission")
+    if (card && submissionTarget) {
       const title = postReviewEdit ? `${card.title} (editado tras la devolución)` : card.title
-      for (const to of await notifyTarget("submission")) {
-        sendSubmissionReceivedEmail(to, user.name, card.module.title, title).catch(() => {})
-      }
+      sendSubmissionReceivedEmail(
+        submissionTarget.to,
+        user.name,
+        card.module.title,
+        title,
+        submissionTarget.bcc
+      ).catch(() => {})
     }
   }
 
@@ -1291,17 +1302,16 @@ async function openSupervisionForOwnTest(userId: string, assignmentId: string) {
     data: { assignmentId, studentId: userId },
   })
 
-  const ownTestTo = await notifyTarget("supervisionRequest")
+  const ownTestTarget = await notifyTarget("supervisionRequest")
   const coach = await prisma.user.findUnique({ where: { id: userId } })
-  if (coach) {
-    for (const to of ownTestTo) {
-      sendSupervisionSubmittedEmail(
-        to,
-        coach.name,
-        assignment.client.name,
-        assignment.test.title
-      ).catch(() => {})
-    }
+  if (coach && ownTestTarget) {
+    sendSupervisionSubmittedEmail(
+      ownTestTarget.to,
+      coach.name,
+      assignment.client.name,
+      assignment.test.title,
+      ownTestTarget.bcc
+    ).catch(() => {})
   }
 }
 
