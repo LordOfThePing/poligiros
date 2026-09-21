@@ -25,6 +25,8 @@ type Student = {
   name: string
   email: string
   cohort: string
+  cohorts: { id: string; name: string }[]
+  pools: { id: string; name: string }[]
   clientCount: number
   modulesDone: number
   modulesTotal: number
@@ -96,10 +98,36 @@ export default function AlumnosPage() {
     setName(""); setEmail(""); setCohortId(""); setInviteLink(""); setCopied(false)
   }
 
-  // Distinct CIC names present among students, for the filter dropdown.
-  const cicNames = Array.from(new Set(students.map((s) => s.cohort))).sort()
-  const visibleStudents =
-    cicFilter === "all" ? students : students.filter((s) => s.cohort === cicFilter)
+  // Distinct group names (CICs + pools) present among students, for the filter
+  // dropdown. Prefixed so we can tell them apart when filtering.
+  const groupOptions = (() => {
+    const cics = new Set<string>()
+    const pools = new Set<string>()
+    for (const s of students) {
+      s.cohorts?.forEach((c) => cics.add(c.name))
+      if (!s.cohorts?.length) cics.add("Sin CIC")
+      s.pools?.forEach((p) => pools.add(p.name))
+    }
+    return {
+      cics: Array.from(cics).sort(),
+      pools: Array.from(pools).sort(),
+    }
+  })()
+
+  function matchesGroupFilter(s: Student): boolean {
+    if (cicFilter === "all") return true
+    if (cicFilter.startsWith("cic:")) {
+      const name = cicFilter.slice(4)
+      if (name === "Sin CIC") return (s.cohorts?.length ?? 0) === 0
+      return s.cohorts?.some((c) => c.name === name) ?? false
+    }
+    if (cicFilter.startsWith("pool:")) {
+      const name = cicFilter.slice(5)
+      return s.pools?.some((p) => p.name === name) ?? false
+    }
+    return true
+  }
+  const visibleStudents = students.filter(matchesGroupFilter)
 
   return (
     <div className="space-y-6">
@@ -115,16 +143,29 @@ export default function AlumnosPage() {
 
       <div className="flex items-end gap-2">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">CIC</Label>
+          <Label className="text-xs text-muted-foreground">Grupo</Label>
           <Select value={cicFilter} onValueChange={setCicFilter}>
             <SelectTrigger className="w-56">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los CIC</SelectItem>
-              {cicNames.map((n) => (
-                <SelectItem key={n} value={n}>{n}</SelectItem>
-              ))}
+              <SelectItem value="all">Todos</SelectItem>
+              {groupOptions.cics.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-[0.65rem] uppercase tracking-wider text-muted-foreground">CICs</div>
+                  {groupOptions.cics.map((n) => (
+                    <SelectItem key={`cic:${n}`} value={`cic:${n}`}>{n}</SelectItem>
+                  ))}
+                </>
+              )}
+              {groupOptions.pools.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-[0.65rem] uppercase tracking-wider text-muted-foreground">Pools</div>
+                  {groupOptions.pools.map((n) => (
+                    <SelectItem key={`pool:${n}`} value={`pool:${n}`}>{n}</SelectItem>
+                  ))}
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -136,7 +177,7 @@ export default function AlumnosPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>CIC</TableHead>
+                <TableHead>CIC / Pools</TableHead>
                 <TableHead className="text-center">Coachees</TableHead>
                 <TableHead className="text-center">Progreso de contenidos</TableHead>
                 <TableHead className="text-center">Módulos completos</TableHead>
@@ -148,7 +189,7 @@ export default function AlumnosPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={7}><LoadingBadge compact /></TableCell></TableRow>
               ) : visibleStudents.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay coaches en este CIC</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay coaches en este grupo</TableCell></TableRow>
               ) : (
                 visibleStudents.map((s) => {
                   const itemsPct = s.itemsTotal > 0 ? Math.round((s.itemsDone / s.itemsTotal) * 100) : 0
@@ -164,7 +205,26 @@ export default function AlumnosPage() {
                           <div className="text-xs text-muted-foreground">{s.email}</div>
                         </Link>
                       </TableCell>
-                      <TableCell><Badge variant="outline" className="text-xs">{s.cohort}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {s.cohorts?.length ? (
+                            s.cohorts.map((c) => (
+                              <Badge key={`cic-${c.id}`} variant="outline" className="text-xs">{c.name}</Badge>
+                            ))
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">Sin CIC</Badge>
+                          )}
+                          {s.pools?.map((p) => (
+                            <Badge
+                              key={`pool-${p.id}`}
+                              variant="secondary"
+                              className="text-xs bg-brand-accent/10 text-brand-accent-dark hover:bg-brand-accent/10"
+                            >
+                              {p.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">{s.clientCount}</TableCell>
                       <TableCell className="text-center">
                         <div className="flex flex-col items-center gap-1">

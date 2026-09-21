@@ -139,6 +139,7 @@ supervisor.get("/students", async (c) => {
     where: { role: "STUDENT_COACH" },
     include: {
       enrollments: { include: { cohort: true } },
+      poolMemberships: { include: { pool: { select: { id: true, name: true } } } },
       coacheeProfile: {
         include: { assignments: { select: { completedAt: true } } },
       },
@@ -188,6 +189,8 @@ supervisor.get("/students", async (c) => {
         name: s.name,
         email: s.email,
         cohort: s.enrollments[0]?.cohort?.name ?? "Sin CIC",
+        cohorts: s.enrollments.map((e) => ({ id: e.cohort.id, name: e.cohort.name })),
+        pools: s.poolMemberships.map((m) => ({ id: m.pool.id, name: m.pool.name })),
         clientCount: s.clients.length,
         modulesDone: s.moduleProgress.length,
         modulesTotal,
@@ -1727,6 +1730,19 @@ supervisor.post("/assignments/:id/reopen", async (c) => {
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const inviteLink = (token: string) =>
   `${process.env.FRONTEND_URL || "http://localhost:5173"}/invite/${token}`
+
+/**
+ * GET /supervisor/coaches — lightweight list for pickers (add-to-pool search,
+ * etc). Only id/name/email, ordered by name; no counts or joins.
+ */
+supervisor.get("/coaches", async (c) => {
+  const coaches = await prisma.user.findMany({
+    where: { role: "STUDENT_COACH" },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  })
+  return c.json(coaches)
+})
 
 /** POST /supervisor/coaches/invite — create a pending coach + invite link. */
 supervisor.post("/coaches/invite", async (c) => {

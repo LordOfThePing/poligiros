@@ -7,7 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
  * (SPF/DKIM records on its DNS) — without that, Resend rejects the send. Being
  * able to point this at a domain whose DNS you control avoids a code change.
  */
-const FROM = process.env.EMAIL_FROM || "Poligiros <notificaciones@poligiros.com>"
+const FROM = process.env.EMAIL_FROM || "Poligiros <notificaciones@mail.flynnpedroa.engineer>"
 const APP_URL = process.env.FRONTEND_URL || "http://localhost:5173"
 
 /**
