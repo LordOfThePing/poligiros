@@ -222,7 +222,7 @@ export default function ResultsView({
       {/* Tareas de exploración — post-Tablero tasks */}
       {testType === "TAREAS_EXPLORACION" && (
         <div className="bg-white rounded-xl border border-border p-5 space-y-3">
-          <h2 className="font-serif text-2xl text-foreground">Tareas de exploración</h2>
+          <h2 className="font-serif text-2xl text-foreground">Tareas a explorar</h2>
           {(() => {
             const tasks = (responses.tasks as string[] | undefined)?.filter(Boolean) ?? []
             return tasks.length === 0 ? (

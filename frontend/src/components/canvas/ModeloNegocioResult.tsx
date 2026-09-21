@@ -59,7 +59,7 @@ function IdeaSection({ entry, horizonLabel }: { entry: IdeaEntry; horizonLabel?:
   )
 }
 
-// Read-only view of a submitted "Exploración" test.
+// Read-only view of a submitted "Desarrollo de idea" (MODELO_NEGOCIO) test.
 // Handles both new shape { ideas: [...] } and old shape { kind, selectedIdea, content }.
 export function ModeloNegocioResult({ responses }: { responses: any }) {
   // New shape

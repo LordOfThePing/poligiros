@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Workflow
+
+**Always commit finished work and push.** Once a task is done and verified
+(type-check / tests as applicable), create a git commit summarizing the change
+and push it to the remote. Do not leave the working tree dirty for the user to
+clean up.
+
 ## Architecture at a glance
 
 Poligiros is a **split app**, not a Next.js monolith (the old Next.js app was

@@ -110,7 +110,7 @@ export function ModeloNegocioTest({
     <DraftStatusContext.Provider value={{ draftKey: DRAFT_KEY(assignmentId), enabled: hydrated }}>
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-3xl text-foreground mb-1">Exploración</h1>
+        <h1 className="font-serif text-3xl text-foreground mb-1">Desarrollo de idea de negocio/proyecto/trabajo</h1>
         <p className="text-sm text-muted-foreground">
           Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.
         </p>

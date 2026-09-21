@@ -10,8 +10,8 @@ const TEST_LABELS: Record<string, string> = {
   ANCLAS_CARRERA: "Anclas de Carrera",
   TABLERO_IDEAS: "Tablero de Ideas",
   PIRAMIDE_PROPOSITO: "Piramide del Proposito",
-  MODELO_NEGOCIO: "Modelo de Negocio",
-  TAREAS_EXPLORACION: "Tareas de Exploracion",
+  MODELO_NEGOCIO: "Desarrollo de idea de negocio-proyecto-trabajo",
+  TAREAS_EXPLORACION: "Tareas a explorar",
   PLAN_VITAL: "Plan Vital Integral",
 }
 

@@ -71,7 +71,7 @@ export default function TareasExploracionTest({ api, assignmentId, initialRespon
     return (
       <div className="max-w-lg mx-auto py-16 text-center space-y-3">
         <p className="text-4xl">✓</p>
-        <h2 className="font-serif text-2xl text-foreground">¡Tareas de exploración enviadas!</h2>
+        <h2 className="font-serif text-2xl text-foreground">¡Tareas a explorar enviadas!</h2>
         <p className="text-muted-foreground">Tus respuestas fueron guardadas correctamente.</p>
       </div>
     )
@@ -80,7 +80,7 @@ export default function TareasExploracionTest({ api, assignmentId, initialRespon
   return (
     <div className="space-y-6 pb-24 max-w-2xl mx-auto">
       <div>
-        <h2 className="font-serif text-2xl text-foreground mb-1">Tareas de exploración</h2>
+        <h2 className="font-serif text-2xl text-foreground mb-1">Tareas a explorar</h2>
         <p className="text-sm text-muted-foreground">
           Anotá qué te llevás para investigar después del Tablero: cursos, eventos, nichos o
           industrias ligadas a tus ideas (por ejemplo el mundo gastronómico, el gaming, la

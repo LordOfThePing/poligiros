@@ -27,17 +27,17 @@ const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
   TABLERO_IDEAS: { title: "Tablero de Ideas" },
   PLAN_VITAL: { title: "Plan Vital Integral®" },
   PIRAMIDE_PROPOSITO: { title: "Pirámide del Propósito" },
-  MODELO_NEGOCIO: { title: "Exploración" },
-  TAREAS_EXPLORACION: { title: "Tareas de Exploración" },
+  MODELO_NEGOCIO: { title: "Desarrollo de idea de negocio/proyecto/trabajo" },
+  TAREAS_EXPLORACION: { title: "Tareas a explorar" },
 }
 
-// "Exploración" (MODELO_NEGOCIO) is a post-test of "Tablero de Ideas", so it
-// sits indented right below it. `order` is the label shown before the title.
+// TAREAS_EXPLORACION and MODELO_NEGOCIO are post-tests of "Tablero de Ideas",
+// so they sit indented right below it. `order` is the label shown before the title.
 const TEST_ORDER: { type: string; order: string; indent?: boolean }[] = [
   { type: "ANCLAS_CARRERA", order: "1" },
   { type: "TABLERO_IDEAS", order: "2" },
-  { type: "MODELO_NEGOCIO", order: "2.1", indent: true },
-  { type: "TAREAS_EXPLORACION", order: "2.2", indent: true },
+  { type: "TAREAS_EXPLORACION", order: "2.1", indent: true },
+  { type: "MODELO_NEGOCIO", order: "2.2", indent: true },
   { type: "PLAN_VITAL", order: "3" },
   { type: "PIRAMIDE_PROPOSITO", order: "4" },
 ]

@@ -29,8 +29,8 @@ type Pool = {
 const TEST_LABELS: { type: TestType; label: string }[] = [
   { type: "ANCLAS_CARRERA", label: "Anclas de Carrera" },
   { type: "TABLERO_IDEAS", label: "Tablero de Ideas" },
-  { type: "MODELO_NEGOCIO", label: "Exploración" },
-  { type: "TAREAS_EXPLORACION", label: "Tareas de Exploración" },
+  { type: "TAREAS_EXPLORACION", label: "Tareas a explorar" },
+  { type: "MODELO_NEGOCIO", label: "Desarrollo de idea de negocio/proyecto/trabajo" },
   { type: "PLAN_VITAL", label: "Plan Vital Integral®" },
   { type: "PIRAMIDE_PROPOSITO", label: "Pirámide del Propósito" },
 ]

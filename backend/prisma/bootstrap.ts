@@ -47,16 +47,16 @@ const TEST_CATALOG = [
     orderIndex: 4,
   },
   {
-    type: TestType.MODELO_NEGOCIO,
-    title: "Exploración",
-    description:
-      "Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.",
+    type: TestType.TAREAS_EXPLORACION,
+    title: "Tareas a explorar",
+    description: "Anotá qué tareas de exploración te llevás para investigar después del Tablero de Ideas.",
     orderIndex: 5,
   },
   {
-    type: TestType.TAREAS_EXPLORACION,
-    title: "Tareas de Exploración",
-    description: "Anotá qué tareas de exploración te llevás para investigar después del Tablero de Ideas.",
+    type: TestType.MODELO_NEGOCIO,
+    title: "Desarrollo de idea de negocio/proyecto/trabajo",
+    description:
+      "Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.",
     orderIndex: 6,
   },
 ]
