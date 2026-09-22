@@ -35,28 +35,28 @@ const TEST_CATALOG = [
     orderIndex: 2,
   },
   {
-    type: TestType.PLAN_VITAL,
-    title: "Plan Vital Integral®",
-    description: "Un recorrido guiado por 8 áreas de tu vida (salud, familia, finanzas, trabajo, vocación, etc.) más un ejercicio de Estímulos.",
-    orderIndex: 3,
-  },
-  {
-    type: TestType.PIRAMIDE_PROPOSITO,
-    title: "Pirámide del Propósito",
-    description: "Construí tu propósito profesional de forma estructurada.",
-    orderIndex: 4,
-  },
-  {
     type: TestType.TAREAS_EXPLORACION,
     title: "Tareas a explorar",
     description: "Anotá qué tareas de exploración te llevás para investigar después del Tablero de Ideas.",
-    orderIndex: 5,
+    orderIndex: 3,
   },
   {
     type: TestType.MODELO_NEGOCIO,
     title: "Desarrollo de idea de negocio/proyecto/trabajo",
     description:
       "Explorá tu idea como un Modelo de Negocios Canvas, un camino freelance/autónomo o investigando un puesto de trabajo.",
+    orderIndex: 4,
+  },
+  {
+    type: TestType.PLAN_VITAL,
+    title: "Plan Vital Integral®",
+    description: "Un recorrido guiado por 8 áreas de tu vida (salud, familia, finanzas, trabajo, vocación, etc.) más un ejercicio de Estímulos.",
+    orderIndex: 5,
+  },
+  {
+    type: TestType.PIRAMIDE_PROPOSITO,
+    title: "Pirámide del Propósito",
+    description: "Construí tu propósito profesional de forma estructurada.",
     orderIndex: 6,
   },
 ]

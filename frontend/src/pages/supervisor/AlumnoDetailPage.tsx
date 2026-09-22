@@ -20,7 +20,7 @@ import { apiJson, apiPost, apiTry } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { useToast } from "@/hooks/use-toast"
-import { testTitle } from "@/lib/testInfo"
+import { testTitle, testOrderIndex } from "@/lib/testInfo"
 
 const TEST_CODES: Record<string, string> = {
   ANCLAS_CARRERA: "AC",
@@ -529,7 +529,8 @@ export default function AlumnoDetailPage() {
         </div>
         <Card className="bg-white">
           <CardContent className="py-4 space-y-2">
-            {allTests
+            {[...allTests]
+              .sort((a, b) => testOrderIndex(a.type) - testOrderIndex(b.type))
               .map((t) => {
                 const assignment = coachTests.find((a) => a.test.type === t.type)
                 return (
