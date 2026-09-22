@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,12 +41,14 @@ type Cohort = { id: string; name: string }
 
 export default function AlumnosPage() {
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
 
   const [open, setOpen] = useState(false)
   const [cohorts, setCohorts] = useState<Cohort[]>([])
   const [cicFilter, setCicFilter] = useState<string>("all")
+  const [tipoFilter, setTipoFilter] = useState<"all" | "alumno" | "coach">("all")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [cohortId, setCohortId] = useState("")
@@ -105,7 +107,6 @@ export default function AlumnosPage() {
     const pools = new Set<string>()
     for (const s of students) {
       s.cohorts?.forEach((c) => cics.add(c.name))
-      if (!s.cohorts?.length) cics.add("Sin CIC")
       s.pools?.forEach((p) => pools.add(p.name))
     }
     return {
@@ -118,7 +119,6 @@ export default function AlumnosPage() {
     if (cicFilter === "all") return true
     if (cicFilter.startsWith("cic:")) {
       const name = cicFilter.slice(4)
-      if (name === "Sin CIC") return (s.cohorts?.length ?? 0) === 0
       return s.cohorts?.some((c) => c.name === name) ?? false
     }
     if (cicFilter.startsWith("pool:")) {
@@ -127,7 +127,13 @@ export default function AlumnosPage() {
     }
     return true
   }
-  const visibleStudents = students.filter(matchesGroupFilter)
+  function matchesTipoFilter(s: Student): boolean {
+    if (tipoFilter === "all") return true
+    if (tipoFilter === "alumno") return (s.cohorts?.length ?? 0) > 0
+    if (tipoFilter === "coach") return (s.pools?.length ?? 0) > 0
+    return true
+  }
+  const visibleStudents = students.filter((s) => matchesGroupFilter(s) && matchesTipoFilter(s))
 
   return (
     <div className="space-y-6">
@@ -141,7 +147,20 @@ export default function AlumnosPage() {
         </Button>
       </div>
 
-      <div className="flex items-end gap-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Tipo</Label>
+          <Select value={tipoFilter} onValueChange={(v) => setTipoFilter(v as typeof tipoFilter)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="alumno">Alumnos</SelectItem>
+              <SelectItem value="coach">Coaches</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Grupo</Label>
           <Select value={cicFilter} onValueChange={setCicFilter}>
@@ -177,7 +196,7 @@ export default function AlumnosPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>CIC / Pools</TableHead>
+                <TableHead>Grupos</TableHead>
                 <TableHead className="text-center">Coachees</TableHead>
                 <TableHead className="text-center">Progreso de contenidos</TableHead>
                 <TableHead className="text-center">Módulos completos</TableHead>
@@ -194,36 +213,45 @@ export default function AlumnosPage() {
                 visibleStudents.map((s) => {
                   const itemsPct = s.itemsTotal > 0 ? Math.round((s.itemsDone / s.itemsTotal) * 100) : 0
                   const modsPct = s.modulesTotal > 0 ? Math.round((s.modulesDone / s.modulesTotal) * 100) : 0
+                  const groups: { label: string; kind: "cic" | "pool" }[] = [
+                    ...(s.cohorts?.map((c) => ({ label: c.name, kind: "cic" as const })) ?? []),
+                    ...(s.pools?.map((p) => ({ label: p.name, kind: "pool" as const })) ?? []),
+                  ]
+                  const firstGroup = groups[0]
+                  const extraGroups = groups.length - 1
                   return (
-                    <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <TableRow
+                      key={s.id}
+                      onClick={() => navigate(`/supervisor/alumnos/${s.id}`)}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
                       <TableCell>
-                        <Link to={`/supervisor/alumnos/${s.id}`} className="block">
-                          <div className="font-medium text-foreground flex items-center gap-2">
-                            {s.name}
-                            {s.pending && <Badge variant="secondary" className="text-[0.65rem]">Pendiente</Badge>}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{s.email}</div>
-                        </Link>
+                        <div className="font-medium text-foreground flex items-center gap-2">
+                          {s.name}
+                          {s.pending && <Badge variant="secondary" className="text-[0.65rem]">Pendiente</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{s.email}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {s.cohorts?.length ? (
-                            s.cohorts.map((c) => (
-                              <Badge key={`cic-${c.id}`} variant="outline" className="text-xs">{c.name}</Badge>
-                            ))
-                          ) : (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">Sin CIC</Badge>
-                          )}
-                          {s.pools?.map((p) => (
+                        {firstGroup ? (
+                          <div className="flex flex-wrap items-center gap-1">
                             <Badge
-                              key={`pool-${p.id}`}
-                              variant="secondary"
-                              className="text-xs bg-brand-accent/10 text-brand-accent-dark hover:bg-brand-accent/10"
+                              variant={firstGroup.kind === "pool" ? "secondary" : "outline"}
+                              className={
+                                firstGroup.kind === "pool"
+                                  ? "text-xs bg-brand-accent/10 text-brand-accent-dark hover:bg-brand-accent/10"
+                                  : "text-xs"
+                              }
                             >
-                              {p.name}
+                              {firstGroup.label}
                             </Badge>
-                          ))}
-                        </div>
+                            {extraGroups > 0 && (
+                              <span className="text-xs text-muted-foreground">+{extraGroups}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">{s.clientCount}</TableCell>
                       <TableCell className="text-center">
