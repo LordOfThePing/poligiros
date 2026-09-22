@@ -20,6 +20,7 @@ import { apiJson, apiPost, apiTry } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { useToast } from "@/hooks/use-toast"
+import { testTitle } from "@/lib/testInfo"
 
 const TEST_CODES: Record<string, string> = {
   ANCLAS_CARRERA: "AC",
@@ -533,7 +534,7 @@ export default function AlumnoDetailPage() {
                 const assignment = coachTests.find((a) => a.test.type === t.type)
                 return (
                   <div key={t.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-border last:border-0">
-                    <span className="text-sm font-medium text-foreground">{t.title}</span>
+                    <span className="text-sm font-medium text-foreground">{testTitle(t.type, t.title)}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       {assignment?.completedAt && (
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Completado ✓</Badge>

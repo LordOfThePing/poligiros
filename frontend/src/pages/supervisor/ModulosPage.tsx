@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiRaw, apiTry, apiUpload } from "@/lib/api"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { testTitle } from "@/lib/testInfo"
 import { CoverCropDialog } from "@/components/CoverCropDialog"
 import {
   ITEM_KINDS, KIND_BADGE, KIND_LABEL, TESTABLE_KINDS, stripMarkdown, formatBytes,
@@ -293,7 +294,7 @@ function ModuleContentEditor({
                   {KIND_LABEL[item.kind]}
                 </span>
                 {item.test && (
-                  <span className="text-xs text-muted-foreground">{item.test.title}</span>
+                  <span className="text-xs text-muted-foreground">{testTitle(item.test.type, item.test.title)}</span>
                 )}
               </div>
               {item.description && (

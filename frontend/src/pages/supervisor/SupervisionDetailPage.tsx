@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ResultsView from "@/pages/client/ResultsView"
+import { testTitle } from "@/lib/testInfo"
 
 function ResponseViewer({ testType, responses }: { testType: string; responses: any }) {
   const ANCHOR_NAMES: Record<string, string> = {
@@ -319,7 +320,7 @@ export default function SupervisionDetailPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="font-serif text-2xl text-foreground">{req.assignment.test.title}</h1>
+          <h1 className="font-serif text-2xl text-foreground">{testTitle(req.assignment.test.type, req.assignment.test.title)}</h1>
           <p className="text-muted-foreground text-sm">
             {req.student.name} · {req.assignment.client.name} · {formatShortDate(req.createdAt)}
           </p>
@@ -473,7 +474,7 @@ export default function SupervisionDetailPage() {
         <DialogContent className="w-[min(1200px,96vw)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-serif">
-              {req.assignment.test.title} — vista completa
+              {testTitle(req.assignment.test.type, req.assignment.test.title)} — vista completa
             </DialogTitle>
           </DialogHeader>
           {responses &&

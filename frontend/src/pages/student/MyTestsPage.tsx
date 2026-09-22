@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { testTitle } from "@/lib/testInfo"
 
 type MyAssignment = {
   id: string
@@ -51,7 +52,7 @@ export default function StudentMyTestsPage() {
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="font-medium text-foreground">{a.test.title}</p>
+                      <p className="font-medium text-foreground">{testTitle(a.test.type, a.test.title)}</p>
                       {a.completedAt ? (
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs mt-1">Completado ✓</Badge>
                       ) : (

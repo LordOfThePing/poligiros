@@ -10,10 +10,11 @@ import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { testTitle } from "@/lib/testInfo"
 
 type Assignment = {
   id: string
-  test: { title: string }
+  test: { type: string; title: string }
   client: { name: string }
   completedAt: string
 }
@@ -86,13 +87,13 @@ export default function StudentSupervisionPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-foreground">{a.test.title}</p>
+                      <p className="font-medium text-foreground">{testTitle(a.test.type, a.test.title)}</p>
                       <p className="text-sm text-muted-foreground">{a.client.name} · Completado {formatShortDate(a.completedAt)}</p>
                     </div>
                     <Button
                       size="sm"
                       className="bg-brand-accent hover:bg-brand-accent-dark"
-                      onClick={() => setModal({ assignmentId: a.id, title: a.test.title })}
+                      onClick={() => setModal({ assignmentId: a.id, title: testTitle(a.test.type, a.test.title) })}
                     >
                       Enviar a supervisión
                     </Button>
@@ -115,7 +116,7 @@ export default function StudentSupervisionPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-foreground">{req.assignment.test.title}</p>
+                        <p className="font-medium text-foreground">{testTitle(req.assignment.test.type, req.assignment.test.title)}</p>
                         <p className="text-sm text-muted-foreground">· {req.assignment.client.name}</p>
                         <Badge className={req.status === "REVIEWED" ? "bg-indigo-100 text-indigo-800 hover:bg-indigo-100" : "bg-amber-100 text-amber-800 hover:bg-amber-100"}>
                           {req.status === "REVIEWED" ? "Revisado" : "Pendiente"}

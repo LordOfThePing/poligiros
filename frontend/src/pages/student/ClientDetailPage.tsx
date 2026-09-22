@@ -21,15 +21,11 @@ import { EditableResult } from "@/components/EditableResult"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { useCoachAccess } from "@/lib/useCoachAccess"
 import type { TestType } from "@/lib/access"
+import { TEST_TITLES } from "@/lib/testInfo"
 
-const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = {
-  ANCLAS_CARRERA: { title: "Test de Anclas de Carrera" },
-  TABLERO_IDEAS: { title: "Tablero de Ideas" },
-  PLAN_VITAL: { title: "Plan Vital Integral®" },
-  PIRAMIDE_PROPOSITO: { title: "Pirámide del Propósito" },
-  MODELO_NEGOCIO: { title: "Desarrollo de idea de negocio/proyecto/trabajo" },
-  TAREAS_EXPLORACION: { title: "Tareas a explorar" },
-}
+const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = Object.fromEntries(
+  Object.entries(TEST_TITLES).map(([type, title]) => [type, { title }]),
+)
 
 // TAREAS_EXPLORACION and MODELO_NEGOCIO are post-tests of "Tablero de Ideas",
 // so they sit indented right below it. `order` is the label shown before the title.

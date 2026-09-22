@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { testTitle } from "@/lib/testInfo"
 
 type Cohort = { id: string; name: string }
 
@@ -23,7 +24,7 @@ type SupervisionRequest = {
   reviewedAt: string | null
   student: { name: string; cohorts: Cohort[] }
   assignment: {
-    test: { title: string }
+    test: { type: string; title: string }
     client: { name: string }
     response: { editedAt: string | null; editedBy: string | null } | null
   }
@@ -34,7 +35,7 @@ type ResetRequest = {
   reason: string | null
   createdAt: string
   requestedBy: { name: string }
-  assignment: { test: { title: string }; client: { name: string } }
+  assignment: { test: { type: string; title: string }; client: { name: string } }
 }
 
 type SortOrder = "recent" | "name"
@@ -76,11 +77,11 @@ export default function SupervisorSupervisionPage() {
   }
 
   const cohorts = Array.from(new Map(requests.flatMap((r) => r.student.cohorts).map((c) => [c.id, c])).values())
-  const testTitles = Array.from(new Set(requests.map((r) => r.assignment.test.title))).sort()
+  const testTypes = Array.from(new Set(requests.map((r) => r.assignment.test.type))).sort()
   const visibleRequests = requests.filter(
     (r) =>
       (cohortFilter === "all" || r.student.cohorts.some((c) => c.id === cohortFilter)) &&
-      (testFilter === "all" || r.assignment.test.title === testFilter)
+      (testFilter === "all" || r.assignment.test.type === testFilter)
   )
   const pending = visibleRequests
     .filter((r) => r.status === "PENDING")
@@ -134,8 +135,8 @@ export default function SupervisorSupervisionPage() {
             <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los tests</SelectItem>
-              {testTitles.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+              {testTypes.map((t) => (
+                <SelectItem key={t} value={t}>{testTitle(t, t)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -165,7 +166,7 @@ export default function SupervisorSupervisionPage() {
             {resetRequests.map((r) => (
               <div key={r.id} className="flex items-start justify-between gap-4 border-b border-border pb-3 last:border-0 last:pb-0">
                 <div className="min-w-0">
-                  <p className="font-medium text-foreground text-sm">{r.assignment.test.title}</p>
+                  <p className="font-medium text-foreground text-sm">{testTitle(r.assignment.test.type, r.assignment.test.title)}</p>
                   <p className="text-sm text-muted-foreground">
                     {r.requestedBy.name} · {r.assignment.client.name} · {formatShortDate(r.createdAt)}
                   </p>
@@ -223,7 +224,7 @@ export default function SupervisorSupervisionPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-foreground">{req.assignment.test.title}</p>
+                        <p className="font-medium text-foreground">{testTitle(req.assignment.test.type, req.assignment.test.title)}</p>
                         {req.status === "PENDING" && req.reviewedAt && (
                           <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">
                             2da revisión · editado por {req.assignment.response?.editedBy === "coachee" ? "el coachee" : "el coach"}
