@@ -12,10 +12,11 @@
 COMPOSE = docker compose -f docker-compose.local.yml
 PROD    = docker compose -f docker-compose.prod.yml
 
-# Defaults for env-scp. SCP_ALIAS is meant to be a Host entry in ~/.ssh/config
-# (e.g. "hetzner", so it carries its own user/hostname/key) — override with
-#   make env-scp SCP_ALIAS=other-alias
-SCP_ALIAS ?= hetzner
+# Defaults for env-scp. SCP_ALIAS is a Host entry in ~/.ssh/config that resolves
+# to the deploy user (not root), so the copied files end up owned by them and
+# under their home. Override with
+#   make env-scp SCP_ALIAS=other-alias SCP_PATH=/abs/or/relative
+SCP_ALIAS ?= poligiros-vps
 SCP_PATH  ?= poligiros
 
 .DEFAULT_GOAL := help
@@ -112,8 +113,10 @@ studio: ## Prisma Studio against the dockerized DB (host port 5433)
 #   make prod-health
 # ══════════════════════════════════════════════════════════════════════════════
 
-env-scp: ## Print the scp commands to copy your local .env + backend/.env to the server. Usage: make env-scp [SCP_ALIAS=hetzner] [SCP_PATH=/opt/poligiros]
-	@echo " scp .env hetzner:poligiros/.env;scp backend/.env hetzner:poligiros/backend/.env"
+env-scp: ## Print the scp commands to copy your local .env + backend/.env to the server. Usage: make env-scp [SCP_ALIAS=poligiros-vps] [SCP_PATH=poligiros]
+	@# -o RequestTTY=no / RemoteCommand=none neutralise the interactive-login
+	@# options that poligiros-vps needs for `ssh` but that break scp.
+	@echo " scp -o RequestTTY=no -o RemoteCommand=none .env $(SCP_ALIAS):$(SCP_PATH)/.env; scp -o RequestTTY=no -o RemoteCommand=none backend/.env $(SCP_ALIAS):$(SCP_PATH)/backend/.env"
 
 env-check: ## Verify .env exists and has the required variables
 	@test -f .env || { echo "❌ Falta .env — copiá .env.example y completá la sección ROOT."; exit 1; }
