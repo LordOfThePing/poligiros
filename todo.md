@@ -33,12 +33,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [x] Inscripción aprobada manda mail al coach (ya estaba hecho:
       `sendSignupApprovedEmail`).
 
-## En curso
-
-- [ ] Login con Google en `/login` (solo para usuarios ya invitados). Backend
-      `/auth/google/start` + `/auth/google/callback`, botón en LoginPage,
-      variables `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` documentadas.
-
 ## Pendientes previos
 
 - [ ] Al terminar un CIC, los coaches pasan a un grupo "Coaches certificados" (no es un CIC, no tiene módulos — sirve para agregar coachees y hacerles tests)
