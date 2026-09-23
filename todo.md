@@ -45,11 +45,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [ ] Clase 2: el texto "antes de la sesión, leer libro de Edgar Schein" tiene que ir antes que Bibliografía
 - [ ] Foro general
 
-## En curso
-
-- [ ] Plan Vital: los estímulos se ordenan arrastrando (⠿), no con flechas.
-      Aplica tanto al primer llenado como a la edición post-devolución.
-
 ## Detectado de paso
 
 - [x] `POST /supervisor/cohorts/:id/enroll` ahora se comporta como el del pool:
