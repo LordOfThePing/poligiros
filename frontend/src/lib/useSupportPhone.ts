@@ -1,34 +1,56 @@
 import { useEffect, useState } from "react"
 import { api } from "./api"
 
-/** Module-level cache so every caller shares one fetch of GET /public/config. */
-let cached: string | null | undefined
-let inFlight: Promise<string | null> | null = null
+type PublicConfig = {
+  supportPhone: string | null
+  googleEnabled: boolean
+}
 
-function fetchSupportPhone(): Promise<string | null> {
+/** Module-level cache so every caller shares one fetch of GET /public/config. */
+let cached: PublicConfig | undefined
+let inFlight: Promise<PublicConfig> | null = null
+
+function fetchConfig(): Promise<PublicConfig> {
   if (cached !== undefined) return Promise.resolve(cached)
   if (!inFlight) {
     inFlight = api("/public/config")
-      .then((res) => (res.ok ? res.json() : { supportPhone: null }))
-      .then((data) => (cached = data.supportPhone ?? null))
-      .catch(() => (cached = null))
+      .then((res) => (res.ok ? res.json() : { supportPhone: null, googleEnabled: false }))
+      .then((data) => {
+        cached = {
+          supportPhone: data.supportPhone ?? null,
+          googleEnabled: !!data.googleEnabled,
+        }
+        return cached
+      })
+      .catch(() => (cached = { supportPhone: null, googleEnabled: false }))
   }
   return inFlight
 }
 
-/** The developer's WhatsApp number, set via the backend's SUPPORT_PHONE env var. */
-export function useSupportPhone(): string | null {
-  const [phone, setPhone] = useState<string | null>(cached ?? null)
+function useConfigField<K extends keyof PublicConfig>(key: K): PublicConfig[K] {
+  const [value, setValue] = useState<PublicConfig[K]>(
+    cached ? cached[key] : (key === "googleEnabled" ? (false as PublicConfig[K]) : (null as PublicConfig[K])),
+  )
 
   useEffect(() => {
     let cancelled = false
-    fetchSupportPhone().then((p) => {
-      if (!cancelled) setPhone(p)
+    fetchConfig().then((c) => {
+      if (!cancelled) setValue(c[key])
     })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [key])
 
-  return phone
+  return value
+}
+
+/** The developer's WhatsApp number, set via the backend's SUPPORT_PHONE env var. */
+export function useSupportPhone(): string | null {
+  return useConfigField("supportPhone")
+}
+
+/** True when the backend has GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET configured. */
+export function useGoogleEnabled(): boolean {
+  return useConfigField("googleEnabled")
 }

@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { setCookie, deleteCookie, getCookie } from "hono/cookie"
 import bcrypt from "bcryptjs"
+import { randomBytes } from "node:crypto"
 import { loginUser, signJWT, verifyJWT } from "../lib/auth.js"
 import { prisma } from "../lib/prisma.js"
 
@@ -13,6 +14,118 @@ const COOKIE_OPTIONS = {
   path: "/",
   maxAge: 60 * 60 * 24 * 7, // 7 days
 }
+
+/* ─────────────────────────────────────────
+   Google OAuth (opt-in)
+   Requires GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + PUBLIC_API_URL. Only logs
+   in users that ALREADY exist and have completed registration — no auto-signup.
+───────────────────────────────────────── */
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173"
+const PUBLIC_API_URL =
+  process.env.PUBLIC_API_URL || `http://localhost:${process.env.PORT || 3001}`
+const GOOGLE_REDIRECT_URI = `${PUBLIC_API_URL}/auth/google/callback`
+
+const isGoogleConfigured = () => !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET)
+
+/**
+ * Round-trip token that carries the post-login `callbackUrl` from /start to
+ * /callback and lets us verify the response was for the request we started.
+ * Kept in an httpOnly Lax cookie so it survives Google's top-level redirect.
+ */
+const OAUTH_STATE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "Lax" as const,
+  path: "/auth/google",
+  maxAge: 60 * 10,
+}
+
+function safeCallback(raw: string | undefined | null): string {
+  if (!raw || !raw.startsWith("/")) return "/"
+  return raw
+}
+
+/** GET /auth/google/start?callbackUrl=/foo → 302 to Google */
+auth.get("/google/start", (c) => {
+  if (!isGoogleConfigured()) {
+    return c.redirect(`${FRONTEND_URL}/login?googleError=disabled`)
+  }
+  const callbackUrl = safeCallback(c.req.query("callbackUrl"))
+  const nonce = randomBytes(16).toString("hex")
+  const state = `${nonce}|${encodeURIComponent(callbackUrl)}`
+
+  setCookie(c, "oauth_state", state, OAUTH_STATE_COOKIE_OPTIONS)
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: "code",
+    scope: "openid email profile",
+    state,
+    prompt: "select_account",
+  })
+  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`)
+})
+
+/** GET /auth/google/callback — Google redirects here with `code` + `state` */
+auth.get("/google/callback", async (c) => {
+  const code = c.req.query("code")
+  const stateParam = c.req.query("state")
+  const stateCookie = getCookie(c, "oauth_state")
+  deleteCookie(c, "oauth_state", { path: "/auth/google" })
+
+  const bail = (err: string, email?: string) => {
+    const q = new URLSearchParams({ googleError: err })
+    if (email) q.set("email", email)
+    return c.redirect(`${FRONTEND_URL}/login?${q.toString()}`)
+  }
+
+  if (!isGoogleConfigured()) return bail("disabled")
+  if (!code || !stateParam || !stateCookie || stateParam !== stateCookie) return bail("state")
+
+  const callbackUrl = safeCallback(decodeURIComponent(stateCookie.split("|")[1] ?? "/"))
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: GOOGLE_REDIRECT_URI,
+      grant_type: "authorization_code",
+    }),
+  })
+  if (!tokenRes.ok) return bail("token")
+  const tokens = (await tokenRes.json().catch(() => ({}))) as { access_token?: string }
+  if (!tokens.access_token) return bail("token")
+
+  const infoRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  })
+  if (!infoRes.ok) return bail("userinfo")
+  const info = (await infoRes.json().catch(() => ({}))) as {
+    email?: string
+    email_verified?: boolean
+    name?: string
+  }
+
+  const email = (info.email ?? "").trim().toLowerCase()
+  if (!email || info.email_verified === false) return bail("email")
+
+  const user = await prisma.user.findUnique({ where: { email } })
+  if (!user) return bail("not_found", email)
+  if (!user.password) return bail("not_activated")
+
+  const payload = { id: user.id, role: user.role, name: user.name, email: user.email }
+  const jwt = await signJWT(payload)
+  setCookie(c, "token", jwt, COOKIE_OPTIONS)
+
+  return c.redirect(`${FRONTEND_URL}${callbackUrl}`)
+})
 
 /** POST /auth/login */
 auth.post("/login", async (c) => {

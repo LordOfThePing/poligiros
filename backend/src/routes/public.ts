@@ -22,7 +22,10 @@ const publicRoutes = new Hono()
  * "Cómo usar la app" guide and the sidebar's Soporte button.
  */
 publicRoutes.get("/config", (c) => {
-  return c.json({ supportPhone: process.env.SUPPORT_PHONE || null })
+  return c.json({
+    supportPhone: process.env.SUPPORT_PHONE || null,
+    googleEnabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+  })
 })
 
 /** Resolve a signup token, or explain why it is not usable. */

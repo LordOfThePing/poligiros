@@ -238,8 +238,11 @@ Three fire-and-forget triggers in `backend/src/lib/email.ts`
 
 Backend `.env` (see `.env.example` → backend section): `DATABASE_URL` and
 `JWT_SECRET` are required; `FRONTEND_URL` drives CORS; `PORT` defaults to 3001;
-`OPENAI_API_KEY`, `RESEND_API_KEY`, `CLOUDFLARE_R2_*` fail gracefully if blank.
-Generate the secret with `openssl rand -base64 32`.
+`OPENAI_API_KEY`, `RESEND_API_KEY`, `CLOUDFLARE_R2_*` and the Google trio
+(`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` + `PUBLIC_API_URL`) fail gracefully
+if blank — `/auth/google/*` only enables and `/public/config` only sets
+`googleEnabled: true` when all three are set. Generate the secret with
+`openssl rand -base64 32`.
 
 Frontend `.env`: `VITE_API_URL` (default `http://localhost:3001`).
 

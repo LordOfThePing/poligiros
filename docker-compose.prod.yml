@@ -49,6 +49,12 @@ services:
       SUPERVISOR_PASSWORD: ${SUPERVISOR_PASSWORD:-}
       SUPERVISOR_NAME: ${SUPERVISOR_NAME:-Gabriela Kyriazis}
       SUPPORT_PHONE: ${SUPPORT_PHONE:-}
+      # Login con Google (opcional). Si faltan client_id/secret, el backend no
+      # ofrece el botón y responde 302 → /login?googleError=disabled si alguien
+      # llega a /auth/google/start.
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       SUPERVISOR_NOTIFY_EMAIL: ${SUPERVISOR_NOTIFY_EMAIL:-}
