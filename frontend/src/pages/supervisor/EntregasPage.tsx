@@ -14,6 +14,7 @@ import { apiJson, apiTry } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { usePersistedState } from "@/lib/persistedState"
 
 type Submission = {
   id: string
@@ -56,11 +57,11 @@ export default function EntregasPage() {
   const [practices, setPractices] = useState<PracticeRecord[]>([])
   // Which practice record is being given feedback (separate endpoint from entregas).
   const [reviewingPractice, setReviewingPractice] = useState<PracticeRecord | null>(null)
-  const [filter, setFilter] = useState<Filter>("pending")
-  const [cohortFilter, setCohortFilter] = useState<string>("all")
-  const [itemFilter, setItemFilter] = useState<string>("all")
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("recent")
+  const [filter, setFilter] = usePersistedState<Filter>("entregas.state", "pending")
+  const [cohortFilter, setCohortFilter] = usePersistedState<string>("entregas.cohort", "all")
+  const [itemFilter, setItemFilter] = usePersistedState<string>("entregas.item", "all")
+  const [typeFilter, setTypeFilter] = usePersistedState<TypeFilter>("entregas.type", "all")
+  const [sortOrder, setSortOrder] = usePersistedState<SortOrder>("entregas.sort", "recent")
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState<Submission | null>(null)
   const [feedback, setFeedback] = useState("")

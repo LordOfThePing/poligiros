@@ -12,8 +12,10 @@ import { formatShortDate } from "@/lib/date"
 import { apiJson, apiPost } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { testTitle } from "@/lib/testInfo"
+import { usePersistedState } from "@/lib/persistedState"
 
 type Cohort = { id: string; name: string }
+type Pool = { id: string; name: string }
 
 type SupervisionRequest = {
   id: string
@@ -22,7 +24,7 @@ type SupervisionRequest = {
   supervisorNotes: string | null
   createdAt: string
   reviewedAt: string | null
-  student: { name: string; cohorts: Cohort[] }
+  student: { name: string; cohorts: Cohort[]; pools: Pool[] }
   assignment: {
     test: { type: string; title: string }
     client: { name: string }
@@ -47,10 +49,10 @@ export default function SupervisorSupervisionPage() {
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
-  const [cohortFilter, setCohortFilter] = useState<string>("all")
-  const [testFilter, setTestFilter] = useState<string>("all")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("recent")
-  const [stateTab, setStateTab] = useState<StateTab>("pending")
+  const [groupFilter, setGroupFilter] = usePersistedState<string>("supervision.group", "all")
+  const [testFilter, setTestFilter] = usePersistedState<string>("supervision.test", "all")
+  const [sortOrder, setSortOrder] = usePersistedState<SortOrder>("supervision.sort", "recent")
+  const [stateTab, setStateTab] = usePersistedState<StateTab>("supervision.state", "pending")
 
   function loadResetRequests() {
     apiJson<ResetRequest[]>("/supervisor/reset-requests").then(setResetRequests).catch(() => {})
@@ -77,11 +79,25 @@ export default function SupervisorSupervisionPage() {
   }
 
   const cohorts = Array.from(new Map(requests.flatMap((r) => r.student.cohorts).map((c) => [c.id, c])).values())
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const pools = Array.from(new Map(requests.flatMap((r) => r.student.pools ?? []).map((p) => [p.id, p])).values())
+    .sort((a, b) => a.name.localeCompare(b.name))
   const testTypes = Array.from(new Set(requests.map((r) => r.assignment.test.type))).sort()
+
+  function matchesGroup(r: SupervisionRequest): boolean {
+    if (groupFilter === "all") return true
+    if (groupFilter.startsWith("cic:")) {
+      const id = groupFilter.slice(4)
+      return r.student.cohorts.some((c) => c.id === id)
+    }
+    if (groupFilter.startsWith("pool:")) {
+      const id = groupFilter.slice(5)
+      return (r.student.pools ?? []).some((p) => p.id === id)
+    }
+    return true
+  }
   const visibleRequests = requests.filter(
-    (r) =>
-      (cohortFilter === "all" || r.student.cohorts.some((c) => c.id === cohortFilter)) &&
-      (testFilter === "all" || r.assignment.test.type === testFilter)
+    (r) => matchesGroup(r) && (testFilter === "all" || r.assignment.test.type === testFilter),
   )
   const pending = visibleRequests
     .filter((r) => r.status === "PENDING")
@@ -118,14 +134,27 @@ export default function SupervisorSupervisionPage() {
 
       <div className="flex items-end gap-2">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">CIC</Label>
-          <Select value={cohortFilter} onValueChange={setCohortFilter}>
+          <Label className="text-xs text-muted-foreground">Grupo</Label>
+          <Select value={groupFilter} onValueChange={setGroupFilter}>
             <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los CIC</SelectItem>
-              {cohorts.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
+              <SelectItem value="all">Todos los grupos</SelectItem>
+              {cohorts.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-[0.65rem] uppercase tracking-wider text-muted-foreground">CICs</div>
+                  {cohorts.map((c) => (
+                    <SelectItem key={`cic:${c.id}`} value={`cic:${c.id}`}>{c.name}</SelectItem>
+                  ))}
+                </>
+              )}
+              {pools.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-[0.65rem] uppercase tracking-wider text-muted-foreground">Pools</div>
+                  {pools.map((p) => (
+                    <SelectItem key={`pool:${p.id}`} value={`pool:${p.id}`}>{p.name}</SelectItem>
+                  ))}
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>

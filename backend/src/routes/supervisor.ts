@@ -499,6 +499,7 @@ supervisor.get("/supervision", async (c) => {
           id: true,
           name: true,
           enrollments: { include: { cohort: { select: { id: true, name: true } } } },
+          poolMemberships: { include: { pool: { select: { id: true, name: true } } } },
         },
       },
       assignment: {
@@ -511,7 +512,12 @@ supervisor.get("/supervision", async (c) => {
   return c.json(
     requests.map((r) => ({
       ...r,
-      student: { id: r.student.id, name: r.student.name, cohorts: r.student.enrollments.map((e) => e.cohort) },
+      student: {
+        id: r.student.id,
+        name: r.student.name,
+        cohorts: r.student.enrollments.map((e) => e.cohort),
+        pools: r.student.poolMemberships.map((m) => m.pool),
+      },
     }))
   )
 })
