@@ -113,9 +113,11 @@ studio: ## Prisma Studio against the dockerized DB (host port 5433)
 #   make prod-health
 # ══════════════════════════════════════════════════════════════════════════════
 
+# -o RequestTTY=no / RemoteCommand=none in the printed scp command neutralise
+# the interactive-login options that poligiros-vps needs for `ssh` but that
+# would break scp — the alias is one and the same, we just tell scp to ignore
+# them per-invocation.
 env-scp: ## Print the scp commands to copy your local .env + backend/.env to the server. Usage: make env-scp [SCP_ALIAS=poligiros-vps] [SCP_PATH=poligiros]
-	@# -o RequestTTY=no / RemoteCommand=none neutralise the interactive-login
-	@# options that poligiros-vps needs for `ssh` but that break scp.
 	@echo " scp -o RequestTTY=no -o RemoteCommand=none .env $(SCP_ALIAS):$(SCP_PATH)/.env; scp -o RequestTTY=no -o RemoteCommand=none backend/.env $(SCP_ALIAS):$(SCP_PATH)/backend/.env"
 
 env-check: ## Verify .env exists and has the required variables
