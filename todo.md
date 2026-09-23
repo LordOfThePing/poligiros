@@ -33,15 +33,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [x] Inscripción aprobada manda mail al coach (ya estaba hecho:
       `sendSignupApprovedEmail`).
 
-## En curso
-
-- [ ] Tests y Tareas: recordar los últimos filtros aplicados por la supervisora
-      entre visitas (persistir en `localStorage`).
-- [ ] Tests: renombrar el filtro "CIC" a "Grupo" y permitir elegir Pools
-      también (agrupados como en Alumnos).
-- [ ] Documentar cómo cambiar el email del supervisor y de un coach (Gaby quiere
-      poder entrar con su email).
-
 ## Pendientes previos
 
 - [ ] Al terminar un CIC, los coaches pasan a un grupo "Coaches certificados" (no es un CIC, no tiene módulos — sirve para agregar coachees y hacerles tests)
