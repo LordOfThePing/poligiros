@@ -108,6 +108,7 @@ client.get("/t/:token", async (c) => {
     responses: assignment.response?.responses ?? null,
     coachFeedback: assignment.supervision?.coachFeedback ?? null,
     completedAt: assignment.completedAt,
+    clientName: assignment.client.name,
     // Editable while the supervision sits reviewed; a saved edit reopens it and
     // freezes the result again until she reviews it (see applyPostReviewEdit).
     canEdit: assignment.supervision?.status === "REVIEWED",

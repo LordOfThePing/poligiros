@@ -386,6 +386,7 @@ export default function SupervisionDetailPage() {
                       responses={responses}
                       coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
                       completedAt={req.assignment.completedAt}
+                      personName={req.assignment.client?.name}
                       constrainHeight={false}
                     />
                   )}
@@ -486,6 +487,7 @@ export default function SupervisionDetailPage() {
                     responses={responses}
                     coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
                     completedAt={req.assignment.completedAt}
+                    personName={req.assignment.client?.name}
                     constrainHeight={false}
                   />
                 </div>
@@ -509,6 +511,7 @@ export default function SupervisionDetailPage() {
                 responses={responses}
                 coachFeedback={coachFeedback || req.assignment.supervision?.coachFeedback || null}
                 completedAt={req.assignment.completedAt}
+                personName={req.assignment.client?.name}
                 constrainHeight={false}
               />
             ))}

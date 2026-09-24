@@ -24,6 +24,7 @@ type TokenState =
       responses: Record<string, unknown>
       coachFeedback: string | null
       completedAt: string
+      clientName?: string
       // The coachee's single post-review edit — only after the supervisor's
       // first review, and only once (shared with the coach's own edit).
       canEdit: boolean
@@ -162,6 +163,7 @@ export default function TokenPage() {
             responses={data.responses}
             coachFeedback={data.coachFeedback}
             completedAt={data.completedAt}
+            personName={data.clientName}
             footer={data.canEdit ? (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />

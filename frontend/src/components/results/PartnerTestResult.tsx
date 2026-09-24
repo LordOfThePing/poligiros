@@ -111,6 +111,7 @@ export function PartnerTestResult({
                 responses={result.responses}
                 coachFeedback={null}
                 completedAt={result.completedAt ?? new Date().toISOString()}
+                personName={partnerName}
                 constrainHeight={false}
               />
             ) : (

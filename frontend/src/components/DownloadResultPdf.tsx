@@ -17,6 +17,8 @@ const TEST_LABELS: Record<string, string> = {
 
 function slugify(label: string) {
   return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // "Pérez" → "perez", not "p-rez"
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
@@ -32,12 +34,18 @@ export function DownloadResultPdf({
   responses,
   coachFeedback,
   completedAt,
+  personName,
 }: {
   testType: string
   responses: Record<string, unknown>
   coachFeedback: string | null
   completedAt: string
+  /** Who took the test: shown on top of the PDF and appended to the filename. */
+  personName?: string | null
 }) {
+  const label = TEST_LABELS[testType] ?? "Resultado"
+  const fileBase = slugify(personName ? `${label} ${personName}` : label) || "resultado"
+
   const [printing, setPrinting] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const captureRef = useRef<HTMLDivElement | null>(null)
@@ -50,12 +58,17 @@ export function DownloadResultPdf({
       style={{ position: "fixed", left: -10000, top: 0, width: 900, background: "#fff", color: "#1c1917" }}
     >
       <div className="p-6">
+        <div className="mb-4 border-b border-border pb-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+          {personName && <h1 className="font-serif text-2xl text-foreground mt-1">{personName}</h1>}
+        </div>
         <ResultsView
           testType={testType}
           responses={responses}
           coachFeedback={coachFeedback}
           completedAt={completedAt}
           hideExport
+          exportCopy
           constrainHeight={false}
         />
       </div>
@@ -87,7 +100,7 @@ export function DownloadResultPdf({
       const imgH = (canvas.height * pageW) / canvas.width
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [pageW, Math.ceil(imgH)] })
       pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH)
-      pdf.save(`${slugify(TEST_LABELS[testType] ?? "resultado")}.pdf`)
+      pdf.save(`${fileBase}.pdf`)
     } catch (e) {
       console.error(e)
       // Fallback to the print dialog if snapshotting failed.
@@ -102,7 +115,7 @@ export function DownloadResultPdf({
     // The browser's "Save as PDF" filename comes from document.title —
     // swap it to the test name for the duration of the print dialog.
     const previousTitle = document.title
-    document.title = TEST_LABELS[testType] ?? previousTitle
+    document.title = personName ? `${label} - ${personName}` : label
     // Let the portal render before triggering the print dialog.
     setTimeout(() => {
       window.print()

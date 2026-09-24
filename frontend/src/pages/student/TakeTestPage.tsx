@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from "react-router-dom"
 import { ArrowLeft, Pencil } from "lucide-react"
 import { apiJson, apiTry } from "@/lib/api"
 import { sessionTestApi } from "@/lib/testApi"
+import { useAuth } from "@/lib/auth"
 import AnclasTest from "@/pages/client/tests/AnclasTest"
 import TableroTest from "@/pages/client/tests/TableroTest"
 import PiramideTest from "@/pages/client/tests/PiramideTest"
@@ -30,6 +31,7 @@ type Assignment = {
 
 export default function StudentTakeTestPage() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [loading, setLoading] = useState(true)
   // ?edit=1 — the "Editar" buttons on Mi Programa / Mis Tests land straight in
@@ -136,6 +138,7 @@ export default function StudentTakeTestPage() {
           responses={assignment.response.responses}
           coachFeedback={null}
           completedAt={assignment.completedAt}
+          personName={user?.name}
         />
       </div>
     )

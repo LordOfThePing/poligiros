@@ -42,6 +42,7 @@ export default function SupervisionResultPage() {
             responses={responses}
             coachFeedback={req.coachFeedback ?? req.assignment.supervision?.coachFeedback ?? null}
             completedAt={req.assignment.completedAt}
+            personName={req.assignment.client?.name}
           />
         )}
       </div>
