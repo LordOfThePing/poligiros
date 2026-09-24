@@ -33,15 +33,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [x] Inscripción aprobada manda mail al coach (ya estaba hecho:
       `sendSignupApprovedEmail`).
 
-## En curso
-
-- [ ] **Acceso a módulos por alumno: toggle Total / Parcial.** Por defecto el
-      alumno ve el 100% de lo que su CIC tiene liberado (Total). Si se pone en
-      Parcial, se puede whitelistear qué módulos ve ese alumno en particular.
-      Toca schema (`User.moduleAccessMode` + `UserModuleAccess`),
-      `releasedModuleIds` en `backend/src/routes/student.ts`, endpoint nuevo en
-      supervisor y UI en `AlumnoDetailPage`.
-
 ## Pendientes previos
 
 - [ ] Al terminar un CIC, los coaches pasan a un grupo "Coaches certificados" (no es un CIC, no tiene módulos — sirve para agregar coachees y hacerles tests)
