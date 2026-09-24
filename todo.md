@@ -33,6 +33,13 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [x] Inscripción aprobada manda mail al coach (ya estaba hecho:
       `sendSignupApprovedEmail`).
 
+## En curso
+
+- [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
+      footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
+      de cada columna quedan fijos en su caja y sólo scrollea la caja de
+      contenido de abajo. Toca `frontend/src/pages/client/ResultsView.tsx`.
+
 ## Pendientes previos
 
 - [ ] Al terminar un CIC, los coaches pasan a un grupo "Coaches certificados" (no es un CIC, no tiene módulos — sirve para agregar coachees y hacerles tests)
