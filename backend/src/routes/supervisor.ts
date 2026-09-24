@@ -218,6 +218,7 @@ supervisor.get("/students/:id", async (c) => {
     include: {
       enrollments: { include: { cohort: true } },
       poolMemberships: { include: { pool: true } },
+      moduleAccess: { select: { moduleId: true } },
       clients: {
         include: {
           assignments: {
@@ -247,8 +248,12 @@ supervisor.get("/students/:id", async (c) => {
 
   if (!student) return c.json({ error: "Not found" }, 404)
   // Never leak the password hash / invite token; expose a `pending` flag instead.
-  const { password, inviteToken, ...safe } = student
-  return c.json({ ...safe, pending: password === null })
+  const { password, inviteToken, moduleAccess, ...rest } = student
+  return c.json({
+    ...rest,
+    pending: password === null,
+    moduleAccessIds: moduleAccess.map((m) => m.moduleId),
+  })
 })
 
 /**
@@ -372,6 +377,56 @@ supervisor.put("/students/:id/pool-memberships", async (c) => {
 
   const access = await getCoachAccess(id)
   return c.json({ pools: access.pools, poolIds: access.poolIds })
+})
+
+/**
+ * PUT /supervisor/students/:id/module-access
+ * body: { mode: "TOTAL" | "PARCIAL", moduleIds?: string[] }
+ *
+ * TOTAL: the coach sees everything their CIC released (whitelist cleared).
+ * PARCIAL: the coach only sees the modules in `moduleIds` (intersected with
+ * whatever the CIC released — the whitelist can only narrow, never widen).
+ */
+supervisor.put("/students/:id/module-access", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}) as Record<string, unknown>)
+
+  const student = await prisma.user.findUnique({ where: { id } })
+  if (!student || student.role !== "STUDENT_COACH") {
+    return c.json({ error: "Estudiante no encontrado" }, 404)
+  }
+
+  const mode = body.mode
+  if (mode !== "TOTAL" && mode !== "PARCIAL") {
+    return c.json({ error: "mode debe ser TOTAL o PARCIAL" }, 400)
+  }
+
+  const moduleIds =
+    mode === "PARCIAL"
+      ? Array.isArray(body.moduleIds)
+        ? [...new Set((body.moduleIds as string[]).filter(Boolean))]
+        : []
+      : []
+
+  if (moduleIds.length > 0) {
+    const found = await prisma.module.findMany({
+      where: { id: { in: moduleIds } },
+      select: { id: true },
+    })
+    if (found.length !== moduleIds.length) {
+      return c.json({ error: "Algún módulo no existe" }, 400)
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id }, data: { moduleAccessMode: mode } }),
+    prisma.userModuleAccess.deleteMany({ where: { userId: id } }),
+    ...moduleIds.map((moduleId) =>
+      prisma.userModuleAccess.create({ data: { userId: id, moduleId } })
+    ),
+  ])
+
+  return c.json({ mode, moduleIds })
 })
 
 /**

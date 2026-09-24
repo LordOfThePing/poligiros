@@ -58,6 +58,14 @@ enum ResetStatus {
   REJECTED
 }
 
+/// How a coach sees the modules released to their CIC.
+/// TOTAL: every module released to any of their cohorts (the default).
+/// PARCIAL: only the ones whitelisted for them in UserModuleAccess.
+enum ModuleAccessMode {
+  TOTAL
+  PARCIAL
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -69,6 +77,12 @@ model User {
   /// Set by the supervisor via "Reset password" so a coach must choose a fresh
   /// password the next time they log in (see POST /auth/change-password).
   mustChangePassword Boolean @default(false)
+
+  /// How this coach sees released modules. TOTAL (default) = everything their
+  /// CIC has released; PARCIAL = only the modules whitelisted in
+  /// `moduleAccess`. Applied on top of the cohort release, never in place of
+  /// it — a module the CIC has not released stays hidden regardless.
+  moduleAccessMode ModuleAccessMode @default(TOTAL)
 
   // Invite-only registration (pending until the coach sets a password)
   inviteToken     String?   @unique
@@ -103,6 +117,21 @@ model User {
   resetReviews        TestResetRequest[]     @relation("ResetReviewedBy")
   signupReviews       SignupRequest[]        @relation("SignupReviewedBy")
   moduleItemComments  ModuleItemComment[]
+  moduleAccess        UserModuleAccess[]
+}
+
+/// Whitelist row: this module is visible to this coach when the coach is in
+/// `moduleAccessMode = PARCIAL`. Ignored when the coach is in TOTAL mode.
+model UserModuleAccess {
+  id       String @id @default(cuid())
+  userId   String
+  moduleId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, moduleId])
 }
 
 model Cohort {
@@ -181,6 +210,7 @@ model Module {
   items    ModuleItem[]
   progress ModuleProgress[]
   releases ModuleRelease[]
+  access   UserModuleAccess[]
 }
 
 /// A card inside a module (mirrors a Trello card): "TAREA 1", "BIBLIOGRAFIA",

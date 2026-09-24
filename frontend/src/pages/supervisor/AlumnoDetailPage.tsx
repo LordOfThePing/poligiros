@@ -76,6 +76,12 @@ export default function AlumnoDetailPage() {
   const [memberPoolIds, setMemberPoolIds] = useState<Set<string>>(new Set())
   const [savingPools, setSavingPools] = useState(false)
 
+  // Per-alumno module access: Total (default) o Parcial (whitelist).
+  const [allModules, setAllModules] = useState<{ id: string; title: string; published: boolean }[]>([])
+  const [accessMode, setAccessMode] = useState<"TOTAL" | "PARCIAL">("TOTAL")
+  const [accessModuleIds, setAccessModuleIds] = useState<Set<string>>(new Set())
+  const [savingAccess, setSavingAccess] = useState(false)
+
   // Multi-step delete confirmation (so it never happens by accident).
   const [delOpen, setDelOpen] = useState(false)
   const [delStep, setDelStep] = useState<1 | 2>(1)
@@ -141,6 +147,8 @@ export default function AlumnoDetailPage() {
         setLoading(false)
         setMemberCohortIds(new Set((data.enrollments ?? []).map((e: any) => e.cohortId)))
         setMemberPoolIds(new Set((data.poolMemberships ?? []).map((m: any) => m.poolId)))
+        setAccessMode((data.moduleAccessMode as "TOTAL" | "PARCIAL") ?? "TOTAL")
+        setAccessModuleIds(new Set(data.moduleAccessIds ?? []))
       })
       .catch(() => setLoading(false))
   }
@@ -158,6 +166,25 @@ export default function AlumnoDetailPage() {
       return
     }
     toast({ title: "CIC actualizados" })
+    loadStudent()
+  }
+
+  async function saveModuleAccess() {
+    setSavingAccess(true)
+    const res = await apiTry(`/supervisor/students/${id}/module-access`, {
+      method: "PUT",
+      body: JSON.stringify({
+        mode: accessMode,
+        moduleIds: accessMode === "PARCIAL" ? [...accessModuleIds] : [],
+      }),
+    })
+    setSavingAccess(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      toast({ title: j.error || "No se pudo guardar el acceso", variant: "destructive" })
+      return
+    }
+    toast({ title: "Acceso a módulos actualizado" })
     loadStudent()
   }
 
@@ -195,6 +222,9 @@ export default function AlumnoDetailPage() {
     apiJson<Test[]>("/supervisor/tests").then(setAllTests).catch(() => {})
     apiJson<{ id: string; name: string }[]>("/supervisor/cohorts").then(setCohorts).catch(() => {})
     apiJson<{ id: string; name: string }[]>("/supervisor/pools").then(setPools).catch(() => {})
+    apiJson<{ id: string; title: string; published: boolean }[]>("/supervisor/modules")
+      .then((mods) => setAllModules(mods.map((m) => ({ id: m.id, title: m.title, published: m.published }))))
+      .catch(() => {})
     loadCoachTests()
   }, [id])
 
@@ -374,6 +404,94 @@ export default function AlumnoDetailPage() {
               size="sm"
               variant="outline"
               disabled={savingCohorts}
+              onClick={() => loadStudent()}
+            >
+              Descartar cambios
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-alumno module access: Total (100% de lo que su CIC libera) o Parcial (whitelist). */}
+      <Card className="bg-white">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-sans text-base font-medium">Acceso a módulos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            {(["TOTAL", "PARCIAL"] as const).map((mode) => {
+              const active = accessMode === mode
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setAccessMode(mode)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-brand-accent text-white border-brand-accent"
+                      : "border-border text-muted-foreground hover:border-brand-accent hover:text-foreground"
+                  )}
+                >
+                  {active ? "✓ " : ""}{mode === "TOTAL" ? "Acceso total" : "Acceso parcial"}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {accessMode === "TOTAL"
+              ? `${student.name} ve el 100% de los módulos que su CIC tenga liberados.`
+              : "Elegí abajo qué módulos ve este alumno. Los que no marques quedan ocultos aunque su CIC los tenga liberados."}
+          </p>
+
+          {accessMode === "PARCIAL" && (
+            allModules.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay módulos creados todavía.</p>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                {allModules.map((m) => {
+                  const active = accessModuleIds.has(m.id)
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() =>
+                        setAccessModuleIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(m.id)) next.delete(m.id)
+                          else next.add(m.id)
+                          return next
+                        })
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-brand-accent text-white border-brand-accent"
+                          : "border-border text-muted-foreground hover:border-brand-accent hover:text-foreground",
+                        !m.published && "opacity-60"
+                      )}
+                      title={!m.published ? "Módulo en borrador" : undefined}
+                    >
+                      {active ? "✓ " : ""}{m.title}
+                      {!m.published && " (borrador)"}
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="bg-brand-accent hover:bg-brand-accent-dark"
+              disabled={savingAccess}
+              onClick={saveModuleAccess}
+            >
+              {savingAccess ? "Guardando..." : "Guardar acceso"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={savingAccess}
               onClick={() => loadStudent()}
             >
               Descartar cambios

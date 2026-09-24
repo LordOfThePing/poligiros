@@ -474,7 +474,13 @@ student.get("/notifications", async (c) => {
 
 /** Module ids released to this coach (optionally for a single cohort). */
 async function releasedModuleIds(userId: string, cohortId?: string): Promise<string[]> {
-  const access = await getCoachAccess(userId)
+  const [access, user] = await Promise.all([
+    getCoachAccess(userId),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { moduleAccessMode: true },
+    }),
+  ])
   const ids = cohortId ? (access.cohortIds.includes(cohortId) ? [cohortId] : []) : access.cohortIds
   if (ids.length === 0) return []
 
@@ -488,7 +494,20 @@ async function releasedModuleIds(userId: string, cohortId?: string): Promise<str
     select: { moduleId: true },
   })
 
-  return [...new Set(releases.map((r) => r.moduleId))]
+  const cohortModuleIds = [...new Set(releases.map((r) => r.moduleId))]
+
+  // In PARCIAL mode, restrict to the per-coach whitelist. The whitelist can
+  // never widen what the CIC released — it can only narrow it.
+  if (user?.moduleAccessMode === "PARCIAL") {
+    if (cohortModuleIds.length === 0) return []
+    const allowed = await prisma.userModuleAccess.findMany({
+      where: { userId, moduleId: { in: cohortModuleIds } },
+      select: { moduleId: true },
+    })
+    return allowed.map((a) => a.moduleId)
+  }
+
+  return cohortModuleIds
 }
 
 /**
