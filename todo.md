@@ -46,11 +46,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [ ] **Tablero de Ideas — QUERER y SOÑAR: aclarar que se ordena TODA la
       lista, no solo el top 3.** Sacar el gris opaco de los items post-top-3
       (hace que el usuario los desestime) y aclararlo en la consigna.
-- [ ] **Pirámide del Propósito — pirámide fija centrada verticalmente y
-      scroll a la caja completa.** En lg, la pirámide queda clavada en el
-      centro del viewport mientras el usuario scrollea las cajas. Al clickear
-      un nivel, la caja destino se centra en pantalla (`block: "center"`) en
-      vez de pegarse arriba.
 
 ## Pendientes previos
 
