@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, X, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { TestApi } from "@/lib/testApi"
@@ -65,6 +66,71 @@ const LEVELS = [
   { key: "rol", label: "ROL", color: "#73D9AB", points: "26,90 74,90 80,110 20,110" },
 ]
 
+type PillKey = "rol" | "valores" | "fortalezas" | "contextos"
+const PILL_KEYS: PillKey[] = ["rol", "valores", "fortalezas", "contextos"]
+
+type Pools = Record<PillKey, string[]>
+type Selected = Record<PillKey, string[]>
+
+function emptyPools(): Pools {
+  return { rol: [], valores: [], fortalezas: [], contextos: [] }
+}
+
+interface Section {
+  key: PillKey
+  title: string
+  instruction: string
+  hint: string
+  helpers: string[]
+  helperLabel: string | null
+  placeholder: string
+}
+
+const SECTIONS: Section[] = [
+  {
+    key: "rol",
+    title: "1. MI ROL",
+    instruction: "¿Qué tareas me gusta hacer? ¿Qué acciones son las que más disfruto?",
+    hint: "Agregá todos los verbos que te representen. Podés escribirlos vos o elegir de la lista. En el paso siguiente vas a quedarte con solo 3 — los que más te resuenen.",
+    helpers: VERBS,
+    helperLabel: "Ver lista de verbos →",
+    placeholder: "Ej.: motivar, enseñar, crear...",
+  },
+  {
+    key: "valores",
+    title: "2. MIS VALORES CENTRALES",
+    instruction: "¿Qué valores son los más importantes para mí? ¿Qué creencias profundas guían mi vida?",
+    hint: "Agregá todos los que te resuenen (podés escribir los tuyos o elegir de la lista). Después vas a quedarte con solo 3 — los que más te representan.",
+    helpers: VALUES,
+    helperLabel: "Ver lista de valores →",
+    placeholder: "Ej.: honestidad, libertad, familia...",
+  },
+  {
+    key: "fortalezas",
+    title: "3. MIS FORTALEZAS",
+    instruction: "¿Qué fortalezas de personalidad tengo más desarrolladas?",
+    hint: "Agregá todas las que te representen. Después vas a quedarte con solo 3 — las más desarrolladas.",
+    helpers: FORTALEZAS,
+    helperLabel: "Ver fortalezas →",
+    placeholder: "Ej.: creatividad, perseverancia...",
+  },
+  {
+    key: "contextos",
+    title: "4. CONTEXTOS DE IMPACTO",
+    instruction: "¿Al servicio de quién o de qué querés disponer tu tiempo y energía? ¿En qué áreas querés generar impacto?",
+    hint: "Pensá en \"los otros a quien querés servir\", NO en tus intereses personales. Ej.: si elegís VIAJAR es porque querés impactar en la gente que viaja — no porque quieras viajar vos. Después vas a elegir 3.",
+    helpers: [],
+    helperLabel: null,
+    placeholder: "Ej.: educación, salud mental, medio ambiente...",
+  },
+]
+
+const ESPECIALIDAD_HINT = "Escribí un texto breve respondiendo las preguntas: ¿dónde querés dejar tu huella? ¿Cuál es tu nicho o tema específico dentro de cada contexto elegido? Ej.: \"Coach de bienestar para mujeres profesionales, facilitadora de retiros espirituales y talleres de liderazgo con foco en género\"."
+
+function normalize(v: string) {
+  return v.trim().replace(/\s+/g, " ")
+}
+
 function PyramidSVG({ active, onLevel }: { active: string; onLevel: (k: string) => void }) {
   return (
     <svg viewBox="0 0 100 120" className="w-full max-w-xs mx-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
@@ -94,11 +160,89 @@ function PyramidSVG({ active, onLevel }: { active: string; onLevel: (k: string) 
   )
 }
 
+function Pill({
+  label,
+  onRemove,
+  onClick,
+  selectable,
+  selected,
+}: {
+  label: string
+  onRemove?: () => void
+  onClick?: () => void
+  selectable?: boolean
+  selected?: boolean
+}) {
+  return (
+    <span
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+        selectable ? "cursor-pointer select-none" : "",
+        selected
+          ? "bg-brand-accent text-white"
+          : selectable
+          ? "bg-muted text-foreground hover:bg-brand-accent/15"
+          : "bg-muted text-foreground",
+      )}
+    >
+      <span>{label}</span>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          className="rounded-full hover:text-destructive"
+          aria-label={`Quitar ${label}`}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </span>
+  )
+}
+
+function PillInput({ onAdd, placeholder }: { onAdd: (v: string) => void; placeholder?: string }) {
+  const [val, setVal] = useState("")
+  function submit() {
+    if (val.trim()) {
+      onAdd(val)
+      setVal("")
+    }
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault()
+            submit()
+          }
+        }}
+        placeholder={placeholder}
+        className="text-sm"
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={submit}
+        disabled={!val.trim()}
+        aria-label="Agregar"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
 function HelperPanel({ items, onSelect }: { items: string[]; onSelect: (item: string) => void }) {
   return (
     <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto p-2">
       {items.map((item) => (
         <button
+          type="button"
           key={item}
           onClick={() => onSelect(item)}
           className="text-left text-xs px-2 py-1.5 rounded bg-muted hover:bg-brand-accent/10 hover:text-brand-accent transition-colors"
@@ -115,57 +259,141 @@ interface PiramideTestProps {
   assignmentId: string
 }
 
+interface DraftShape {
+  pools?: Partial<Pools>
+  selected?: Partial<Selected>
+  especialidad?: string
+  step?: "brainstorm" | "select"
+  // legacy
+  rol?: string
+  valores?: string
+  fortalezas?: string
+  contextos?: string
+}
+
 export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   const { toast } = useToast()
 
-  const [rol, setRol] = useState("")
-  const [valores, setValores] = useState("")
-  const [fortalezas, setFortalezas] = useState("")
-  const [contextos, setContextos] = useState("")
+  const [pools, setPools] = useState<Pools>(emptyPools)
+  const [selected, setSelected] = useState<Selected>(emptyPools)
   const [especialidad, setEspecialidad] = useState("")
-  const [activeLevel, setActiveLevel] = useState("rol")
+  const [step, setStep] = useState<"brainstorm" | "select">("brainstorm")
+  const [activeLevel, setActiveLevel] = useState<string>("rol")
   const [showIntro, setShowIntro] = useState(true)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  const [hydrated, setHydrated] = useState(false)
-
   useEffect(() => {
-    const d = loadDraft<Record<string, string>>(DRAFT_KEY(assignmentId))
+    const d = loadDraft<DraftShape>(DRAFT_KEY(assignmentId))
     if (d) {
-      if (d.rol) setRol(d.rol)
-      if (d.valores) setValores(d.valores)
-      if (d.fortalezas) setFortalezas(d.fortalezas)
-      if (d.contextos) setContextos(d.contextos)
-      if (d.especialidad) setEspecialidad(d.especialidad)
+      const nextPools = emptyPools()
+      if (d.pools) {
+        for (const k of PILL_KEYS) {
+          const v = d.pools[k]
+          if (Array.isArray(v)) nextPools[k] = v.filter((s): s is string => typeof s === "string" && s.trim() !== "")
+        }
+      } else {
+        // migrate legacy textarea format (comma-separated string per field)
+        for (const k of PILL_KEYS) {
+          const v = d[k]
+          if (typeof v === "string" && v.trim()) {
+            nextPools[k] = v.split(",").map(normalize).filter(Boolean)
+          }
+        }
+      }
+      setPools(nextPools)
+
+      const nextSelected = emptyPools()
+      if (d.selected) {
+        for (const k of PILL_KEYS) {
+          const v = d.selected[k]
+          if (Array.isArray(v)) {
+            nextSelected[k] = v
+              .filter((s): s is string => typeof s === "string")
+              .filter((s) => nextPools[k].includes(s))
+              .slice(0, 3)
+          }
+        }
+      }
+      setSelected(nextSelected)
+
+      if (typeof d.especialidad === "string") setEspecialidad(d.especialidad)
+
+      const readyForSelect = PILL_KEYS.every((k) => nextPools[k].length >= 3)
+      setStep(d.step === "select" && readyForSelect ? "select" : "brainstorm")
     }
     setHydrated(true)
   }, [assignmentId])
 
   useAutosave(
     DRAFT_KEY(assignmentId),
-    { rol, valores, fortalezas, contextos, especialidad },
+    { pools, selected, especialidad, step },
     hydrated && !submitted,
   )
+
+  function addPill(key: PillKey, raw: string) {
+    const val = normalize(raw)
+    if (!val) return
+    setPools((prev) => {
+      if (prev[key].some((p) => p.toLowerCase() === val.toLowerCase())) return prev
+      return { ...prev, [key]: [...prev[key], val] }
+    })
+  }
+
+  function removePill(key: PillKey, val: string) {
+    setPools((prev) => ({ ...prev, [key]: prev[key].filter((x) => x !== val) }))
+    setSelected((prev) => ({ ...prev, [key]: prev[key].filter((x) => x !== val) }))
+  }
+
+  function toggleSelected(key: PillKey, val: string) {
+    setSelected((prev) => {
+      const cur = prev[key]
+      if (cur.includes(val)) {
+        return { ...prev, [key]: cur.filter((x) => x !== val) }
+      }
+      if (cur.length >= 3) {
+        toast({
+          title: "Ya elegiste 3",
+          description: "Deseleccioná una antes de elegir otra.",
+        })
+        return prev
+      }
+      return { ...prev, [key]: [...cur, val] }
+    })
+  }
 
   function handlePyramidClick(key: string) {
     setActiveLevel(key)
     sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
-  function appendText(setter: React.Dispatch<React.SetStateAction<string>>, item: string) {
-    setter((prev) => prev ? `${prev}, ${item}` : item)
+  const canGoNext = PILL_KEYS.every((k) => pools[k].length >= 3)
+  const canSubmit =
+    PILL_KEYS.every((k) => selected[k].length === 3) && especialidad.trim().length > 0
+
+  const finalStrings = {
+    rol: selected.rol.join(", "),
+    valores: selected.valores.join(", "),
+    fortalezas: selected.fortalezas.join(", "),
+    contextos: selected.contextos.join(", "),
+    especialidad: especialidad.trim(),
   }
 
-  const synth = `Mi propósito es ${rol || "___"} alineado a mis valores de ${valores || "___"}, y conectado con mis principales fortalezas: ${fortalezas || "___"}, para lograr impactar en ${contextos || "___"}, dejando mi huella a través de ${especialidad || "___"}.`
+  const synth = `Mi propósito es ${finalStrings.rol || "___"} alineado a mis valores de ${finalStrings.valores || "___"}, y conectado con mis principales fortalezas: ${finalStrings.fortalezas || "___"}, para lograr impactar en ${finalStrings.contextos || "___"}, dejando mi huella a través de ${finalStrings.especialidad || "___"}.`
 
   async function handleSubmit() {
     setSaving(true)
-
     const propositoFinal = synth
-    const res = await api.submit({ rol, valores, fortalezas, contextos, especialidad, propositoFinal })
-
+    const res = await api.submit({
+      ...finalStrings,
+      propositoFinal,
+      rolPool: pools.rol,
+      valoresPool: pools.valores,
+      fortalezasPool: pools.fortalezas,
+      contextosPool: pools.contextos,
+    })
     setSaving(false)
 
     if (res.ok) {
@@ -176,59 +404,6 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       toast({ title: "Error al enviar", variant: "destructive" })
     }
   }
-
-  const sections = [
-    {
-      key: "rol",
-      title: "1. MI ROL",
-      instruction: "¿Qué tareas me gusta hacer? ¿Qué acciones son las que más disfruto?",
-      hint: "Marcá todos los verbos que te representen y después reducí a solo 3 — los que más te resuenen.",
-      helperLabel: "Ver lista de verbos →",
-      helpers: VERBS,
-      value: rol,
-      setter: setRol,
-    },
-    {
-      key: "valores",
-      title: "2. MIS VALORES CENTRALES",
-      instruction: "¿Qué valores son los más importantes para mí? ¿Qué creencias profundas guían mi vida?",
-      hint: "Elegí todos los que te resuenen y después reducí a solo 3 — los que más te representen.",
-      helperLabel: "Ver lista de valores →",
-      helpers: VALUES,
-      value: valores,
-      setter: setValores,
-    },
-    {
-      key: "fortalezas",
-      title: "3. MIS FORTALEZAS",
-      instruction: "¿Qué fortalezas de personalidad tengo más desarrolladas?",
-      hint: "Marcá todas las que te representen y después reducí a solo 3 — las más desarrolladas.",
-      helperLabel: "Ver fortalezas →",
-      helpers: FORTALEZAS,
-      value: fortalezas,
-      setter: setFortalezas,
-    },
-    {
-      key: "contextos",
-      title: "4. CONTEXTOS DE IMPACTO",
-      instruction: "¿Al servicio de quién o de qué querés disponer tu tiempo y energía? ¿En qué áreas querés generar impacto?",
-      hint: "Pensá en \"los otros a quien querés servir\", NO en tus intereses personales. Ej.: si elegís VIAJAR es porque querés impactar en la gente que viaja — no porque quieras viajar vos. Elegí 3.",
-      helperLabel: null as string | null,
-      helpers: [] as string[],
-      value: contextos,
-      setter: setContextos,
-    },
-    {
-      key: "especialidad",
-      title: "5. MI ESPECIALIDAD",
-      instruction: "¿Dónde querés dejar tu huella? ¿Cuál es tu nicho o tema específico dentro de cada contexto elegido?",
-      hint: "Identificá al menos 3 especialidades — una por cada contexto de la hoja anterior. Ej.: contextos ESPIRITUALIDAD / COACHING / GÉNERO → \"Facilitadora de retiros espirituales, Coach de bienestar, Talleres para mujeres\".",
-      helperLabel: null as string | null,
-      helpers: [] as string[],
-      value: especialidad,
-      setter: setEspecialidad,
-    },
-  ]
 
   if (submitted) {
     return (
@@ -262,26 +437,26 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
         <div className="bg-white rounded-xl border border-border p-5 space-y-4 text-sm leading-relaxed">
           <p className="text-foreground font-medium">🧭 Cómo se completa</p>
           <p className="text-muted-foreground">
-            El test tiene <strong className="text-foreground">4 áreas</strong> (ROL, VALORES, FORTALEZAS, CONTEXTOS) + un cierre de <strong className="text-foreground">ESPECIALIDAD</strong> y una <strong className="text-foreground">frase final</strong> que integra todo.
+            El test tiene <strong className="text-foreground">2 pantallas</strong>. En la primera hacés un brainstorm por sección. En la segunda te quedás con solo 3 palabras o frases por sección y escribís tu especialidad.
           </p>
 
           <div className="space-y-3">
             <div>
-              <p className="font-medium text-foreground">a) Pre-selección</p>
+              <p className="font-medium text-foreground">a) Brainstorm</p>
               <p className="text-muted-foreground">
-                Leé con <strong className="text-foreground">velocidad y honestidad</strong> y marcá todas las opciones de la lista que te resuenen. No hay límite.
+                En las 4 secciones (ROL, VALORES, FORTALEZAS, CONTEXTOS) escribí <strong className="text-foreground">al menos 3</strong> palabras o frases que te representen. Podés escribirlas vos o elegirlas de las listas sugeridas.
               </p>
             </div>
             <div>
               <p className="font-medium text-foreground">b) Selección final</p>
               <p className="text-muted-foreground">
-                Volvé a leer las marcadas y quedate con <strong className="text-foreground">3 palabras</strong> — las que más te representan.
+                Volvé a leer las que agregaste y elegí <strong className="text-foreground">exactamente 3</strong> por sección — las que más te representan.
               </p>
             </div>
             <div>
               <p className="font-medium text-foreground">c) Especialidad y frase final</p>
               <p className="text-muted-foreground">
-                Al terminar las 4 áreas, definís tus especialidades (nichos concretos dentro de los 3 contextos elegidos) y se arma sola la frase final de tu propósito.
+                En un texto libre respondé las preguntas de ESPECIALIDAD (dónde querés dejar tu huella / cuál es tu nicho concreto dentro de cada contexto). La frase final se arma sola.
               </p>
             </div>
           </div>
@@ -313,7 +488,11 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
     <div className="space-y-8">
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Mi Pirámide del Propósito</h1>
-        <p className="text-sm text-muted-foreground">Construí tu propósito profesional completando cada nivel</p>
+        <p className="text-sm text-muted-foreground">
+          {step === "brainstorm"
+            ? "Paso 1 de 2 — agregá al menos 3 por sección"
+            : "Paso 2 de 2 — elegí exactamente 3 por sección"}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -322,66 +501,190 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
           <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
         </div>
 
-        <div className="space-y-6">
-          {sections.map((section) => (
+        {step === "brainstorm" ? (
+          <div className="space-y-6">
+            {SECTIONS.map((section) => {
+              const count = pools[section.key].length
+              const ok = count >= 3
+              return (
+                <div
+                  key={section.key}
+                  ref={(el) => { sectionRefs.current[section.key] = el }}
+                  className={cn(
+                    "bg-white rounded-xl border-2 p-5 space-y-3 transition-colors",
+                    activeLevel === section.key ? "border-brand-accent" : "border-border",
+                  )}
+                  onFocus={() => setActiveLevel(section.key)}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="font-serif text-lg text-foreground">{section.title}</h2>
+                      <InfoHint text={section.hint} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-xs font-medium", ok ? "text-brand-accent" : "text-muted-foreground")}>
+                        {count} {count === 1 ? "agregada" : "agregadas"} · mín. 3
+                      </span>
+                      <SaveIndicator value={pools[section.key].join("|")} draftKey={DRAFT_KEY(assignmentId)} enabled={hydrated} />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{section.instruction}</p>
+
+                  <PillInput
+                    placeholder={section.placeholder}
+                    onAdd={(v) => { addPill(section.key, v); setActiveLevel(section.key) }}
+                  />
+
+                  {pools[section.key].length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {pools[section.key].map((p) => (
+                        <Pill key={p} label={p} onRemove={() => removePill(section.key, p)} />
+                      ))}
+                    </div>
+                  )}
+
+                  {section.helperLabel && (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-brand-accent hover:text-brand-accent-dark p-0 h-auto">
+                          {section.helperLabel} <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 border border-border rounded-lg overflow-hidden">
+                        <HelperPanel
+                          items={section.helpers.filter(
+                            (h) => !pools[section.key].some((p) => p.toLowerCase() === h.toLowerCase()),
+                          )}
+                          onSelect={(item) => addPill(section.key, item)}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              )
+            })}
+
+            <Button
+              onClick={() => { setStep("select"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+              disabled={!canGoNext}
+              size="lg"
+              className="w-full bg-brand-accent hover:bg-brand-accent-dark"
+            >
+              Siguiente: elegir mis 3 por sección
+            </Button>
+            {!canGoNext && (
+              <p className="text-xs text-muted-foreground text-center">
+                Necesitás al menos 3 en cada sección para avanzar.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="rounded-xl bg-brand-accent/5 border border-brand-accent/20 p-4 text-sm text-foreground">
+              Ahora quedate con <strong>solo 3</strong> por sección — las que más te representan. Hacé click en las que elijas.
+            </div>
+
+            {SECTIONS.map((section) => {
+              const sel = selected[section.key]
+              const done = sel.length === 3
+              return (
+                <div
+                  key={section.key}
+                  ref={(el) => { sectionRefs.current[section.key] = el }}
+                  className={cn(
+                    "bg-white rounded-xl border-2 p-5 space-y-3 transition-colors",
+                    activeLevel === section.key ? "border-brand-accent" : "border-border",
+                  )}
+                  onFocus={() => setActiveLevel(section.key)}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="font-serif text-lg text-foreground">{section.title}</h2>
+                      <InfoHint text={section.hint} />
+                    </div>
+                    <span className={cn("text-xs font-medium", done ? "text-brand-accent" : "text-muted-foreground")}>
+                      {sel.length}/3 seleccionadas
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{section.instruction}</p>
+
+                  {pools[section.key].length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Sin opciones — volvé al paso anterior y agregá al menos 3.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {pools[section.key].map((p) => (
+                        <Pill
+                          key={p}
+                          label={p}
+                          selectable
+                          selected={sel.includes(p)}
+                          onClick={() => toggleSelected(section.key, p)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
             <div
-              key={section.key}
-              ref={(el) => { sectionRefs.current[section.key] = el }}
+              ref={(el) => { sectionRefs.current["especialidad"] = el }}
               className={cn(
                 "bg-white rounded-xl border-2 p-5 space-y-3 transition-colors",
-                activeLevel === section.key ? "border-brand-accent" : "border-border"
+                activeLevel === "especialidad" ? "border-brand-accent" : "border-border",
               )}
-              onFocus={() => setActiveLevel(section.key)}
+              onFocus={() => setActiveLevel("especialidad")}
             >
               <div className="flex items-baseline justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="font-serif text-lg text-foreground">{section.title}</h2>
-                  <InfoHint text={section.hint} />
+                  <h2 className="font-serif text-lg text-foreground">5. MI ESPECIALIDAD</h2>
+                  <InfoHint text={ESPECIALIDAD_HINT} />
                 </div>
-                <SaveIndicator value={section.value} draftKey={DRAFT_KEY(assignmentId)} enabled={hydrated} />
+                <SaveIndicator value={especialidad} draftKey={DRAFT_KEY(assignmentId)} enabled={hydrated} />
               </div>
-              <p className="text-sm text-muted-foreground">{section.instruction}</p>
-
-              {section.helperLabel && (
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-brand-accent hover:text-brand-accent-dark p-0 h-auto">
-                      {section.helperLabel} <ChevronDown className="ml-1 h-3 w-3" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 border border-border rounded-lg overflow-hidden">
-                    <HelperPanel
-                      items={section.helpers}
-                      onSelect={(item) => appendText(section.setter, item)}
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-
+              <p className="text-sm text-muted-foreground">
+                ¿Dónde querés dejar tu huella? ¿Cuál es tu nicho o tema específico dentro de cada contexto elegido? Respondé en un texto libre.
+              </p>
               <Textarea
-                value={section.value}
-                onChange={(e) => { section.setter(e.target.value); setActiveLevel(section.key) }}
-                rows={3}
-                placeholder="Escribí aquí..."
+                value={especialidad}
+                onChange={(e) => { setEspecialidad(e.target.value); setActiveLevel("especialidad") }}
+                rows={5}
+                placeholder="Escribí tu especialidad aquí, respondiendo las preguntas..."
                 className="text-sm"
               />
             </div>
-          ))}
 
-          <Button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="w-full bg-brand-accent hover:bg-brand-accent-dark"
-          >
-            {saving ? "Enviando..." : "Enviar mi pirámide"}
-          </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setStep("brainstorm"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+              >
+                ← Volver al brainstorm
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || !canSubmit}
+                className="flex-1 bg-brand-accent hover:bg-brand-accent-dark"
+              >
+                {saving ? "Enviando..." : "Enviar mi pirámide"}
+              </Button>
+            </div>
+            {!canSubmit && (
+              <p className="text-xs text-muted-foreground text-center">
+                Elegí exactamente 3 en cada sección y escribí tu especialidad para enviar.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {step === "select" && (
+        <div className="sticky bottom-4 bg-gray-900 text-white rounded-xl p-5 shadow-xl">
+          <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider">Mi propósito</p>
+          <p className="text-sm leading-relaxed text-gray-100">{synth}</p>
         </div>
-      </div>
-
-      <div className="sticky bottom-4 bg-gray-900 text-white rounded-xl p-5 shadow-xl">
-        <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider">Mi propósito</p>
-        <p className="text-sm leading-relaxed text-gray-100">{synth}</p>
-      </div>
+      )}
     </div>
   )
 }
