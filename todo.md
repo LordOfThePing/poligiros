@@ -35,6 +35,14 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
+- [ ] **Drafts no-op durante impersonación admin.** Los borradores viven en
+      `localStorage` del navegador, así que cuando admin impersona a X ve el
+      draft de su propia PC, no el de X (imposible ver el de X sin refactor a
+      server). Mientras `user.impersonatedBy` esté seteado, los helpers de
+      `frontend/src/lib/draft.ts` deben ser no-op (read devuelve fallback,
+      write/clear no hacen nada), así el admin ve limpio el estado del server y
+      no contamina nada tipeando.
+
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
