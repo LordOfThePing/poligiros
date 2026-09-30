@@ -35,11 +35,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
-- [ ] **Pirámide del Propósito: ajustes de layout + guía en paso 2.** La
-      imagen queda un toque baja cuando el scroll está en el top (parece que
-      tiene un espacio de más arriba); y al pasar al paso "elegir 3" el scroll
-      debe volver arriba, se tiene que hacer highlight en lo que falta
-      completar y, si se intenta avanzar, indicar dónde queda pendiente elegir.
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
