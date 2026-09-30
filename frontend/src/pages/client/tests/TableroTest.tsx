@@ -407,12 +407,11 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   }
 
   // ── Brainstorming helpers ─────────────────────────────────────────────────────
-  function addIdea() {
-    const t = newIdea.trim()
+  function addIdea(type: IdeaType) {
+    const t = draftIdeas[type].trim()
     if (!t) return
     setIdeaCards((prev) => [...prev, { id: uid(), text: t }])
-    setNewIdea("")
-    setPlaceholderIdx((i) => (i + 1) % IDEA_PLACEHOLDERS.length)
+    setDraftIdeas((prev) => ({ ...prev, [type]: "" }))
   }
   function removeIdea(id: string, text: string) {
     setIdeaCards((prev) => prev.filter((x) => x.id !== id))
@@ -731,7 +730,12 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
               items={rankState(stage.col)[0]}
               onReorder={rankState(stage.col)[1]}
               renderItem={(item, index) => (
-                <RankRow item={item} index={index} color={COLUMNS[stage.col].header} />
+                <RankRow
+                  item={item}
+                  index={index}
+                  color={COLUMNS[stage.col].header}
+                  dimBelowTop3={stage.col === "saber"}
+                />
               )}
             />
             <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
@@ -787,17 +791,31 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                     atractiva a la menos.
                   </p>
                 </div>
-                <div className="flex gap-2 mt-3 shrink-0">
-                  <Input
-                    value={newIdea}
-                    onChange={(e) => setNewIdea(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addIdea() } }}
-                    placeholder={IDEA_PLACEHOLDERS[placeholderIdx]}
-                    className="text-sm"
-                  />
-                  <Button variant="outline" onClick={addIdea} className="shrink-0">
-                    <Plus className="h-3 w-3 mr-1" /> Agregar
-                  </Button>
+                <div className="mt-3 shrink-0 space-y-2">
+                  {IDEA_TYPES.map((t) => (
+                    <div key={t.key} className="rounded-lg border border-border bg-white p-2.5">
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        {t.label}
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={draftIdeas[t.key]}
+                          onChange={(e) => setDraftIdeas((prev) => ({ ...prev, [t.key]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addIdea(t.key) } }}
+                          placeholder={t.placeholder}
+                          className="text-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => addIdea(t.key)}
+                          disabled={!draftIdeas[t.key].trim()}
+                          className="shrink-0"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Agregar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-3 flex-1 lg:overflow-y-auto lg:pr-1">
                   {ideaCards.length === 0 ? (
@@ -1043,18 +1061,36 @@ function StepBar({
 }
 
 // A ranked row that visually emphasizes the top 3 (the focus of the rank step).
-// Items past position 3 are dimmed so the "top 3 from each category" stays
-// front-of-mind.
-function RankRow({ item, index, color }: { item: RankItem; index: number; color: string }) {
+// `dimBelowTop3` fades items past position 3 for SABER (where the focus really
+// is the top 3), but is off for QUERER/SOÑAR — the whole list needs ordering
+// there, and dimming made coachees write off the tail.
+function RankRow({
+  item,
+  index,
+  color,
+  dimBelowTop3,
+}: {
+  item: RankItem
+  index: number
+  color: string
+  dimBelowTop3: boolean
+}) {
   const inTop3 = index < 3
+  const dim = dimBelowTop3 && !inTop3
   return (
     <div
       className={cn(
         "flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition-colors",
-        inTop3 ? "border-foreground/20" : "border-border opacity-60",
+        inTop3 ? "border-foreground/20" : "border-border",
+        dim && "opacity-60",
       )}
     >
-      <span className={cn("flex h-5 w-5 items-center justify-center rounded-full text-xs text-white shrink-0", inTop3 ? color : "bg-muted-foreground/50")}>
+      <span
+        className={cn(
+          "flex h-5 w-5 items-center justify-center rounded-full text-xs text-white shrink-0",
+          inTop3 ? color : dim ? "bg-muted-foreground/50" : "bg-muted-foreground",
+        )}
+      >
         {index + 1}
       </span>
       <span className="flex-1">{item.text}</span>
