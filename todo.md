@@ -39,6 +39,14 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
       contenido de abajo. Toca `frontend/src/pages/client/ResultsView.tsx`.
+- [ ] **Rol `ADMIN` (supergod) + impersonación.** Nuevo rol `ADMIN` en el enum
+      `Role`; guards `requireRole` dejan pasar a ADMIN como comodín. Cookie
+      secundaria `impersonate=<userId>` que sólo el `authMiddleware` respeta si
+      el JWT es de un ADMIN; sustituye `c.var.user` por el target. Panel
+      `/admin` con listado de users (supervisor + coaches) para impersonar y
+      lista de coachees con sus magic links (que no tienen sesión). Banner
+      "Estás viendo como X — Volver" mientras dure. Make target `prod-admin
+      EMAIL=... PASSWORD=...` para crear/promover el usuario admin.
 
 ## Pendientes previos
 
