@@ -35,14 +35,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
-- [ ] **Feedback claro cuando no se puede enviar una tarea/entrega.**
-      Hoy los botones de "Enviar entrega" (ENTREGA de Mi Programa), "Enviar
-      registro" (REGISTRO con dupla + 3 campos) y "Realizar test" (TEST card)
-      quedan disabled o fallan en silencio si falta algún campo, no se eligió
-      dupla o el server rechaza (403/409). Que aparezca un banner rojo arriba
-      del botón nombrando lo que falta, con ring rojo en los inputs afectados,
-      y que muestre el mensaje del server cuando el rechazo viene de ahí.
-
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
