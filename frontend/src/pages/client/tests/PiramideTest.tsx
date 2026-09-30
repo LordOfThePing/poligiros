@@ -11,6 +11,8 @@ import { SaveIndicator } from "@/components/SaveIndicator"
 import { InfoHint } from "@/components/canvas/InfoHint"
 
 const DRAFT_KEY = (id: string) => `piramide-draft-${id}`
+const PILL_MAX_LEN = 40
+const ESPECIALIDAD_MAX_LEN = 120
 
 const VERBS = [
   "Aconsejar","Agilizar","Ampliar","Analizar","Apoyar","Aprender","Aprovechar","Arreglar",
@@ -222,7 +224,7 @@ function PillInput({ onAdd, placeholder }: { onAdd: (v: string) => void; placeho
   }
   function handleChange(next: string) {
     if (!next.includes(",")) {
-      setVal(next)
+      setVal(next.slice(0, PILL_MAX_LEN))
       return
     }
     const parts = next.split(",")
@@ -230,7 +232,7 @@ function PillInput({ onAdd, placeholder }: { onAdd: (v: string) => void; placeho
     for (const p of parts) {
       if (p.trim()) onAdd(p)
     }
-    setVal(tail)
+    setVal(tail.slice(0, PILL_MAX_LEN))
   }
   return (
     <div className="flex items-center gap-2">
@@ -243,6 +245,7 @@ function PillInput({ onAdd, placeholder }: { onAdd: (v: string) => void; placeho
             submit()
           }
         }}
+        maxLength={PILL_MAX_LEN}
         placeholder={placeholder}
         className="text-sm"
       />
@@ -256,6 +259,51 @@ function PillInput({ onAdd, placeholder }: { onAdd: (v: string) => void; placeho
       >
         <Plus className="h-4 w-4" />
       </Button>
+    </div>
+  )
+}
+
+const RECAP_ROWS: { key: PillKey; label: string; color: string }[] = [
+  { key: "contextos", label: "CONTEXTOS", color: "#3D8A6A" },
+  { key: "fortalezas", label: "FORTALEZAS", color: "#4EA87F" },
+  { key: "valores", label: "VALORES", color: "#60C595" },
+  { key: "rol", label: "ROL", color: "#73D9AB" },
+]
+
+function SelectionRecap({ selected }: { selected: Selected }) {
+  return (
+    <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Tus 3 por sección
+      </p>
+      {RECAP_ROWS.map((row) => (
+        <div key={row.key} className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: row.color }}
+            />
+            <span className="text-[11px] font-bold uppercase tracking-wide text-foreground">
+              {row.label}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pl-4.5" style={{ paddingLeft: "1.125rem" }}>
+            {selected[row.key].length === 0 ? (
+              <span className="text-xs text-muted-foreground italic">—</span>
+            ) : (
+              selected[row.key].map((s) => (
+                <span
+                  key={s}
+                  className="inline-block rounded-full bg-muted text-foreground text-[11px] px-2 py-0.5 max-w-[14rem] truncate"
+                  title={s}
+                >
+                  {s}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -282,12 +330,14 @@ interface PiramideTestProps {
   assignmentId: string
 }
 
+type Step = "brainstorm" | "select" | "especialidad"
+
 interface DraftShape {
   pools?: Partial<Pools>
   selected?: Partial<Selected>
   especialidades?: Record<string, string>
   especialidad?: string
-  step?: "brainstorm" | "select"
+  step?: Step
   // legacy
   rol?: string
   valores?: string
@@ -301,7 +351,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   const [pools, setPools] = useState<Pools>(emptyPools)
   const [selected, setSelected] = useState<Selected>(emptyPools)
   const [especialidades, setEspecialidades] = useState<Record<string, string>>({})
-  const [step, setStep] = useState<"brainstorm" | "select">("brainstorm")
+  const [step, setStep] = useState<Step>("brainstorm")
   const [activeLevel, setActiveLevel] = useState<string>("rol")
   const [showIntro, setShowIntro] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -360,7 +410,11 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       }
 
       const readyForSelect = PILL_KEYS.every((k) => nextPools[k].length >= 3)
-      setStep(d.step === "select" && readyForSelect ? "select" : "brainstorm")
+      const readyForEspecialidad = readyForSelect && PILL_KEYS.every((k) => nextSelected[k].length === 3)
+      if (d.step === "especialidad" && readyForEspecialidad) setStep("especialidad")
+      else if (d.step === "select" && readyForSelect) setStep("select")
+      else if (d.step === "especialidad" && readyForSelect) setStep("select")
+      else setStep("brainstorm")
     }
     setHydrated(true)
   }, [assignmentId])
@@ -372,7 +426,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   )
 
   function addPill(key: PillKey, raw: string) {
-    const val = normalize(raw)
+    const val = normalize(raw).slice(0, PILL_MAX_LEN)
     if (!val) return
     setPools((prev) => {
       if (prev[key].some((p) => p.toLowerCase() === val.toLowerCase())) return prev
@@ -412,13 +466,12 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   }
 
   const canGoNext = PILL_KEYS.every((k) => pools[k].length >= 3)
+  const canGoEspecialidad = PILL_KEYS.every((k) => selected[k].length === 3)
   const especialidadEntries = selected.contextos.map((c) => ({
     contexto: c,
     texto: (especialidades[c] ?? "").trim(),
   }))
-  const canSubmit =
-    PILL_KEYS.every((k) => selected[k].length === 3) &&
-    especialidadEntries.every((e) => e.texto.length > 0)
+  const canSubmit = canGoEspecialidad && especialidadEntries.every((e) => e.texto.length > 0)
 
   const finalStrings = {
     rol: selected.rol.join(", "),
@@ -489,7 +542,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
         <div className="bg-white rounded-xl border border-border p-5 space-y-4 text-sm leading-relaxed">
           <p className="text-foreground font-medium">🧭 Cómo se completa</p>
           <p className="text-muted-foreground">
-            El test tiene <strong className="text-foreground">2 pantallas</strong>. En la primera hacés un brainstorm por sección. En la segunda te quedás con solo 3 palabras o frases por sección y escribís tu especialidad.
+            El test tiene <strong className="text-foreground">3 pantallas</strong>. Primero hacés un brainstorm por sección; después te quedás con solo 3 palabras o frases por sección; y por último escribís una especialidad concreta por cada contexto elegido.
           </p>
 
           <div className="space-y-3">
@@ -542,20 +595,31 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
         <h1 className="font-serif text-3xl text-foreground mb-1">Mi Pirámide del Propósito</h1>
         <p className="text-sm text-muted-foreground">
           {step === "brainstorm"
-            ? "Paso 1 de 2 — agregá al menos 3 por sección"
-            : "Paso 2 de 2 — elegí exactamente 3 por sección"}
+            ? "Paso 1 de 3 — agregá al menos 3 por sección"
+            : step === "select"
+            ? "Paso 2 de 3 — elegí exactamente 3 por sección"
+            : "Paso 3 de 3 — escribí una especialidad por cada contexto"}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pirámide fija centrada verticalmente en pantallas grandes.
-            El grid item se estira con la fila (default), y adentro el
-            contenedor sticky es 100vh, así la pirámide queda "clavada" en el
-            centro del viewport mientras el usuario scrollea las cajas. */}
+        {/* Pirámide fija en pantallas grandes.
+            - brainstorm/select: centrada verticalmente (h-screen + justify-center)
+            - especialidad: alineada al top con el recap debajo (hay más contenido). */}
         <div>
-          <div className="lg:sticky lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center space-y-4">
+          <div
+            className={cn(
+              "lg:sticky space-y-4",
+              step === "especialidad"
+                ? "lg:top-6"
+                : "lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center",
+            )}
+          >
             <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
-            <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
+            {step !== "especialidad" && (
+              <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
+            )}
+            {step === "especialidad" && <SelectionRecap selected={selected} />}
           </div>
         </div>
 
@@ -636,7 +700,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
               </p>
             )}
           </div>
-        ) : (
+        ) : step === "select" ? (
           <div className="space-y-6">
             <div className="rounded-xl bg-brand-accent/5 border border-brand-accent/20 p-4 text-sm text-foreground">
               Ahora quedate con <strong>solo 3</strong> por sección — las que más te representan. Hacé click en las que elijas.
@@ -685,10 +749,40 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
               )
             })}
 
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setStep("brainstorm"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+              >
+                ← Volver al brainstorm
+              </Button>
+              <Button
+                onClick={() => { setStep("especialidad"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                disabled={!canGoEspecialidad}
+                className="flex-1 bg-brand-accent hover:bg-brand-accent-dark"
+              >
+                Continuar → mi especialidad
+              </Button>
+            </div>
+            {!canGoEspecialidad && (
+              <p className="text-xs text-muted-foreground text-center">
+                Elegí exactamente 3 en cada sección para avanzar.
+              </p>
+            )}
+          </div>
+        ) : (
+          // step === "especialidad"
+          <div className="space-y-6">
+            <div className="rounded-xl bg-brand-accent/5 border border-brand-accent/20 p-4 text-sm text-foreground space-y-2">
+              <p><strong>Último paso.</strong> Por cada uno de tus <strong>3 contextos</strong>, escribí una especialidad concreta — el <strong>nicho o tema específico</strong> donde vas a dejar tu huella dentro de ese contexto.</p>
+              <p className="text-xs text-muted-foreground">A la izquierda podés ver lo que ya elegiste en las secciones anteriores.</p>
+            </div>
+
             <div
               ref={(el) => { sectionRefs.current["especialidad"] = el }}
               className={cn(
-                "bg-white rounded-xl border-2 p-5 space-y-3 transition-colors",
+                "bg-white rounded-xl border-2 p-5 space-y-4 transition-colors",
                 activeLevel === "especialidad" ? "border-brand-accent" : "border-border",
               )}
               onFocus={() => setActiveLevel("especialidad")}
@@ -704,49 +798,44 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
                   enabled={hydrated}
                 />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Para cada uno de los <strong>3 contextos</strong> que elegiste arriba, escribí tu <strong>especialidad concreta</strong> — el nicho o tema específico donde vas a dejar tu huella dentro de ese contexto.
-              </p>
 
-              {especialidadEntries.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">
-                  Elegí 3 contextos arriba para poder escribir tus especialidades.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {especialidadEntries.map((entry) => (
-                    <div key={entry.contexto} className="space-y-1">
-                      <label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide">
-                        <span className="rounded-full bg-brand-accent/15 text-brand-accent px-2 py-0.5">
-                          {entry.contexto}
-                        </span>
-                        <span className="text-muted-foreground normal-case tracking-normal font-normal">
-                          → tu especialidad dentro de este contexto
-                        </span>
-                      </label>
-                      <Input
-                        value={especialidades[entry.contexto] ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          setEspecialidades((prev) => ({ ...prev, [entry.contexto]: v }))
-                          setActiveLevel("especialidad")
-                        }}
-                        placeholder={`Ej.: coach de bienestar en ${entry.contexto.toLowerCase()}, talleres, mentoría...`}
-                        className="text-sm"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-3">
+                {especialidadEntries.map((entry) => (
+                  <div key={entry.contexto} className="space-y-1">
+                    <label className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide">
+                      <span
+                        className="rounded-full bg-brand-accent/15 text-brand-accent px-2 py-0.5 max-w-full truncate"
+                        title={entry.contexto}
+                      >
+                        {entry.contexto}
+                      </span>
+                      <span className="text-muted-foreground normal-case tracking-normal font-normal">
+                        → tu especialidad dentro de este contexto
+                      </span>
+                    </label>
+                    <Input
+                      value={especialidades[entry.contexto] ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value.slice(0, ESPECIALIDAD_MAX_LEN)
+                        setEspecialidades((prev) => ({ ...prev, [entry.contexto]: v }))
+                        setActiveLevel("especialidad")
+                      }}
+                      maxLength={ESPECIALIDAD_MAX_LEN}
+                      placeholder="Escribí acá tu especialidad concreta..."
+                      className="text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => { setStep("brainstorm"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                onClick={() => { setStep("select"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
               >
-                ← Volver al brainstorm
+                ← Volver a la selección
               </Button>
               <Button
                 onClick={handleSubmit}
@@ -758,14 +847,14 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
             </div>
             {!canSubmit && (
               <p className="text-xs text-muted-foreground text-center">
-                Elegí exactamente 3 en cada sección y escribí una especialidad por contexto para enviar.
+                Escribí una especialidad para cada contexto para poder enviar.
               </p>
             )}
           </div>
         )}
       </div>
 
-      {step === "select" && (
+      {(step === "select" || step === "especialidad") && (
         <div className="sticky bottom-4 bg-gray-900 text-white rounded-xl p-5 shadow-xl">
           <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider">Mi propósito</p>
           <p className="text-sm leading-relaxed text-gray-100">{synth}</p>
