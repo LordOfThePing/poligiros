@@ -602,25 +602,17 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pirámide fija en pantallas grandes.
-            - brainstorm/select: centrada verticalmente (h-screen + justify-center)
-            - especialidad: alineada al top con el recap debajo (hay más contenido). */}
-        <div>
-          <div
-            className={cn(
-              "lg:sticky space-y-4",
-              step === "especialidad"
-                ? "lg:top-6"
-                : "lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center",
-            )}
-          >
-            <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
-            {step !== "especialidad" && (
-              <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
-            )}
-            {step === "especialidad" && <SelectionRecap selected={selected} />}
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
+        {/* Pirámide (y recap en el paso 3) siempre centrada verticalmente en
+            el viewport en pantallas grandes: el wrapper sticky es 100vh y
+            centra su contenido con flex, así queda "clavada" en el medio de
+            la pantalla mientras el usuario scrollea las cajas. */}
+        <div className="lg:sticky lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center space-y-4 lg:overflow-y-auto lg:py-6">
+          <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
+          {step !== "especialidad" && (
+            <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
+          )}
+          {step === "especialidad" && <SelectionRecap selected={selected} />}
         </div>
 
         {step === "brainstorm" ? (
