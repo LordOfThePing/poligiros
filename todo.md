@@ -46,10 +46,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [ ] **Tablero de Ideas — QUERER y SOÑAR: aclarar que se ordena TODA la
       lista, no solo el top 3.** Sacar el gris opaco de los items post-top-3
       (hace que el usuario los desestime) y aclararlo en la consigna.
-- [ ] **Tab en cualquier tarjeta salta a la siguiente tarjeta, no al botón
-      eliminar.** Aplicar `tabIndex={-1}` a los botones "X"/quitar de las filas
-      de inputs en los tests (Tablero, Tareas, Plan Vital, Pirámide) para que
-      llenar tarjetas con Tab sea fluido.
 
 ## Pendientes previos
 
