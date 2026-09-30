@@ -107,6 +107,7 @@ export default function TareasExploracionTest({ api, assignmentId, initialRespon
               <button
                 type="button"
                 onClick={() => remove(i)}
+                tabIndex={-1}
                 className="text-muted-foreground hover:text-destructive shrink-0"
                 aria-label="Quitar"
               >

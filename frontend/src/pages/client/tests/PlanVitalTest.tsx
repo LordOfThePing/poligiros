@@ -409,6 +409,7 @@ export default function PlanVitalTest({ api, assignmentId }: { api: TestApi; ass
                   <button
                     type="button"
                     onClick={() => setEstimulos((prev) => prev.filter((_, idx) => idx !== i))}
+                    tabIndex={-1}
                     className="text-muted-foreground hover:text-destructive shrink-0"
                   >
                     <X className="h-4 w-4" />

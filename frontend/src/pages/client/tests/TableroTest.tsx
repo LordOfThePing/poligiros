@@ -71,13 +71,26 @@ const STAGES: Stage[] = [
   { phase: "explore" },
 ]
 
-// Rotating placeholders for the brainstorming input — one example per idea type
-// (negocio / puesto / proyecto) so the coachee sees the range of what "idea"
-// can mean. Rotates on each add so a different flavour is suggested every time.
-const IDEA_PLACEHOLDERS = [
-  "Ej. negocio: Estudio de diseño de packaging para pymes gastronómicas",
-  "Ej. puesto: Coordinadora de contenido en una agencia de viajes de aventura",
-  "Ej. proyecto: Programa de mentorías de carrera para mujeres en tecnología",
+// Three parallel "add idea" inputs — one per idea type (negocio / puesto /
+// proyecto) — so the coachee sees the range of what "idea" can mean before
+// they type anything. Each has its own label and placeholder.
+type IdeaType = "negocio" | "puesto" | "proyecto"
+const IDEA_TYPES: { key: IdeaType; label: string; placeholder: string }[] = [
+  {
+    key: "negocio",
+    label: "Negocio",
+    placeholder: "Ej: Estudio de diseño de packaging para pymes gastronómicas",
+  },
+  {
+    key: "puesto",
+    label: "Puesto",
+    placeholder: "Ej: Coordinadora de contenido en una agencia de viajes de aventura",
+  },
+  {
+    key: "proyecto",
+    label: "Proyecto",
+    placeholder: "Ej: Programa de mentorías de carrera para mujeres en tecnología",
+  },
 ]
 
 // Per-rank-stage consigna. The whole point of the session feedback: rank by how
@@ -86,9 +99,9 @@ const RANK_CONSIGNA: Record<ColKey, string> = {
   saber:
     "Ordená tus pasiones: lo que MÁS te apasiona hacer va primero. No lo que te sale fácil o conveniente — lo que de verdad disfrutás.",
   querer:
-    "Ordená por nivel de disfrute: lo que más disfrutás, arriba. Olvidate de si es algo laboral o personal — lo único que importa es cuánto lo disfrutás.",
+    "Ordená TODA la lista de más a menos: lo que más disfrutás va primero. Olvidate de si es algo laboral o personal — lo único que importa es cuánto lo disfrutás.",
   sonar:
-    "Ordená por las ganas que te genera: lo que más te entusiasma lograr o vivir va primero.",
+    "Ordená TODA la lista de más a menos: lo que más te entusiasma lograr o vivir va primero.",
 }
 
 const toItems = (values: string[]): RankItem[] =>
@@ -152,8 +165,11 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
 
   // ── Brainstorming idea cards → AI cards → pick one ──────────────────────────
   const [ideaCards, setIdeaCards] = useState<RankItem[]>([]) // user's own, ordered
-  const [newIdea, setNewIdea] = useState("")
-  const [placeholderIdx, setPlaceholderIdx] = useState(0)
+  const [draftIdeas, setDraftIdeas] = useState<Record<IdeaType, string>>({
+    negocio: "",
+    puesto: "",
+    proyecto: "",
+  })
   const [aiIdeaCards, setAiIdeaCards] = useState<RankItem[]>([]) // AI-generated, sortable
   const [aiDisabledTexts, setAiDisabledTexts] = useState<Set<string>>(new Set())
   const [ideasGenerated, setIdeasGenerated] = useState(false)
@@ -598,6 +614,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                       <button
                         type="button"
                         onClick={() => removeRow(setter, i)}
+                        tabIndex={-1}
                         className="text-muted-foreground hover:text-destructive shrink-0"
                         aria-label="Quitar"
                       >
@@ -686,15 +703,28 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
         <>
           <section className="max-w-2xl mx-auto space-y-4">
             <div>
-              <h2 className="font-serif text-xl text-foreground">{COLUMNS[stage.col].title}: ordená tu top 3</h2>
+              <h2 className="font-serif text-xl text-foreground">
+                {COLUMNS[stage.col].title}:{" "}
+                {stage.col === "saber" ? "ordená tu top 3" : "ordená TODA la lista"}
+              </h2>
               <p className="text-sm text-muted-foreground">{RANK_CONSIGNA[stage.col]}</p>
             </div>
+            {stage.col !== "saber" && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Importante:</strong> tenés que ordenar <strong>toda la lista</strong>,
+                  no solo el top 3. Aunque las 3 primeras quedan destacadas, las de abajo también
+                  tienen que estar en orden — de más a menos disfrute.
+                </p>
+              </div>
+            )}
             <div className="flex items-start gap-2 rounded-lg border border-brand-accent/20 bg-brand-accent/5 px-3 py-2.5 text-sm text-foreground">
               <span className="text-brand-accent shrink-0 mt-0.5">↕</span>
               <p>
                 <strong>Cómo ordenar:</strong> mantené presionado el ícono de <strong>manito (⠿)</strong> que
                 está a la izquierda de cada tarjeta y arrastrala hacia arriba o hacia abajo para
-                acomodar tu top 3. Podés reordenar las veces que quieras.
+                acomodar la lista. Podés reordenar las veces que quieras.
               </p>
             </div>
             <SortableList
@@ -792,6 +822,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); removeIdea(item.id, item.text) }}
+                            tabIndex={-1}
                             className="text-muted-foreground hover:text-destructive shrink-0"
                             aria-label="Quitar"
                           >
@@ -937,6 +968,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
                     <button
                       type="button"
                       onClick={() => removeRow(setExplorationTasks, i)}
+                      tabIndex={-1}
                       className="text-muted-foreground hover:text-destructive shrink-0"
                       aria-label="Quitar"
                     >
