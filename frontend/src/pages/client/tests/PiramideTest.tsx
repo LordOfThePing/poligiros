@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ChevronDown, X, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -59,11 +58,11 @@ const FORTALEZAS = [
 ]
 
 const LEVELS = [
-  { key: "especialidad", label: "ESPECIALIDAD", color: "#2D6A4F", points: "40,10 60,10 55,30 45,30" },
-  { key: "contextos", label: "CONTEXTOS", color: "#3D8A6A", points: "45,30 55,30 62,50 38,50" },
-  { key: "fortalezas", label: "FORTALEZAS", color: "#4EA87F", points: "38,50 62,50 68,70 32,70" },
-  { key: "valores", label: "VALORES", color: "#60C595", points: "32,70 68,70 74,90 26,90" },
-  { key: "rol", label: "ROL", color: "#73D9AB", points: "26,90 74,90 80,110 20,110" },
+  { key: "especialidad", label: "ESPECIALIDAD", color: "#2D6A4F", points: "40,10 60,10 55,30 45,30", cy: 20, rightX: 57.5 },
+  { key: "contextos", label: "CONTEXTOS", color: "#3D8A6A", points: "45,30 55,30 62,50 38,50", cy: 40, rightX: 58.5 },
+  { key: "fortalezas", label: "FORTALEZAS", color: "#4EA87F", points: "38,50 62,50 68,70 32,70", cy: 60, rightX: 65 },
+  { key: "valores", label: "VALORES", color: "#60C595", points: "32,70 68,70 74,90 26,90", cy: 80, rightX: 71 },
+  { key: "rol", label: "ROL", color: "#73D9AB", points: "26,90 74,90 80,110 20,110", cy: 100, rightX: 77 },
 ]
 
 type PillKey = "rol" | "valores" | "fortalezas" | "contextos"
@@ -125,7 +124,7 @@ const SECTIONS: Section[] = [
   },
 ]
 
-const ESPECIALIDAD_HINT = "Escribí un texto breve respondiendo las preguntas: ¿dónde querés dejar tu huella? ¿Cuál es tu nicho o tema específico dentro de cada contexto elegido? Ej.: \"Coach de bienestar para mujeres profesionales, facilitadora de retiros espirituales y talleres de liderazgo con foco en género\"."
+const ESPECIALIDAD_HINT = "Por cada uno de tus 3 contextos, escribí tu especialidad concreta — el nicho o tema específico donde vas a dejar tu huella. Ej.: contexto GÉNERO → \"Coach de bienestar para mujeres profesionales\"; ESPIRITUALIDAD → \"Facilitadora de retiros\"; LIDERAZGO → \"Talleres para equipos\"."
 
 function normalize(v: string) {
   return v.trim().replace(/\s+/g, " ")
@@ -133,29 +132,41 @@ function normalize(v: string) {
 
 function PyramidSVG({ active, onLevel }: { active: string; onLevel: (k: string) => void }) {
   return (
-    <svg viewBox="0 0 100 120" className="w-full max-w-xs mx-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
-      {LEVELS.map((level) => (
-        <g key={level.key} onClick={() => onLevel(level.key)} className="cursor-pointer">
-          <polygon
-            points={level.points}
-            fill={active === level.key ? "#1E4D38" : level.color}
-            stroke="white"
-            strokeWidth="1"
-            className="transition-all duration-200"
-          />
-          <text
-            x="50"
-            y={level.key === "especialidad" ? 22 : level.key === "contextos" ? 42 : level.key === "fortalezas" ? 62 : level.key === "valores" ? 82 : 102}
-            textAnchor="middle"
-            fill="white"
-            fontSize={level.key === "especialidad" ? "5" : "4.5"}
-            fontWeight="bold"
-            fontFamily="sans-serif"
-          >
-            {level.label}
-          </text>
-        </g>
-      ))}
+    <svg viewBox="0 0 140 120" className="w-full max-w-sm mx-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
+      {LEVELS.map((level) => {
+        const isActive = active === level.key
+        return (
+          <g key={level.key} onClick={() => onLevel(level.key)} className="cursor-pointer">
+            <polygon
+              points={level.points}
+              fill={isActive ? "#1E4D38" : level.color}
+              stroke="white"
+              strokeWidth="1"
+              className="transition-all duration-200"
+            />
+            <line
+              x1={level.rightX}
+              y1={level.cy}
+              x2={83}
+              y2={level.cy}
+              stroke={isActive ? "#1E4D38" : level.color}
+              strokeWidth="0.6"
+              opacity="0.7"
+            />
+            <text
+              x={85}
+              y={level.cy + 2}
+              textAnchor="start"
+              fill={isActive ? "#1E4D38" : "#1F2937"}
+              fontSize="6"
+              fontWeight="bold"
+              fontFamily="sans-serif"
+            >
+              {level.label}
+            </text>
+          </g>
+        )
+      })}
     </svg>
   )
 }
@@ -274,6 +285,7 @@ interface PiramideTestProps {
 interface DraftShape {
   pools?: Partial<Pools>
   selected?: Partial<Selected>
+  especialidades?: Record<string, string>
   especialidad?: string
   step?: "brainstorm" | "select"
   // legacy
@@ -288,7 +300,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
 
   const [pools, setPools] = useState<Pools>(emptyPools)
   const [selected, setSelected] = useState<Selected>(emptyPools)
-  const [especialidad, setEspecialidad] = useState("")
+  const [especialidades, setEspecialidades] = useState<Record<string, string>>({})
   const [step, setStep] = useState<"brainstorm" | "select">("brainstorm")
   const [activeLevel, setActiveLevel] = useState<string>("rol")
   const [showIntro, setShowIntro] = useState(true)
@@ -331,7 +343,21 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       }
       setSelected(nextSelected)
 
-      if (typeof d.especialidad === "string") setEspecialidad(d.especialidad)
+      if (d.especialidades && typeof d.especialidades === "object") {
+        const clean: Record<string, string> = {}
+        for (const [k, v] of Object.entries(d.especialidades)) {
+          if (typeof v === "string") clean[k] = v
+        }
+        setEspecialidades(clean)
+      } else if (typeof d.especialidad === "string" && d.especialidad.trim()) {
+        // legacy: split the free-text especialidad by comma into selected contextos
+        const parts = d.especialidad.split(",").map((s) => s.trim())
+        const map: Record<string, string> = {}
+        nextSelected.contextos.forEach((c, i) => {
+          if (parts[i]) map[c] = parts[i]
+        })
+        setEspecialidades(map)
+      }
 
       const readyForSelect = PILL_KEYS.every((k) => nextPools[k].length >= 3)
       setStep(d.step === "select" && readyForSelect ? "select" : "brainstorm")
@@ -341,7 +367,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
 
   useAutosave(
     DRAFT_KEY(assignmentId),
-    { pools, selected, especialidad, step },
+    { pools, selected, especialidades, step },
     hydrated && !submitted,
   )
 
@@ -382,15 +408,20 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   }
 
   const canGoNext = PILL_KEYS.every((k) => pools[k].length >= 3)
+  const especialidadEntries = selected.contextos.map((c) => ({
+    contexto: c,
+    texto: (especialidades[c] ?? "").trim(),
+  }))
   const canSubmit =
-    PILL_KEYS.every((k) => selected[k].length === 3) && especialidad.trim().length > 0
+    PILL_KEYS.every((k) => selected[k].length === 3) &&
+    especialidadEntries.every((e) => e.texto.length > 0)
 
   const finalStrings = {
     rol: selected.rol.join(", "),
     valores: selected.valores.join(", "),
     fortalezas: selected.fortalezas.join(", "),
     contextos: selected.contextos.join(", "),
-    especialidad: especialidad.trim(),
+    especialidad: especialidadEntries.map((e) => e.texto).filter(Boolean).join(", "),
   }
 
   const synth = `Mi propósito es ${finalStrings.rol || "___"} alineado a mis valores de ${finalStrings.valores || "___"}, y conectado con mis principales fortalezas: ${finalStrings.fortalezas || "___"}, para lograr impactar en ${finalStrings.contextos || "___"}, dejando mi huella a través de ${finalStrings.especialidad || "___"}.`
@@ -398,6 +429,10 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   async function handleSubmit() {
     setSaving(true)
     const propositoFinal = synth
+    const especialidadPorContexto = especialidadEntries.reduce<Record<string, string>>((acc, e) => {
+      if (e.texto) acc[e.contexto] = e.texto
+      return acc
+    }, {})
     const res = await api.submit({
       ...finalStrings,
       propositoFinal,
@@ -405,6 +440,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       valoresPool: pools.valores,
       fortalezasPool: pools.fortalezas,
       contextosPool: pools.contextos,
+      especialidadPorContexto,
     })
     setSaving(false)
 
@@ -468,7 +504,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
             <div>
               <p className="font-medium text-foreground">c) Especialidad y frase final</p>
               <p className="text-muted-foreground">
-                En un texto libre respondé las preguntas de ESPECIALIDAD (dónde querés dejar tu huella / cuál es tu nicho concreto dentro de cada contexto). La frase final se arma sola.
+                Por cada uno de tus 3 contextos elegidos, escribí una especialidad concreta — el nicho o tema específico donde vas a dejar tu huella dentro de ese contexto. La frase final se arma sola.
               </p>
             </div>
           </div>
@@ -652,18 +688,46 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
                   <h2 className="font-serif text-lg text-foreground">5. MI ESPECIALIDAD</h2>
                   <InfoHint text={ESPECIALIDAD_HINT} />
                 </div>
-                <SaveIndicator value={especialidad} draftKey={DRAFT_KEY(assignmentId)} enabled={hydrated} />
+                <SaveIndicator
+                  value={especialidadEntries.map((e) => `${e.contexto}:${e.texto}`).join("|")}
+                  draftKey={DRAFT_KEY(assignmentId)}
+                  enabled={hydrated}
+                />
               </div>
               <p className="text-sm text-muted-foreground">
-                ¿Dónde querés dejar tu huella? ¿Cuál es tu nicho o tema específico dentro de cada contexto elegido? Respondé en un texto libre.
+                Para cada uno de los <strong>3 contextos</strong> que elegiste arriba, escribí tu <strong>especialidad concreta</strong> — el nicho o tema específico donde vas a dejar tu huella dentro de ese contexto.
               </p>
-              <Textarea
-                value={especialidad}
-                onChange={(e) => { setEspecialidad(e.target.value); setActiveLevel("especialidad") }}
-                rows={5}
-                placeholder="Escribí tu especialidad aquí, respondiendo las preguntas..."
-                className="text-sm"
-              />
+
+              {especialidadEntries.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">
+                  Elegí 3 contextos arriba para poder escribir tus especialidades.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {especialidadEntries.map((entry) => (
+                    <div key={entry.contexto} className="space-y-1">
+                      <label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide">
+                        <span className="rounded-full bg-brand-accent/15 text-brand-accent px-2 py-0.5">
+                          {entry.contexto}
+                        </span>
+                        <span className="text-muted-foreground normal-case tracking-normal font-normal">
+                          → tu especialidad dentro de este contexto
+                        </span>
+                      </label>
+                      <Input
+                        value={especialidades[entry.contexto] ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setEspecialidades((prev) => ({ ...prev, [entry.contexto]: v }))
+                          setActiveLevel("especialidad")
+                        }}
+                        placeholder={`Ej.: coach de bienestar en ${entry.contexto.toLowerCase()}, talleres, mentoría...`}
+                        className="text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
@@ -684,7 +748,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
             </div>
             {!canSubmit && (
               <p className="text-xs text-muted-foreground text-center">
-                Elegí exactamente 3 en cada sección y escribí tu especialidad para enviar.
+                Elegí exactamente 3 en cada sección y escribí una especialidad por contexto para enviar.
               </p>
             )}
           </div>
