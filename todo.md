@@ -35,6 +35,16 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
+- [ ] **Pirámide del Propósito: flujo de 2 pantallas con pills.** Hoy son
+      textareas libres y los coachees dejan más de 3 palabras (Irene lo hizo).
+      Pantalla 1: brainstorm por sección (ROL/VALORES/FORTALEZAS/CONTEXTOS)
+      escribiendo palabras o frases que se agregan como pills; mínimo 3 pills
+      por sección para pasar. Pantalla 2: elegir exactamente 3 pills de cada
+      una + ESPECIALIDAD como textarea libre respondiendo las preguntas guía.
+      La frase final se arma con las 3 seleccionadas. Guardar
+      `rol/valores/fortalezas/contextos` como string coma-separado (backward
+      compatible con `ResponseViewer`/`EditableResult`); guardar los pools
+      completos en el mismo JSON (`rolPool` etc.).
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
