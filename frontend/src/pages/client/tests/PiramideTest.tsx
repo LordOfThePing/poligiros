@@ -209,11 +209,23 @@ function PillInput({ onAdd, placeholder }: { onAdd: (v: string) => void; placeho
       setVal("")
     }
   }
+  function handleChange(next: string) {
+    if (!next.includes(",")) {
+      setVal(next)
+      return
+    }
+    const parts = next.split(",")
+    const tail = parts.pop() ?? ""
+    for (const p of parts) {
+      if (p.trim()) onAdd(p)
+    }
+    setVal(tail)
+  }
   return (
     <div className="flex items-center gap-2">
       <Input
         value={val}
-        onChange={(e) => setVal(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault()
