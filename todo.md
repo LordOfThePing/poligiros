@@ -46,6 +46,9 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [ ] **Tablero de Ideas — QUERER y SOÑAR: aclarar que se ordena TODA la
       lista, no solo el top 3.** Sacar el gris opaco de los items post-top-3
       (hace que el usuario los desestime) y aclararlo en la consigna.
+- [ ] **Tablero de Ideas — poder volver a la intro desde el primer paso** y
+      mejorar la consigna del brainstorming (más específica, con ejemplos de
+      negocio / puesto / proyecto como placeholders rotativos).
 
 ## Pendientes previos
 
