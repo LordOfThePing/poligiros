@@ -39,6 +39,13 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
       contenido de abajo. Toca `frontend/src/pages/client/ResultsView.tsx`.
+- [ ] **Tablero de Ideas — ideas con IA: no pisar lo generado.** Una vez que
+      la IA generó ideas, el botón "Volver a generar" queda deshabilitado; se
+      re-habilita cuando el usuario elimina alguna fila y, al re-generar, la
+      IA sólo rellena las filas faltantes sin tocar las que quedaron.
+- [ ] **Tablero de Ideas — QUERER y SOÑAR: aclarar que se ordena TODA la
+      lista, no solo el top 3.** Sacar el gris opaco de los items post-top-3
+      (hace que el usuario los desestime) y aclararlo en la consigna.
 
 ## Pendientes previos
 
