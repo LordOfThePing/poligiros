@@ -636,13 +636,16 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Pirámide (y recap en el paso 3) SIEMPRE centrada verticalmente en
             el viewport en pantallas grandes.
-            Truco: sticky top-1/2 + -translate-y-1/2. `top: 50vh` corre al
-            pegoteo hasta la mitad del viewport, y el translateY(-50%) del
-            elemento lo sube la mitad de su propia altura — su centro queda a
-            50vh = centro del viewport, sin importar cuánto scroll se hizo.
-            Requiere que la columna izquierda tenga la altura del formulario
-            (por eso quitamos `lg:items-start` de la grid). */}
-        <div className="space-y-4 lg:sticky lg:top-1/2 lg:-translate-y-1/2">
+            Truco: sticky top-[50vh] + -translate-y-1/2. `top: 50vh` es
+            absoluto respecto al viewport (a diferencia de `top: 50%`, que
+            resuelve contra el bloque contenedor y con la celda estirada al
+            alto del formulario tiraba el pegoteo a 1000+ px, fuera de la
+            pantalla). El translateY(-50%) sube al elemento la mitad de su
+            propia altura, dejando su centro exactamente a 50vh = centro del
+            viewport, sin importar cuánto scroll se hizo. Requiere que la
+            columna izquierda tenga la altura del formulario (por eso
+            quitamos `lg:items-start` de la grid). */}
+        <div className="space-y-4 lg:sticky lg:top-[50vh] lg:-translate-y-1/2">
           <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
           {step !== "especialidad" && (
             <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
