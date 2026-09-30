@@ -133,8 +133,11 @@ function normalize(v: string) {
 }
 
 function PyramidSVG({ active, onLevel }: { active: string; onLevel: (k: string) => void }) {
+  // viewBox recortado — el original 0 0 140 120 dejaba ~10 unidades de
+  // padding vacío arriba y abajo del contenido (polígonos y=10→110), que se
+  // percibía como espacio de más arriba de la pirámide.
   return (
-    <svg viewBox="0 0 140 120" className="w-full max-w-sm mx-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
+    <svg viewBox="0 6 140 108" className="w-full max-w-sm mx-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
       {LEVELS.map((level) => {
         const isActive = active === level.key
         return (
@@ -204,6 +207,7 @@ function Pill({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove() }}
+          tabIndex={-1}
           className="rounded-full hover:text-destructive"
           aria-label={`Quitar ${label}`}
         >
@@ -473,6 +477,33 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
   }))
   const canSubmit = canGoEspecialidad && especialidadEntries.every((e) => e.texto.length > 0)
 
+  // Secciones pendientes en el paso "elegir 3" — se usa tanto para pintar la
+  // caja pendiente (borde ámbar) como para el texto y la acción de "ir al
+  // primer pendiente".
+  const missingSelect = SECTIONS
+    .map((s) => ({
+      key: s.key,
+      short: s.title.replace(/^\d+\.\s*/, ""),
+      need: Math.max(0, 3 - selected[s.key].length),
+    }))
+    .filter((m) => m.need > 0)
+
+  function scrollToFirstMissingSelect() {
+    const first = missingSelect[0]
+    if (!first) return
+    setActiveLevel(first.key)
+    sectionRefs.current[first.key]?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
+  // Cuando cambia de paso, volver arriba para que el usuario recorra el nuevo
+  // paso desde el principio. Usar useEffect en vez de scrollTo inline evita
+  // que el scroll pase antes del rerender.
+  useEffect(() => {
+    if (!hydrated) return
+    window.scrollTo({ top: 0, behavior: "smooth" })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
   const finalStrings = {
     rol: selected.rol.join(", "),
     valores: selected.valores.join(", "),
@@ -603,11 +634,14 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
-        {/* Pirámide (y recap en el paso 3) siempre centrada verticalmente en
-            el viewport en pantallas grandes: el wrapper sticky es 100vh y
-            centra su contenido con flex, así queda "clavada" en el medio de
-            la pantalla mientras el usuario scrollea las cajas. */}
-        <div className="lg:sticky lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center space-y-4 lg:overflow-y-auto lg:py-6">
+        {/* Pirámide (y recap en el paso 3) sticky en pantallas grandes.
+            Antes usábamos h-screen + justify-center, pero eso empujaba la
+            pirámide muy abajo cuando el scroll estaba en el top (natural top
+            de la columna estaba debajo del h1 y el contenido quedaba centrado
+            recién a 50vh de ese offset). Ahora sticky con top pequeño para
+            que el usuario la vea arriba desde el principio y se quede fija al
+            hacer scroll. */}
+        <div className="lg:sticky lg:top-4 space-y-4">
           <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
           {step !== "especialidad" && (
             <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
@@ -679,7 +713,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
             })}
 
             <Button
-              onClick={() => { setStep("select"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+              onClick={() => setStep("select")}
               disabled={!canGoNext}
               size="lg"
               className="w-full bg-brand-accent hover:bg-brand-accent-dark"
@@ -701,13 +735,18 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
             {SECTIONS.map((section) => {
               const sel = selected[section.key]
               const done = sel.length === 3
+              const isActive = activeLevel === section.key
               return (
                 <div
                   key={section.key}
                   ref={(el) => { sectionRefs.current[section.key] = el }}
                   className={cn(
                     "bg-white rounded-xl border-2 p-5 space-y-3 transition-colors",
-                    activeLevel === section.key ? "border-brand-accent" : "border-border",
+                    isActive
+                      ? "border-brand-accent"
+                      : done
+                        ? "border-border"
+                        : "border-amber-300 bg-amber-50/30",
                   )}
                   onFocus={() => setActiveLevel(section.key)}
                 >
@@ -716,8 +755,11 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
                       <h2 className="font-serif text-lg text-foreground">{section.title}</h2>
                       <InfoHint text={section.hint} />
                     </div>
-                    <span className={cn("text-xs font-medium", done ? "text-brand-accent" : "text-muted-foreground")}>
-                      {sel.length}/3 seleccionadas
+                    <span className={cn(
+                      "text-xs font-medium",
+                      done ? "text-brand-accent" : "text-amber-700",
+                    )}>
+                      {done ? "✓ 3/3" : `${sel.length}/3 · faltan ${3 - sel.length}`}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">{section.instruction}</p>
@@ -745,22 +787,38 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => { setStep("brainstorm"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                onClick={() => setStep("brainstorm")}
               >
                 ← Volver al brainstorm
               </Button>
               <Button
-                onClick={() => { setStep("especialidad"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
-                disabled={!canGoEspecialidad}
+                onClick={() => {
+                  if (!canGoEspecialidad) {
+                    // Botón habilitado siempre para que el click dé feedback
+                    // concreto (dónde falta) en vez de quedar mudo.
+                    const list = missingSelect.map((m) => m.short).join(", ")
+                    toast({
+                      title: "Te faltan selecciones",
+                      description: `Elegí 3 en: ${list}.`,
+                    })
+                    scrollToFirstMissingSelect()
+                    return
+                  }
+                  setStep("especialidad")
+                }}
                 className="flex-1 bg-brand-accent hover:bg-brand-accent-dark"
               >
                 Continuar → mi especialidad
               </Button>
             </div>
             {!canGoEspecialidad && (
-              <p className="text-xs text-muted-foreground text-center">
-                Elegí exactamente 3 en cada sección para avanzar.
-              </p>
+              <button
+                type="button"
+                onClick={scrollToFirstMissingSelect}
+                className="mx-auto block text-xs text-amber-700 hover:text-amber-900 underline decoration-dotted underline-offset-2"
+              >
+                Te falta elegir en {missingSelect.map((m) => `${m.short} (${m.need})`).join(", ")} — tocá para ir al primer pendiente
+              </button>
             )}
           </div>
         ) : (
@@ -825,7 +883,7 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => { setStep("select"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                onClick={() => setStep("select")}
               >
                 ← Volver a la selección
               </Button>
