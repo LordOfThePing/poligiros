@@ -22,7 +22,22 @@ function announceSaved(key: string) {
   window.dispatchEvent(new CustomEvent<string>(SAVED_EVENT, { detail: key }))
 }
 
+/**
+ * When an admin is impersonating another user (see AuthProvider), every draft
+ * helper here goes no-op: reads return the fallback (i.e. what the server has)
+ * and writes/clears do nothing. Drafts live in this browser's localStorage, so
+ * they belong to whoever is physically at the keyboard — never to the
+ * impersonated user. Making them no-op keeps admin from seeing a leftover
+ * draft as if it were the user's, and from silently persisting anything they
+ * type while poking around.
+ */
+let impersonating = false
+export function setDraftImpersonating(on: boolean): void {
+  impersonating = on
+}
+
 export function readDraft<T>(key: string, fallback: T): T {
+  if (impersonating) return fallback
   try {
     const raw = localStorage.getItem(PREFIX + key)
     if (raw !== null) return JSON.parse(raw) as T
@@ -31,6 +46,7 @@ export function readDraft<T>(key: string, fallback: T): T {
 }
 
 export function writeDraft(key: string, value: unknown): void {
+  if (impersonating) return
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value))
     announceSaved(key)
@@ -38,6 +54,7 @@ export function writeDraft(key: string, value: unknown): void {
 }
 
 export function clearDraft(key: string): void {
+  if (impersonating) return
   try {
     localStorage.removeItem(PREFIX + key)
   } catch {}
@@ -96,6 +113,7 @@ export function useDraft<T>(
  */
 
 export function loadDraft<T = Record<string, unknown>>(key: string): T | null {
+  if (impersonating) return null
   try {
     const raw = localStorage.getItem(key)
     return raw ? (JSON.parse(raw) as T) : null
@@ -105,12 +123,14 @@ export function loadDraft<T = Record<string, unknown>>(key: string): T | null {
 }
 
 export function discardDraft(key: string): void {
+  if (impersonating) return
   try {
     localStorage.removeItem(key)
   } catch {}
 }
 
 function writeRaw(key: string, serialized: string) {
+  if (impersonating) return
   try {
     localStorage.setItem(key, serialized)
     announceSaved(key)
@@ -189,7 +209,10 @@ export function useSaveStatus(
 ): SaveStatus {
   const ctx = useContext(DraftStatusContext)
   const key = draftKey ?? ctx?.draftKey ?? null
-  const on = Boolean(key) && (enabled ?? ctx?.enabled ?? true)
+  // Same intent as the read/write guards: during impersonation nothing is
+  // persisted, so the "Guardando…/Guardado" indicator has nothing to say —
+  // stay idle instead of hanging at "Guardando…" (no SAVED_EVENT will fire).
+  const on = Boolean(key) && (enabled ?? ctx?.enabled ?? true) && !impersonating
 
   let serialized: string
   try {

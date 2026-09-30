@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { useNavigate, Navigate } from "react-router-dom"
 import { api, apiTry } from "./api"
+import { setDraftImpersonating } from "./draft"
 
 export type Role = "SUPERVISOR" | "STUDENT_COACH" | "ADMIN"
 
@@ -45,6 +46,13 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Keep the draft-layer flag in sync with the auth state so a stored
+  // localStorage draft (this browser's, i.e. the admin's) never leaks into an
+  // impersonated session. Set here during render (not in useEffect) so the
+  // flag is already correct by the time downstream useDraft/useAutosave hooks
+  // read from localStorage in their useState initializers on first mount.
+  setDraftImpersonating(!!user?.impersonatedBy)
 
   useEffect(() => {
     // Hydrate on mount. A 401 returns a JSON error body, so guard on res.ok
