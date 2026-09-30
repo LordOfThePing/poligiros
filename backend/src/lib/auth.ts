@@ -48,7 +48,16 @@ export async function loginUser(
   return { id: user.id, role: user.role, name: user.name, email: user.email }
 }
 
-/** Middleware: reads httpOnly cookie "token", verifies JWT, sets c.var.user */
+/**
+ * Middleware: reads httpOnly cookie "token", verifies JWT, sets c.var.user.
+ *
+ * Impersonation: when the caller is an ADMIN and the "impersonate" cookie
+ * carries a target user id, load that user from the DB and expose them as
+ * c.var.user instead — so every downstream guard, route and query behaves as
+ * if the impersonated user were logged in. The real admin identity is kept
+ * on c.var.admin, and any invalid/missing target silently falls back to the
+ * admin (no 5xx on a stale cookie).
+ */
 export const authMiddleware: MiddlewareHandler<{ Variables: AppVariables }> = async (c, next) => {
   const token = getCookie(c, "token")
   if (!token) return c.json({ error: "Unauthorized" }, 401)
@@ -56,15 +65,40 @@ export const authMiddleware: MiddlewareHandler<{ Variables: AppVariables }> = as
   const payload = await verifyJWT(token)
   if (!payload) return c.json({ error: "Unauthorized" }, 401)
 
+  if (payload.role === "ADMIN") {
+    const targetId = getCookie(c, "impersonate")
+    if (targetId) {
+      const { prisma } = await import("./prisma.js")
+      const target = await prisma.user.findUnique({
+        where: { id: targetId },
+        select: { id: true, role: true, name: true, email: true },
+      })
+      if (target) {
+        c.set("admin", payload)
+        c.set("user", target as JWTPayload)
+        await next()
+        return
+      }
+    }
+  }
+
   c.set("user", payload)
   await next()
 }
 
-/** Role guard — use after authMiddleware */
+/**
+ * Role guard — use after authMiddleware. ADMIN is a wildcard: it passes every
+ * role check. Impersonation still narrows the acting role (c.var.user.role is
+ * the target's role, not ADMIN), so an admin impersonating a coach hits the
+ * same guards the coach does.
+ */
 export function requireRole(role: string): MiddlewareHandler<{ Variables: AppVariables }> {
   return async (c, next) => {
     const user = c.get("user")
-    if (!user || user.role !== role) return c.json({ error: "Forbidden" }, 403)
+    if (!user) return c.json({ error: "Forbidden" }, 403)
+    if (user.role !== role && user.role !== "ADMIN") {
+      return c.json({ error: "Forbidden" }, 403)
+    }
     await next()
   }
 }

@@ -39,6 +39,11 @@ import StudentSupervisionPage from "@/pages/student/SupervisionPage"
 import StudentRegistrosPage from "@/pages/student/RegistrosPage"
 import StudentNuevoRegistroPage from "@/pages/student/NuevoRegistroPage"
 
+// Pages - admin
+import AdminPage from "@/pages/admin/AdminPage"
+
+import { ImpersonationBanner } from "@/components/ImpersonationBanner"
+
 // Below lg the sidebar is a hidden drawer (see CollapsibleSidebar) reached via
 // its own top bar, so main content clears that bar (pt-14) and drops the rail
 // offset (lg:pl-16). The inner wrapper also trims to a tighter, edge-to-edge
@@ -93,6 +98,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ImpersonationBanner />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -157,6 +163,20 @@ export default function App() {
             <Route path="registros/nuevo" element={<StudentNuevoRegistroPage />} />
             <Route path="registros/:id/editar" element={<StudentNuevoRegistroPage />} />
           </Route>
+
+          {/* Admin panel — supergod */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={["ADMIN"]}>
+                <div className="min-h-dvh bg-brand-bg p-3 sm:p-6">
+                  <div className="max-w-7xl mx-auto">
+                    <AdminPage />
+                  </div>
+                </div>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Root redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />

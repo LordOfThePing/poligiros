@@ -7,6 +7,7 @@ import clientRoutes from "./routes/client.js"
 import publicRoutes from "./routes/public.js"
 import studentRoutes from "./routes/student.js"
 import supervisorRoutes from "./routes/supervisor.js"
+import adminRoutes from "./routes/admin.js"
 import type { AppVariables } from "./lib/types.js"
 
 const app = new Hono<{ Variables: AppVariables }>()
@@ -59,6 +60,14 @@ app.route("/student", studentRoutes)
 app.use("/supervisor/*", authMiddleware)
 app.use("/supervisor/*", requireRole("SUPERVISOR"))
 app.route("/supervisor", supervisorRoutes)
+
+/* ─────────────────────────────────────────
+   Admin routes (cookie auth; the admin.ts sub-app enforces ADMIN itself so
+   that impersonated calls — where c.var.user.role is the target's role — still
+   reach it via c.var.admin)
+───────────────────────────────────────── */
+app.use("/admin/*", authMiddleware)
+app.route("/admin", adminRoutes)
 
 /* ─────────────────────────────────────────
    Tests (any authenticated user)

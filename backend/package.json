@@ -12,6 +12,7 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "db:bootstrap": "npx tsx prisma/bootstrap.ts",
     "db:set-supervisor": "npx tsx prisma/setSupervisor.ts",
+    "db:set-admin": "npx tsx prisma/setAdmin.ts",
     "db:studio": "prisma studio",
     "test": "vitest run"
   },

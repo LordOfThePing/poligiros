@@ -10,6 +10,10 @@ datasource db {
 enum Role {
   SUPERVISOR
   STUDENT_COACH
+  /// Supergod: passes every /supervisor and /student guard as a wildcard and
+  /// can impersonate any user (see authMiddleware + /admin routes). Not created
+  /// through normal signup — provisioned via `make prod-admin`.
+  ADMIN
 }
 
 enum TestType {

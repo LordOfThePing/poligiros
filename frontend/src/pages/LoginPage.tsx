@@ -45,7 +45,8 @@ export default function LoginPage() {
     if (!user) return
     if (user.mustChangePassword) {
       navigate("/cambiar-password", { replace: true })
-    } else if (user.role === "SUPERVISOR") navigate("/supervisor/panel", { replace: true })
+    } else if (user.role === "ADMIN") navigate("/admin", { replace: true })
+    else if (user.role === "SUPERVISOR") navigate("/supervisor/panel", { replace: true })
     else navigate("/student/programa", { replace: true })
   }, [user, navigate])
 

@@ -145,7 +145,9 @@ const SUPERVISOR_GUIDE: Guide = {
   closing: "Podés volver a esta ayuda cuando quieras desde el botón del panel izquierdo.",
 }
 
-const GUIDES: Record<Role, Guide> = {
+// Admin doesn't get a help guide — they never render inside the coach/supervisor
+// layouts anyway, so this map stays intentionally partial.
+const GUIDES: Partial<Record<Role, Guide>> = {
   STUDENT_COACH: COACH_GUIDE,
   SUPERVISOR: SUPERVISOR_GUIDE,
 }
@@ -178,6 +180,7 @@ export function HelpGuideDialog({
   const supportWhatsappUrl = whatsappUrl(supportPhone)
   if (!user) return null
   const guide = GUIDES[user.role]
+  if (!guide) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

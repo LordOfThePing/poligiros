@@ -36,9 +36,14 @@ export default function ChangePasswordPage() {
     setLoading(true)
     try {
       await changePassword(password)
-      navigate(user?.role === "SUPERVISOR" ? "/supervisor/panel" : "/student/programa", {
-        replace: true,
-      })
+      navigate(
+        user?.role === "ADMIN"
+          ? "/admin"
+          : user?.role === "SUPERVISOR"
+            ? "/supervisor/panel"
+            : "/student/programa",
+        { replace: true }
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message || "No se pudo cambiar la contraseña" : "Ocurrió un error")
       setLoading(false)

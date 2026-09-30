@@ -166,28 +166,47 @@ auth.get("/me", async (c) => {
   const payload = await verifyJWT(token)
   if (!payload) return c.json({ error: "Unauthorized" }, 401)
 
-  // mustChangePassword lives on the row, not the JWT, so the coach is forced
-  // onto the change-password screen even on the hydration call after a valid
-  // login (loginUser runs DB-free).
-  const dbUser = await prisma.user.findUnique({
-    where: { id: payload.id },
-    select: { mustChangePassword: true, linkedUserId: true },
-  })
+  // If the caller is an admin currently impersonating someone (see
+  // authMiddleware), hydrate as the TARGET user — the whole frontend then
+  // renders exactly what that user would see — and expose the real admin
+  // identity separately so the banner can offer "Volver".
+  const impersonateId = payload.role === "ADMIN" ? getCookie(c, "impersonate") : null
+  const effectiveId = impersonateId || payload.id
 
-  const linkedUser = dbUser?.linkedUserId
+  const dbUser = await prisma.user.findUnique({
+    where: { id: effectiveId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      mustChangePassword: true,
+      linkedUserId: true,
+    },
+  })
+  if (!dbUser) return c.json({ error: "Unauthorized" }, 401)
+
+  const linkedUser = dbUser.linkedUserId
     ? await prisma.user.findUnique({
         where: { id: dbUser.linkedUserId },
         select: { id: true, name: true, role: true },
       })
     : null
 
+  const impersonatedBy =
+    impersonateId && dbUser.id !== payload.id
+      ? { id: payload.id, name: payload.name, email: payload.email }
+      : null
+
   return c.json({
-    id: payload.id,
-    name: payload.name,
-    email: payload.email,
-    role: payload.role,
-    mustChangePassword: dbUser?.mustChangePassword ?? false,
+    id: dbUser.id,
+    name: dbUser.name,
+    email: dbUser.email,
+    role: dbUser.role,
+    mustChangePassword: dbUser.mustChangePassword,
     linkedUser,
+    /** Real admin identity when impersonating; null otherwise. */
+    impersonatedBy,
   })
 })
 

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import { useNavigate, Navigate } from "react-router-dom"
 import { api, apiTry } from "./api"
 
-export type Role = "SUPERVISOR" | "STUDENT_COACH"
+export type Role = "SUPERVISOR" | "STUDENT_COACH" | "ADMIN"
 
 export interface AuthUser {
   id: string
@@ -14,6 +14,9 @@ export interface AuthUser {
   /** The OTHER account of the same physical person (e.g. the supervisor's own
    *  coach identity), if one is linked. Lets the profile menu offer a switch. */
   linkedUser?: { id: string; name: string; role: Role } | null
+  /** Set when the current session is an admin impersonating another user; carries
+   *  the real admin identity so the banner can offer "Volver a mi cuenta". */
+  impersonatedBy?: { id: string; name: string; email: string } | null
 }
 
 export interface RegisterData {
@@ -169,7 +172,8 @@ export function ProtectedRoute({ roles, children }: ProtectedRouteProps) {
     return <Navigate to="/cambiar-password" replace />
   }
 
-  if (roles && !roles.includes(user.role)) {
+  // ADMIN is a wildcard for role guards — they can open any protected page.
+  if (roles && !roles.includes(user.role) && user.role !== "ADMIN") {
     // Redirect to the role's home
     if (user.role === "SUPERVISOR") return <Navigate to="/supervisor/panel" replace />
     if (user.role === "STUDENT_COACH") return <Navigate to="/student/programa" replace />

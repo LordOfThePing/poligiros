@@ -22,7 +22,7 @@ SCP_PATH  ?= poligiros
 .DEFAULT_GOAL := help
 .PHONY: help up down rebuild rebuild-backend logs logs-api seed ps restart migrate studio shell \
         env-check env-scp prod-deploy prod-up prod-down prod-build prod-ps prod-logs prod-logs-api \
-        prod-logs-tunnel prod-restart prod-migrate prod-bootstrap prod-supervisor prod-health \
+        prod-logs-tunnel prod-restart prod-migrate prod-bootstrap prod-supervisor prod-admin prod-health \
         prod-shell prod-psql prod-backup prod-seed-danger
 
 # Hardcoded rather than piped through grep/awk so `help` also works under plain
@@ -57,6 +57,7 @@ help: ## List available targets
 	@echo "  prod-migrate-status  Show which migrations applied, plus the live TestType enum"
 	@echo "  prod-bootstrap       Set up a fresh DB: test catalog + supervisor login"
 	@echo "  prod-supervisor      Create/update the supervisor login"
+	@echo "  prod-admin           Create/update the ADMIN (supergod) login"
 	@echo "  prod-health          Curl the API health endpoint from inside the container"
 	@echo "  prod-shell           Open a shell in the prod api container"
 	@echo "  prod-psql            Open psql against the prod database"
@@ -176,6 +177,13 @@ prod-bootstrap: ## Set up a fresh DB: test catalog + supervisor login
 # Reads SUPERVISOR_EMAIL / SUPERVISOR_PASSWORD from .env unless EMAIL=/PASSWORD= are given.
 prod-supervisor: ## Create/update the supervisor login. Usage: make prod-supervisor EMAIL='<email>' PASSWORD='<contraseña>'
 	@$(PROD) exec -T api npx tsx prisma/setSupervisor.ts \
+	  $(if $(EMAIL),--email "$(EMAIL)") \
+	  $(if $(PASSWORD),--password "$(PASSWORD)") \
+	  $(if $(NAME),--name "$(NAME)")
+
+# Reads ADMIN_EMAIL / ADMIN_PASSWORD from .env unless EMAIL=/PASSWORD= are given.
+prod-admin: ## Create/update the ADMIN login. Usage: make prod-admin EMAIL='<email>' PASSWORD='<contraseña>'
+	@$(PROD) exec -T api npx tsx prisma/setAdmin.ts \
 	  $(if $(EMAIL),--email "$(EMAIL)") \
 	  $(if $(PASSWORD),--password "$(PASSWORD)") \
 	  $(if $(NAME),--name "$(NAME)")

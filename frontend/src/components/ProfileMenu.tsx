@@ -12,6 +12,7 @@ import {
 const ROLE_LABELS: Record<string, string> = {
   SUPERVISOR: "Supervisora",
   STUDENT_COACH: "Coach",
+  ADMIN: "Admin",
 }
 
 /** The initials avatar shown in the sidebar profile. */
