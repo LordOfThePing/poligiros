@@ -404,7 +404,11 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
 
   function handlePyramidClick(key: string) {
     setActiveLevel(key)
-    sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" })
+    // block:"center" en vez de "start" — así la caja completa queda visible
+    // (con "start" el borde superior quedaba pegado al top del viewport y se
+    // percibía como que el scroll caía un toque más abajo del inicio de la
+    // caja).
+    sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
   const canGoNext = PILL_KEYS.every((k) => pools[k].length >= 3)
@@ -544,9 +548,15 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
-          <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
-          <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
+        {/* Pirámide fija centrada verticalmente en pantallas grandes.
+            El grid item se estira con la fila (default), y adentro el
+            contenedor sticky es 100vh, así la pirámide queda "clavada" en el
+            centro del viewport mientras el usuario scrollea las cajas. */}
+        <div>
+          <div className="lg:sticky lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center space-y-4">
+            <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
+            <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
+          </div>
         </div>
 
         {step === "brainstorm" ? (
