@@ -71,6 +71,15 @@ const STAGES: Stage[] = [
   { phase: "explore" },
 ]
 
+// Rotating placeholders for the brainstorming input — one example per idea type
+// (negocio / puesto / proyecto) so the coachee sees the range of what "idea"
+// can mean. Rotates on each add so a different flavour is suggested every time.
+const IDEA_PLACEHOLDERS = [
+  "Ej. negocio: Estudio de diseño de packaging para pymes gastronómicas",
+  "Ej. puesto: Coordinadora de contenido en una agencia de viajes de aventura",
+  "Ej. proyecto: Programa de mentorías de carrera para mujeres en tecnología",
+]
+
 // Per-rank-stage consigna. The whole point of the session feedback: rank by how
 // much you ENJOY each thing, not by how work-relevant or easy it is.
 const RANK_CONSIGNA: Record<ColKey, string> = {
@@ -144,6 +153,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
   // ── Brainstorming idea cards → AI cards → pick one ──────────────────────────
   const [ideaCards, setIdeaCards] = useState<RankItem[]>([]) // user's own, ordered
   const [newIdea, setNewIdea] = useState("")
+  const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const [aiIdeaCards, setAiIdeaCards] = useState<RankItem[]>([]) // AI-generated, sortable
   const [aiDisabledTexts, setAiDisabledTexts] = useState<Set<string>>(new Set())
   const [ideasGenerated, setIdeasGenerated] = useState(false)
@@ -386,6 +396,7 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
     if (!t) return
     setIdeaCards((prev) => [...prev, { id: uid(), text: t }])
     setNewIdea("")
+    setPlaceholderIdx((i) => (i + 1) % IDEA_PLACEHOLDERS.length)
   }
   function removeIdea(id: string, text: string) {
     setIdeaCards((prev) => prev.filter((x) => x.id !== id))
@@ -602,11 +613,12 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
             </Button>
           </section>
           <StepBar step={stepNum} total={totalSteps} pct={stepPct}>
-            {stageIndex > 0 && (
-              <Button variant="outline" onClick={goBack}>
-                ← Atrás
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={() => (stageIndex === 0 ? (setShowIntro(true), scrollTop()) : goBack())}
+            >
+              ← Atrás
+            </Button>
             <Button onClick={goNext} className="bg-brand-accent hover:bg-brand-accent-dark">
               Continuar →
             </Button>
@@ -736,14 +748,21 @@ export default function TableroTest({ api, assignmentId, initialResponses, onDon
               <div className="flex flex-col min-h-0">
                 <div className="bg-gray-800 text-white rounded-lg px-4 py-2.5 shrink-0">
                   <h2 className="font-serif text-base font-medium">Tus ideas</h2>
-                  <p className="text-xs opacity-90">Conectá las tres columnas: negocios, trabajos o proyectos. Agregá 2 o más y arrastrá la manito (⠿) de cada tarjeta para ordenarlas de más a menos atractiva.</p>
+                  <p className="text-xs opacity-90">
+                    Tomando las 3 primeras de cada columna, conectalas para generar ideas
+                    de <strong>negocios</strong>, <strong>puestos de trabajo</strong> o{" "}
+                    <strong>proyectos</strong>. Detallá cada idea lo más posible — no
+                    alcanza con un título: contá <em>qué es</em> y <em>para quién</em>.
+                    Agregá 2 o más y ordenalas arrastrando la manito (⠿), de la más
+                    atractiva a la menos.
+                  </p>
                 </div>
                 <div className="flex gap-2 mt-3 shrink-0">
                   <Input
                     value={newIdea}
                     onChange={(e) => setNewIdea(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addIdea() } }}
-                    placeholder="Ej: Estudio de diseño para pymes"
+                    placeholder={IDEA_PLACEHOLDERS[placeholderIdx]}
                     className="text-sm"
                   />
                   <Button variant="outline" onClick={addIdea} className="shrink-0">
