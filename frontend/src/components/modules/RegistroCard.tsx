@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, Users, Pencil } from "lucide-react"
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, Users, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
 import { useDraft } from "@/lib/draft"
@@ -105,6 +106,12 @@ export function RegistroCard({
     item.practice?.conclusions ?? ""
   )
   const [saving, setSaving] = useState(false)
+  // Once the user tries to save with something missing, we start highlighting
+  // the fields that block the submit. They clear on their own as each one gets
+  // filled — no need to click again to un-red them.
+  const [attempted, setAttempted] = useState(false)
+  // Server-side rejection (e.g. 409 "ya entregado, esperando devolución").
+  const [serverError, setServerError] = useState<string | null>(null)
 
   // The partner's test result, loaded on demand once a partner is picked.
   const [result, setResult] = useState<PartnerResult | null>(null)
@@ -148,7 +155,24 @@ export function RegistroCard({
     setLoadingResult(false)
   }
 
+  const missing = {
+    coachee: !coacheeId,
+    main: !mainOutputs.trim(),
+    tools: !toolsAndResults.trim(),
+    conclusions: !conclusions.trim(),
+  }
+  const missingLabels: string[] = []
+  if (missing.coachee) missingLabels.push("elegir tu dupla")
+  if (missing.main) missingLabels.push("Principales emergentes")
+  if (missing.tools) missingLabels.push("Herramientas y resultados")
+  if (missing.conclusions) missingLabels.push("Conclusiones")
+
   async function save() {
+    setServerError(null)
+    if (missingLabels.length > 0) {
+      setAttempted(true)
+      return
+    }
     setSaving(true)
     const res = await apiTry(`/student/module-items/${item.id}/registro`, {
       method: "PUT",
@@ -162,10 +186,11 @@ export function RegistroCard({
     })
     setSaving(false)
     if (!res.ok) {
-      const j = await res.json().catch(() => ({ error: "Error" }))
-      toast({ title: j.error || "No se pudo guardar", variant: "destructive" })
+      const j = await res.json().catch(() => ({ error: "No se pudo guardar" }))
+      setServerError(j.error || "No se pudo guardar")
       return
     }
+    setAttempted(false)
     clearDateDraft()
     clearMainDraft()
     clearToolsDraft()
@@ -229,7 +254,9 @@ export function RegistroCard({
           <div className="space-y-2">
             <Label>¿A quién entrevistaste?</Label>
             <Select value={coacheeId} onValueChange={setCoacheeId}>
-              <SelectTrigger>
+              <SelectTrigger
+                className={cn(attempted && missing.coachee && "border-red-500 ring-2 ring-red-200")}
+              >
                 <SelectValue placeholder="Elegí tu compañero/a de dupla" />
               </SelectTrigger>
               <SelectContent>
@@ -310,12 +337,17 @@ export function RegistroCard({
               <Label>Principales emergentes</Label>
               <SaveIndicator value={mainOutputs} draftKey={`${draftKey}.main`} />
             </div>
-            <MarkdownEditor
-              value={mainOutputs}
-              onChange={setMainOutputs}
-              rows={7}
-              placeholder={placeholders.mainOutputs}
-            />
+            <div className={cn(
+              "rounded-md",
+              attempted && missing.main && "ring-2 ring-red-300 ring-offset-2"
+            )}>
+              <MarkdownEditor
+                value={mainOutputs}
+                onChange={setMainOutputs}
+                rows={7}
+                placeholder={placeholders.mainOutputs}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -323,12 +355,17 @@ export function RegistroCard({
               <Label>Herramientas y resultados</Label>
               <SaveIndicator value={toolsAndResults} draftKey={`${draftKey}.tools`} />
             </div>
-            <MarkdownEditor
-              value={toolsAndResults}
-              onChange={setToolsAndResults}
-              rows={7}
-              placeholder={placeholders.toolsAndResults}
-            />
+            <div className={cn(
+              "rounded-md",
+              attempted && missing.tools && "ring-2 ring-red-300 ring-offset-2"
+            )}>
+              <MarkdownEditor
+                value={toolsAndResults}
+                onChange={setToolsAndResults}
+                rows={7}
+                placeholder={placeholders.toolsAndResults}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -336,21 +373,44 @@ export function RegistroCard({
               <Label>Conclusiones</Label>
               <SaveIndicator value={conclusions} draftKey={`${draftKey}.conclusions`} />
             </div>
-            <MarkdownEditor
-              value={conclusions}
-              onChange={setConclusions}
-              rows={7}
-              placeholder="Tu lectura como Coach: hipótesis, hacia dónde orientarías el proceso..."
-            />
+            <div className={cn(
+              "rounded-md",
+              attempted && missing.conclusions && "ring-2 ring-red-300 ring-offset-2"
+            )}>
+              <MarkdownEditor
+                value={conclusions}
+                onChange={setConclusions}
+                rows={7}
+                placeholder="Tu lectura como Coach: hipótesis, hacia dónde orientarías el proceso..."
+              />
+            </div>
           </div>
+
+          {attempted && missingLabels.length > 0 && (
+            <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">Todavía falta algo antes de enviar:</p>
+                <ul className="mt-1 list-disc pl-5 space-y-0.5">
+                  {missingLabels.map((l) => (
+                    <li key={l}>{l}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {serverError && (
+            <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>{serverError}</p>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 flex-wrap">
             <Button
               className="bg-brand-accent hover:bg-brand-accent-dark"
-              disabled={
-                saving || !coacheeId || !mainOutputs.trim() || !toolsAndResults.trim() ||
-                !conclusions.trim()
-              }
+              disabled={saving}
               onClick={save}
             >
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
+  AlertCircle,
   CheckCircle2, ChevronDown, ChevronRight, Video, ArrowLeft, Circle, ExternalLink, FileText,
   ClipboardCheck, PanelLeftClose, PanelLeftOpen, ListChecks, Pencil, Clock,
 } from "lucide-react"
@@ -69,6 +70,11 @@ export default function ProgramaPage() {
   const [entregaLoadedFor, setEntregaLoadedFor] = useState<string | null>(null)
   // Correcting an already-returned ENTREGA (her devolución reopens it).
   const [editingEntrega, setEditingEntrega] = useState(false)
+  // Feedback si el envío no salió: motivo local ("está vacía") o del server.
+  const [entregaError, setEntregaError] = useState<string | null>(null)
+  // Motivo cuando el server rechaza abrir un TEST (práctica no habilitada,
+  // tipo no disponible en el pool, test revocado, etc.).
+  const [testError, setTestError] = useState<string | null>(null)
 
   const loadModules = useCallback((cohortId: string) => {
     setSelected(null)
@@ -127,6 +133,9 @@ export default function ProgramaPage() {
     setEntrega(item ? readDraft(`entrega-${item.id}`, saved) : saved)
     setEntregaLoadedFor(item?.id ?? null)
     setEditingEntrega(false)
+    // Cambiar de tarjeta reinicia los mensajes de error: son del envío anterior.
+    setEntregaError(null)
+    setTestError(null)
   }, [selected, modules])
 
   // Persist what they are typing, so a refresh mid-entrega does not lose it.
@@ -137,15 +146,28 @@ export default function ProgramaPage() {
     return () => clearTimeout(t)
   }, [selected, entrega])
 
+  // Si estaba mostrando "está vacía" y ya empezó a tipear, se lo saco solo.
+  useEffect(() => {
+    if (entregaError && entrega.trim()) setEntregaError(null)
+  }, [entrega, entregaError])
+
   async function submitEntrega(item: StudentModuleItem) {
-    if (!entrega.trim()) return
+    if (!entrega.trim()) {
+      setEntregaError("Escribí tu entrega antes de enviarla.")
+      return
+    }
+    setEntregaError(null)
     setSaving(true)
     const res = await apiTry(`/student/module-items/${item.id}/submission`, {
       method: "PUT",
       body: JSON.stringify({ text: entrega }),
     })
     setSaving(false)
-    if (!res.ok) return
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "No se pudo enviar la entrega." }))
+      setEntregaError(j.error || "No se pudo enviar la entrega.")
+      return
+    }
     clearDraft(`entrega-${item.id}`)
     setEditingEntrega(false)
     // The card completion and module progress are derived server-side.
@@ -198,10 +220,15 @@ export default function ProgramaPage() {
       navigate(`/student/my-tests/${item.assignmentId}`)
       return
     }
+    setTestError(null)
     setSaving(true)
     const res = await apiTry(`/student/module-items/${item.id}/start`, { method: "POST" })
     setSaving(false)
-    if (!res.ok) return
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: "No se pudo abrir el test." }))
+      setTestError(j.error || "No se pudo abrir el test.")
+      return
+    }
     const { assignmentId } = await res.json()
     navigate(`/student/my-tests/${assignmentId}`)
   }
@@ -555,15 +582,26 @@ export default function ProgramaPage() {
                               </Button>
                             )}
                           </div>
-                          <MarkdownEditor
-                            value={entrega}
-                            onChange={setEntrega}
-                            rows={10}
-                            placeholder="Escribí acá tu reflexión..."
-                          />
+                          <div className={cn(
+                            "rounded-md",
+                            entregaError && !entrega.trim() && "ring-2 ring-red-300 ring-offset-2"
+                          )}>
+                            <MarkdownEditor
+                              value={entrega}
+                              onChange={setEntrega}
+                              rows={10}
+                              placeholder="Escribí acá tu reflexión..."
+                            />
+                          </div>
+                          {entregaError && (
+                            <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                              <p>{entregaError}</p>
+                            </div>
+                          )}
                           <Button
                             className="bg-brand-accent hover:bg-brand-accent-dark"
-                            disabled={saving || !entrega.trim()}
+                            disabled={saving}
                             onClick={() => submitEntrega(current.item)}
                           >
                             <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -579,6 +617,12 @@ export default function ProgramaPage() {
                     </div>
                   ) : current.item.kind === "TEST" ? (
                     <>
+                    {testError && (
+                      <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 mb-3">
+                        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <p>{testError}</p>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       {current.item.submitted ? (
                         <span className="flex items-center gap-2 text-green-700 text-sm font-medium">
