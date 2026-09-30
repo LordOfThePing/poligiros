@@ -633,15 +633,16 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
-        {/* Pirámide (y recap en el paso 3) sticky en pantallas grandes.
-            Antes usábamos h-screen + justify-center, pero eso empujaba la
-            pirámide muy abajo cuando el scroll estaba en el top (natural top
-            de la columna estaba debajo del h1 y el contenido quedaba centrado
-            recién a 50vh de ese offset). Ahora sticky con top pequeño para
-            que el usuario la vea arriba desde el principio y se quede fija al
-            hacer scroll. */}
-        <div className="lg:sticky lg:top-4 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Pirámide (y recap en el paso 3) SIEMPRE centrada verticalmente en
+            el viewport en pantallas grandes.
+            Truco: sticky top-1/2 + -translate-y-1/2. `top: 50vh` corre al
+            pegoteo hasta la mitad del viewport, y el translateY(-50%) del
+            elemento lo sube la mitad de su propia altura — su centro queda a
+            50vh = centro del viewport, sin importar cuánto scroll se hizo.
+            Requiere que la columna izquierda tenga la altura del formulario
+            (por eso quitamos `lg:items-start` de la grid). */}
+        <div className="space-y-4 lg:sticky lg:top-1/2 lg:-translate-y-1/2">
           <PyramidSVG active={activeLevel} onLevel={handlePyramidClick} />
           {step !== "especialidad" && (
             <p className="text-xs text-center text-muted-foreground">Hacé click en un nivel para ir a esa sección</p>
