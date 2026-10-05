@@ -640,9 +640,8 @@ student.get("/modules", async (c) => {
             ? {
                 feedback: ownSupervision.coachFeedback || ownSupervision.supervisorNotes,
                 reviewedAt: ownSupervision.reviewedAt,
-                // Editable only while her review stands: a new edit sends it
-                // back to her and locks the card again.
-                canEdit: ownSupervision.status === "REVIEWED",
+                // Siempre editable: cada edición se la mandamos a Gaby.
+                canEdit: true,
               }
             : null,
           // Only meaningful for kind = ENTREGA.
@@ -654,8 +653,8 @@ student.get("/modules", async (c) => {
                 feedback: submission.feedback,
                 reviewedAt: submission.reviewedAt,
                 editedAt: submission.editedAt,
-                // Her devolución stands → correctable; a correction sends it back.
-                canEdit: Boolean(submission.reviewedAt),
+                // Siempre editable: cada edición se le vuelve a mandar.
+                canEdit: true,
               }
             : null,
           // Only meaningful for kind = REGISTRO: the session I ran.
@@ -671,8 +670,8 @@ student.get("/modules", async (c) => {
                 feedback: practice.feedback,
                 reviewedAt: practice.reviewedAt,
                 editedAt: practice.editedAt,
-                // Her devolución stands → correctable; a correction sends it back.
-                canEdit: Boolean(practice.reviewedAt),
+                // Siempre editable: cada edición se le vuelve a mandar.
+                canEdit: true,
               }
             : null,
           // The session my dupla partner ran on ME. Read-only, and without the
@@ -788,10 +787,9 @@ student.post("/module-items/:itemId/start", async (c) => {
  * PUT /student/module-items/:itemId/submission — body: { text }
  *
  * Hand in (or correct) an ENTREGA card. The row existing IS the submission, and
- * it is what marks the card complete. Handing it in freezes it until Gaby
- * reviews it — so the feedback always describes the text she read — and her
- * devolución unfreezes it: the coach can correct it as many times as they like,
- * each correction going back to her (`reviewedAt` cleared) for a new one.
+ * it is what marks the card complete. El coach puede corregirla todas las
+ * veces que quiera; cada corrección vuelve al tablero de Gaby (`reviewedAt`
+ * en null) para que lea la versión más nueva.
  */
 student.put("/module-items/:itemId/submission", async (c) => {
   const user = c.get("user")
@@ -808,13 +806,8 @@ student.put("/module-items/:itemId/submission", async (c) => {
   const existing = await prisma.moduleItemSubmission.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
   })
-  if (existing && !existing.reviewedAt) {
-    return c.json(
-      { error: "Está esperando la devolución de Gaby — vas a poder editarla cuando la revise" },
-      409,
-    )
-  }
-  // Re-handing in after a devolución: reopens the card for a new one.
+  // Re-handing in: reopens the card for a new review (sin tener que esperar
+  // la devolución anterior — cada edición queda en la cola de Gaby).
   const postReviewEdit = Boolean(existing)
 
   const submission = await prisma.moduleItemSubmission.upsert({
@@ -978,6 +971,96 @@ student.get("/module-items/:itemId/dupla/:coachId", async (c) => {
 })
 
 /**
+ * GET /student/dupla/:coachId/all
+ * Everything the dupla partner has handed in across the CIC: every completed
+ * test (as a coach-as-coachee) and every ENTREGA submission. Used by the DUPLA
+ * card to let the coach see their partner's Plan de Negocios, Collage,
+ * Objetivo de Carrera, Plan de Acción, etc., not just the one test tied to
+ * the current card.
+ *
+ * Scoped to peers of the same CIC via `duplaCandidates`.
+ */
+student.get("/dupla/:coachId/all", async (c) => {
+  const user = c.get("user")
+  const coachId = c.req.param("coachId")
+
+  const peers = await duplaCandidates(user.id)
+  const peer = peers.find((p) => p.id === coachId)
+  if (!peer) {
+    return c.json({ error: "No podés ver los entregables de esta persona" }, 403)
+  }
+
+  // Tests the dupla has taken on their own coach-as-coachee client.
+  const theirClient = await prisma.client.findUnique({ where: { userId: coachId } })
+  const assignments = theirClient
+    ? await prisma.testAssignment.findMany({
+        where: { clientId: theirClient.id, completedAt: { not: null } },
+        include: { response: true, test: { select: { type: true } } },
+        orderBy: { completedAt: "desc" },
+      })
+    : []
+
+  const tests = assignments
+    .filter((a) => a.response)
+    .map((a) => ({
+      assignmentId: a.id,
+      testType: a.test.type,
+      completedAt: a.completedAt,
+      responses: a.response!.responses,
+    }))
+
+  // ENTREGAs the dupla has handed in. Only in modules the current coach can
+  // also see (released to any shared cohort) — we don't want to leak work from
+  // a cohort they're not part of.
+  const access = await getCoachAccess(user.id)
+  const submissions = await prisma.moduleItemSubmission.findMany({
+    where: {
+      userId: coachId,
+      item: {
+        kind: "ENTREGA",
+        module: {
+          published: true,
+          releases: {
+            some: {
+              released: true,
+              cohortId: { in: access.cohortIds },
+              OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
+            },
+          },
+        },
+      },
+    },
+    orderBy: { submittedAt: "desc" },
+    select: {
+      id: true,
+      text: true,
+      submittedAt: true,
+      item: {
+        select: {
+          id: true,
+          title: true,
+          module: { select: { id: true, title: true } },
+        },
+      },
+    },
+  })
+
+  return c.json({
+    coach: { id: peer.id, name: peer.name },
+    tests,
+    submissions: submissions.map((s) => ({
+      id: s.id,
+      itemId: s.item.id,
+      itemTitle: s.item.title,
+      moduleId: s.item.module.id,
+      moduleTitle: s.item.module.title,
+      text: s.text,
+      submittedAt: s.submittedAt,
+    })),
+  })
+})
+
+/**
  * PUT /student/module-items/:itemId/registro
  * Write up (or correct) the session this coach ran. Handing it in freezes it
  * until Gaby reviews it, and her devolución unfreezes it: saving a correction
@@ -1017,13 +1100,8 @@ student.put("/module-items/:itemId/registro", async (c) => {
   const existing = await prisma.practiceRecord.findUnique({
     where: { itemId_coachId: { itemId, coachId: user.id } },
   })
-  if (existing && !existing.reviewedAt) {
-    return c.json(
-      { error: "Está esperando la devolución de Gaby — vas a poder editarlo cuando la revise" },
-      409,
-    )
-  }
-  // Correcting it after a devolución: reopens the record for a new one.
+  // Correcting it: reopens the record (cada edición vuelve a la cola de
+  // Gaby, no hay que esperar su devolución anterior).
   const postReviewEdit = Boolean(existing)
 
   const record = await prisma.practiceRecord.upsert({
@@ -1227,7 +1305,7 @@ student.get("/my-tests", async (c) => {
         ...a,
         revoked: a.completedAt === null && Boolean(a.accessRevokedAt),
         feedback: sv ? sv.coachFeedback || sv.supervisorNotes : null,
-        canEdit: sv?.status === "REVIEWED",
+        canEdit: Boolean(a.completedAt),
       }
     })
   )
@@ -1249,7 +1327,7 @@ student.get("/my-tests/:id", async (c) => {
     feedback: assignment.supervision
       ? assignment.supervision.coachFeedback || assignment.supervision.supervisorNotes
       : null,
-    canEdit: assignment.supervision?.status === "REVIEWED",
+    canEdit: Boolean(assignment.completedAt),
   })
 })
 
@@ -1401,7 +1479,7 @@ student.put("/responses/:assignmentId", async (c) => {
     return c.json(updated)
   } catch (e) {
     if (e instanceof PostReviewEditError) {
-      return c.json({ error: e.code, message: e.message }, e.code === "not_reviewed" ? 403 : 409)
+      return c.json({ error: e.code, message: e.message }, 409)
     }
     throw e
   }
