@@ -59,6 +59,26 @@ const FORTALEZAS = [
   "Gratitud","Esperanza","Humor","Espiritualidad",
 ]
 
+const CONTEXTOS = [
+  "La Psicología","La Familia","La Educación","Los medios de Comunicación",
+  "La Salud Pública","Los ancianos","Los Niños","Los Pobres","El Campo",
+  "La Agricultura","La Drogadicción","La delincuencia juvenil","La Salud",
+  "Las Empresas","La Universidad","Las organizaciones Sociales",
+  "El Partido Político","La Iglesia","Los enfermos y desvalidos",
+  "El desarrollo humano","El Barrio","El aprendizaje",
+  "Las potencias del hombre","Los libros","La comida",
+  "Administración de empresas","Los viajes","La sexualidad","Los deportes",
+  "La tecnología","La defensa","El trato a los animales",
+  "Asuntos Internacionales","Proyectos Multiculturales",
+  "Los recursos naturales (agua, viento, energía solar)","Las comunidades",
+  "La exploración del espacio","La exploración de la mente","La literatura",
+  "El arte","La ética","La filosofía","La evaluación","La música",
+  "La arqueología","Las relaciones laborales","El trabajo","La moda",
+  "ONGs","Empresas de Triple Impacto","Energías Renovables","IoT",
+  "Robótica","Diversidad","Género","Minorías","Migraciones","Inclusión",
+  "Criptomonedas","Docencia",
+]
+
 const LEVELS = [
   { key: "especialidad", label: "ESPECIALIDAD", color: "#2D6A4F", points: "40,10 60,10 55,30 45,30", cy: 20, rightX: 57.5 },
   { key: "contextos", label: "CONTEXTOS", color: "#3D8A6A", points: "45,30 55,30 62,50 38,50", cy: 40, rightX: 58.5 },
@@ -120,8 +140,8 @@ const SECTIONS: Section[] = [
     title: "4. CONTEXTOS DE IMPACTO",
     instruction: "¿Al servicio de quién o de qué querés disponer tu tiempo y energía? ¿En qué áreas querés generar impacto?",
     hint: "Pensá en \"los otros a quien querés servir\", NO en tus intereses personales. Ej.: si elegís VIAJAR es porque querés impactar en la gente que viaja — no porque quieras viajar vos. Después vas a elegir 3.",
-    helpers: [],
-    helperLabel: null,
+    helpers: CONTEXTOS,
+    helperLabel: "Ver lista de contextos →",
     placeholder: "Ej.: educación, salud mental, medio ambiente...",
   },
 ]
