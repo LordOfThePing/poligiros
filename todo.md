@@ -35,21 +35,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
-- [ ] **Pirámide — CONTEXTOS DE IMPACTO sin opciones.** La sección CONTEXTOS
-      del Test #4 Pirámide del Propósito muestra el campo vacío porque no
-      tiene lista de helpers. Agregar la lista oficial (Psicología, Familia,
-      Educación, Medios de Comunicación, Salud Pública, Ancianos, Niños,
-      Pobres, Campo, Agricultura, …, Minorías, Migraciones, Inclusión,
-      Criptomonedas, Docencia).
-- [ ] **Dupla: ver Plan de Negocios, Collage, Objetivo de Carrera y Plan de
-      Acción.** Hoy `/student/module-items/:itemId/dupla/:coacheeId` sólo
-      sirve el test ligado al card. La coach también tiene que poder ver los
-      otros entregables de su dupla para preparar la devolución.
-- [ ] **Edición libre sin supervisión previa.** `applyPostReviewEdit` exige
-      `supervision.status === "REVIEWED"`. Quitar ese gate — coach y coachee
-      pueden editar siempre, incluso antes de que Gaby revise, incluso varias
-      veces en el mismo round. Aplica a tests, REGISTROs y ENTREGAs. También
-      a comentarios de bibliografía / cualquier ejercicio.
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
