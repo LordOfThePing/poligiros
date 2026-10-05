@@ -182,6 +182,7 @@ export default function TokenPage() {
     const formWidth =
       data.testType === "MODELO_NEGOCIO" ? "max-w-6xl" :
       data.testType === "TABLERO_IDEAS" ? "max-w-5xl" :
+      data.testType === "PIRAMIDE_PROPOSITO" ? "max-w-5xl" :
       "max-w-2xl"
     return (
       <div className="min-h-dvh bg-brand-bg py-8">

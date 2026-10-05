@@ -60,10 +60,13 @@ export default function StudentTakeTestPage() {
     </Link>
   )
 
-  // Modelo de Negocio renders a wide canvas; other tests stay narrow.
+  // Modelo de Negocio renders a wide canvas; Pirámide y Tablero usan un
+  // layout de 2 columnas que apretado en max-w-2xl deja la pirámide/los
+  // tableros microscópicos (o invisibles). El resto queda angosto.
   const widthClass =
     assignment.test.type === "MODELO_NEGOCIO" ? "max-w-6xl" :
     assignment.test.type === "TABLERO_IDEAS" ? "max-w-5xl" :
+    assignment.test.type === "PIRAMIDE_PROPOSITO" ? "max-w-5xl" :
     "max-w-2xl"
 
   const feedbackPanel = assignment.feedback ? (
