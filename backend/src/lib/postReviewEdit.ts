@@ -3,12 +3,10 @@ import { prisma } from "./prisma.js"
 import { notifyTarget } from "./notify.js"
 import { sendSupervisionSubmittedEmail } from "./email.js"
 
-export type PostReviewEditErrorCode = "not_completed" | "not_reviewed" | "pending_review"
+export type PostReviewEditErrorCode = "not_completed"
 
 const MESSAGES: Record<PostReviewEditErrorCode, string> = {
   not_completed: "El test todavía no fue completado.",
-  not_reviewed: "Recién se puede editar después de que la supervisora lo revise.",
-  pending_review: "Está esperando la revisión de la supervisora — vas a poder editarlo cuando lo revise.",
 }
 
 export class PostReviewEditError extends Error {
@@ -18,11 +16,11 @@ export class PostReviewEditError extends Error {
 }
 
 /**
- * Coach and coachee may fix a test's answers as many times as they like, but
- * only while the supervision request sits in REVIEWED: saving flips it back to
- * PENDING (and notifies the supervisor), and from then on the result is frozen
- * again until she reviews it. So the cycle is review → edit → review → edit …,
- * never two edits stacked on top of one unreviewed change.
+ * Coach and coachee may fix a test's answers as many times as they like, with
+ * NO wait for the supervisor's devolución in between. Each edit flips the
+ * supervision request to PENDING (if it was REVIEWED) and emails Gaby so she
+ * always sees the latest version. Edits made while it is still PENDING just
+ * update the response — she will read the newest version when she gets to it.
  *
  * `editedAt`/`editedBy` record the LAST edit; `reviewedAt` is never cleared, so
  * the supervision list can still tell a re-review from a first-time one.
@@ -41,29 +39,40 @@ export async function applyPostReviewEdit(
   ])
 
   if (!existingResponse) throw new PostReviewEditError("not_completed")
-  if (!supervision || !supervision.reviewedAt) throw new PostReviewEditError("not_reviewed")
-  if (supervision.status !== "REVIEWED") throw new PostReviewEditError("pending_review")
 
-  const [updated] = await prisma.$transaction([
+  const wasReviewed = supervision?.status === "REVIEWED"
+
+  const ops: Prisma.PrismaPromise<unknown>[] = [
     prisma.testResponse.update({
       where: { assignmentId },
       data: { responses, editedAt: new Date(), editedBy },
     }),
-    prisma.supervisionRequest.update({
-      where: { assignmentId },
-      data: { status: "PENDING" },
-    }),
-  ])
+  ]
+  if (wasReviewed) {
+    ops.push(
+      prisma.supervisionRequest.update({
+        where: { assignmentId },
+        data: { status: "PENDING" },
+      })
+    )
+  }
 
-  const target = await notifyTarget("supervisionRequest")
-  if (target) {
-    sendSupervisionSubmittedEmail(
-      target.to,
-      supervision.student.name,
-      supervision.assignment.client.name,
-      `${supervision.assignment.test.title} (editado tras la revisión)`,
-      target.bcc
-    ).catch(() => {})
+  const [updated] = (await prisma.$transaction(ops)) as [
+    Awaited<ReturnType<typeof prisma.testResponse.update>>,
+    ...unknown[],
+  ]
+
+  if (wasReviewed && supervision) {
+    const target = await notifyTarget("supervisionRequest")
+    if (target) {
+      sendSupervisionSubmittedEmail(
+        target.to,
+        supervision.student.name,
+        supervision.assignment.client.name,
+        `${supervision.assignment.test.title} (editado tras la revisión)`,
+        target.bcc
+      ).catch(() => {})
+    }
   }
 
   return updated

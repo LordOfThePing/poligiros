@@ -234,20 +234,14 @@ export function RegistroCard({
               <Markdown>{item.practice!.feedback}</Markdown>
             </div>
           )}
-          {item.practice!.canEdit ? (
-            <div className="flex items-center gap-3 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi registro
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Al guardar vuelve a Gaby para una nueva devolución.
-              </span>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Mientras espera su devolución no se puede editar.
-            </p>
-          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi registro
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Podés editarlo las veces que quieras — cada edición le vuelve a Gaby.
+            </span>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -425,7 +419,7 @@ export function RegistroCard({
               </>
             ) : (
               <span className="text-xs text-muted-foreground">
-                Al enviarlo queda fijo hasta que Gaby te devuelva
+                Podés editarlo las veces que quieras — cada edición le vuelve a Gaby
               </span>
             )}
           </div>

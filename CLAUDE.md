@@ -114,42 +114,44 @@ editable. The canvas pages render at `max-w-6xl` (the rest stay `max-w-2xl`).
 (supervisor↔coach). `SupervisionRequest.coachFeedback` is shown to the client on
 their results link. Do not surface `supervisorNotes` to clients.
 
-**Post-review edit (repeatable, one round at a time).** Anything the supervisor
-reviews is editable *while her review stands*, as many rounds as it takes, and
-frozen while it waits for her: review → edit → review → edit … Sending something
-back for review is what locks it, so an edit never lands on top of a version she
-has not read.
+**Edición libre, siempre (ya no hay espera por supervisión).** Cualquier
+cosa que la supervisora revisa se puede reeditar en cualquier momento —
+coach y coachee — las veces que haga falta, aunque Gaby todavía no haya
+hecho su devolución. Cada edición vuelve al tablero de ella con el estado
+PENDING / `reviewedAt: null`, para que siempre lea la versión más nueva.
 
-For tests, `applyPostReviewEdit` (`backend/src/lib/postReviewEdit.ts`) is the
-single gate: it requires `supervision.status === "REVIEWED"` (a `PENDING` request
-throws `pending_review`), then stamps `TestResponse.editedAt`/`editedBy`
-(`"coach"` | `"coachee"` — the LAST edit) and flips the request back to `PENDING`
-so the supervisor sees it again. `reviewedAt` itself is never cleared, so the
-supervision list can still tell a re-review apart from a first-time one. Both edit routes funnel through it: `PUT
-/student/responses/:assignmentId` (coach, `frontend/src/pages/student/ClientDetailPage.tsx`)
-and `PUT /client/t/:token/edit` (coachee, `frontend/src/pages/client/TokenPage.tsx`
-— `GET /client/t/:token` reports eligibility as `canEdit`). Both reuse the
-generic per-field `EditableResult` editor (`frontend/src/components/EditableResult.tsx`),
-same as the supervisor's own edit UI. Anclas is the exception to "edit the
-fields": its editor re-asks the 40 statements and recomputes `scores`/`ranking`
-(reapplying the bonus +4), because those and `aiInsight` are derived — none of
-them is hand-editable. The coach's route also covers their **own**
-module self-test (`client.userId == coach`): `GET /student/my-tests/:id` reports
-`canEdit` + Gaby's `feedback`, and `frontend/src/pages/student/TakeTestPage.tsx`
-offers the same one-shot editor on the read-only results. The supervisor's own edit route (`PUT
-/supervisor/responses/:assignmentId`) is intentionally NOT gated — editing is
-how they perform the review itself.
+For tests, `applyPostReviewEdit` (`backend/src/lib/postReviewEdit.ts`) stamps
+`TestResponse.editedAt`/`editedBy` (`"coach"` | `"coachee"` — the LAST edit)
+y, si la supervisión estaba en `REVIEWED`, la vuelve a `PENDING` y manda el
+mail; si estaba en `PENDING` no toca el estado (ya está en la cola).
+`reviewedAt` nunca se limpia, así la lista de supervisión distingue una
+re-revisión de una primera revisión. Both edit routes funnel through it:
+`PUT /student/responses/:assignmentId` (coach,
+`frontend/src/pages/student/ClientDetailPage.tsx`) and `PUT /client/t/:token/edit`
+(coachee, `frontend/src/pages/client/TokenPage.tsx` — `GET /client/t/:token`
+reports eligibility as `canEdit`, hoy siempre `true` para un test completado).
+Both reuse the generic per-field `EditableResult` editor
+(`frontend/src/components/EditableResult.tsx`), same as the supervisor's own
+edit UI. Anclas is the exception to "edit the fields": its editor re-asks the
+40 statements and recomputes `scores`/`ranking` (reapplying the bonus +4),
+because those and `aiInsight` are derived — none of them is hand-editable.
+The coach's route also covers their **own** module self-test
+(`client.userId == coach`): `GET /student/my-tests/:id` reports `canEdit` +
+Gaby's `feedback`, and `frontend/src/pages/student/TakeTestPage.tsx` offers
+the editor on the read-only results. The supervisor's own edit route
+(`PUT /supervisor/responses/:assignmentId`) is intentionally NOT gated —
+editing is how they perform the review itself.
 
-**REGISTRO and ENTREGA cards follow the same cycle**, with `reviewedAt` playing
-the part `status` plays for tests: handing one in freezes it (`PUT
-/student/module-items/:itemId/registro` and `.../submission` answer 409 while
-`reviewedAt` is null), and Gaby's devolución unfreezes it. Saving a correction
-stamps `editedAt` and **clears `reviewedAt`**, which is what returns the row to
-her pending queue — both supervisor lists filter on `reviewedAt: null` — and
-re-sends the "nueva entrega" mail. The cards
-(`frontend/src/components/modules/RegistroCard.tsx`, and the ENTREGA branch of
-`ProgramaPage`) read `canEdit` from `/student/modules`; the supervisor's Entregas
-rows show an "Editado tras tu devolución" badge off `editedAt`.
+**REGISTRO y ENTREGA siguen el mismo flujo.** `PUT
+/student/module-items/:itemId/registro` y `.../submission` aceptan correcciones
+en cualquier momento (ya no responden 409 cuando `reviewedAt` es null); cada
+save stampa `editedAt`, limpia `reviewedAt` para devolver la fila a la cola
+pendiente de Gaby — ambas listas filtran por `reviewedAt: null` — y re-manda
+el mail de "nueva entrega". Las cards
+(`frontend/src/components/modules/RegistroCard.tsx` y la rama ENTREGA de
+`ProgramaPage`) leen `canEdit` de `/student/modules` (siempre `true` cuando
+ya hay una entrega), y las filas de Entregas de la supervisora muestran el
+badge "Editado tras tu devolución" cuando `editedAt` está seteado.
 
 ## TestResponse JSON shapes
 

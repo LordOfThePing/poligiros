@@ -550,20 +550,14 @@ export default function ProgramaPage() {
                               <Markdown>{current.item.submission.feedback}</Markdown>
                             </div>
                           )}
-                          {current.item.submission.canEdit ? (
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <Button variant="outline" size="sm" onClick={() => setEditingEntrega(true)}>
-                                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi entrega
-                              </Button>
-                              <span className="text-xs text-muted-foreground">
-                                Al guardar vuelve a Gaby para una nueva devolución.
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              Mientras espera su devolución no se puede editar.
-                            </p>
-                          )}
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <Button variant="outline" size="sm" onClick={() => setEditingEntrega(true)}>
+                              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi entrega
+                            </Button>
+                            <span className="text-xs text-muted-foreground">
+                              Podés editarla las veces que quieras — cada edición le vuelve a Gaby.
+                            </span>
+                          </div>
                         </>
                       ) : (
                         <>
@@ -608,8 +602,8 @@ export default function ProgramaPage() {
                             {current.item.submission ? "Guardar cambios" : "Enviar entrega"}
                           </Button>
                           <p className="text-xs text-muted-foreground">
-                            Al enviarla queda fija hasta que Gaby te devuelva. Vas a poder ver las
-                            respuestas de tus compañeros más abajo.
+                            Podés editarla las veces que quieras — cada edición se la vuelve a
+                            mandar a Gaby. Más abajo ves las respuestas de tus compañeros.
                           </p>
                         </>
                       )}

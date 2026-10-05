@@ -128,8 +128,8 @@ export default function TokenPage() {
               ← Volver a mis resultados
             </button>
             <p className="text-xs text-muted-foreground">
-              Al guardar, tu coach y su supervisora lo revisan de nuevo. Mientras esperás esa
-              revisión no vas a poder editarlo; cuando la reciba, sí.
+              Podés editar las veces que quieras. Cada vez que guardes, tu coach y su supervisora
+              reciben la versión más nueva.
             </p>
             <EditableResult
               testType={data.testType}

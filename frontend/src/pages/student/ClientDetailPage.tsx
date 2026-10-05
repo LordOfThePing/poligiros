@@ -384,8 +384,8 @@ export default function ClientDetailPage() {
             <DialogTitle className="font-serif">Editar resultado — {resultModal?.title}</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">
-            Al guardar, el resultado vuelve a supervisión para una nueva revisión y queda fijo hasta
-            que la supervisora lo revise. Después de esa revisión se puede volver a editar.
+            Podés editar las veces que quieras. Cada edición vuelve a supervisión y le avisa a Gaby
+            para que lea la versión más nueva.
           </p>
           {resultModal && (
             <EditableResult

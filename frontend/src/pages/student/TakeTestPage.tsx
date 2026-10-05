@@ -84,8 +84,8 @@ export default function StudentTakeTestPage() {
           ← Volver a mis resultados
         </button>
         <p className="text-xs text-muted-foreground">
-          Al guardar, vuelve a supervisión para una nueva revisión y queda fijo hasta que Gaby lo
-          revise. Después de esa revisión lo vas a poder editar otra vez.
+          Podés editar las veces que quieras — cada edición vuelve a supervisión para que Gaby
+          lea la versión más nueva.
         </p>
         {feedbackPanel}
         <EditableResult

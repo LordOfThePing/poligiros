@@ -109,9 +109,9 @@ client.get("/t/:token", async (c) => {
     coachFeedback: assignment.supervision?.coachFeedback ?? null,
     completedAt: assignment.completedAt,
     clientName: assignment.client.name,
-    // Editable while the supervision sits reviewed; a saved edit reopens it and
-    // freezes the result again until she reviews it (see applyPostReviewEdit).
-    canEdit: assignment.supervision?.status === "REVIEWED",
+    // Siempre editable: cada edición vuelve al tablero de Gaby — ya no hace
+    // falta esperar su devolución (ver applyPostReviewEdit).
+    canEdit: true,
   })
 })
 
@@ -199,9 +199,9 @@ client.post("/t/:token/ai-ideas", async (c) => {
 
 /**
  * PUT /client/t/:token/edit
- * The coachee's single post-review edit of an already-completed assignment —
- * see applyPostReviewEdit: only once, only after the supervisor's first
- * review. Reopens the supervision request for a second look.
+ * The coachee may fix their already-completed assignment as many times as they
+ * like — see applyPostReviewEdit. Each save stamps `editedAt`/`editedBy` and
+ * (if the supervisor had already reviewed it) sends it back for a re-review.
  */
 client.put("/t/:token/edit", async (c) => {
   const token = c.req.param("token")
@@ -223,7 +223,7 @@ client.put("/t/:token/edit", async (c) => {
     return c.json(updated)
   } catch (e) {
     if (e instanceof PostReviewEditError) {
-      return c.json({ error: e.code, message: e.message }, e.code === "not_reviewed" ? 403 : 409)
+      return c.json({ error: e.code, message: e.message }, 409)
     }
     throw e
   }
