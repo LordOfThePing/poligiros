@@ -36,5 +36,8 @@ COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3001
 
-# Apply migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Apply migrations, upsert the test catalog (idempotent — never destructive),
+# then start. Running bootstrap on every boot keeps new TestType enum values
+# auto-synced to the Test rows the UI reads, so adding a test no longer needs
+# a separate `make prod-bootstrap` after deploy.
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/bootstrap.ts && node dist/index.js"]

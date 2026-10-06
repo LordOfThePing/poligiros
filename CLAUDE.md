@@ -284,8 +284,10 @@ Live URLs: frontend `https://apppoligiros.flynnpedroa.engineer`, API
   make prod-logs-tunnel # "Registered tunnel connection" = tunnel is up
   ```
 
-> `prisma migrate deploy` runs automatically in the container's `CMD` on every
-> boot, so `backend/prisma/migrations/` **must stay committed**.
+> `prisma migrate deploy` **and** `db:bootstrap` run automatically in the
+> container's `CMD` on every boot, so `backend/prisma/migrations/` **must stay
+> committed** and adding a new `TestType` just means pushing a migration + a
+> catalog row in `bootstrap.ts` — no manual step on the server after the deploy.
 >
 > `npm run db:seed` (`make prod-seed-danger`) **wipes every table** — it is demo
 > data only. On a live DB use `db:bootstrap` / `db:set-supervisor`, which upsert.
