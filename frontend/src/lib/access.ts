@@ -10,6 +10,9 @@ export type TestType =
   | "PIRAMIDE_PROPOSITO"
   | "MODELO_NEGOCIO"
   | "TAREAS_EXPLORACION"
+  | "COLLAGE"
+  | "OBJETIVO_CARRERA"
+  | "PLAN_ACCION"
 
 export type CoachAccess = {
   cohortIds: string[]

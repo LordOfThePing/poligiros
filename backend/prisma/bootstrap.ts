@@ -59,6 +59,24 @@ const TEST_CATALOG = [
     description: "Construí tu propósito profesional de forma estructurada.",
     orderIndex: 6,
   },
+  {
+    type: TestType.COLLAGE,
+    title: "Collage",
+    description: "Subí tu collage de valores / inspiración armado en Canva (PDF o imagen).",
+    orderIndex: 7,
+  },
+  {
+    type: TestType.OBJETIVO_CARRERA,
+    title: "Objetivo de Carrera",
+    description: "Diseñá tu objetivo de carrera: modalidad, rol, área, organización, rubro, condiciones y valores.",
+    orderIndex: 8,
+  },
+  {
+    type: TestType.PLAN_ACCION,
+    title: "Plan de Acción",
+    description: "Armá tu estrategia, tu objetivo general y los objetivos específicos con acciones, recursos, tiempos y soporte.",
+    orderIndex: 9,
+  },
 ]
 
 async function main() {

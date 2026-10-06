@@ -8,7 +8,7 @@ import {
   sendTestAssignedToClient,
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
-import { latestTableroIdea } from "./client.js"
+import { latestTableroIdea, latestPiramideData, latestObjetivoData } from "./client.js"
 import { getCoachAccess } from "../lib/cohort.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
 import { notifyTarget } from "../lib/notify.js"
@@ -1319,10 +1319,18 @@ student.get("/my-tests/:id", async (c) => {
   // Modelo de Negocio pre-fills the idea from the coach's latest Tablero.
   const prefillIdea =
     assignment.test.type === "MODELO_NEGOCIO" ? await latestTableroIdea(assignment.clientId) : undefined
+  // Objetivo de Carrera pre-fills rol + valores desde la Pirámide (editable).
+  const prefillPiramide =
+    assignment.test.type === "OBJETIVO_CARRERA" ? await latestPiramideData(assignment.clientId) : undefined
+  // Plan de Acción pre-fills el objetivo general desde Objetivo de Carrera.
+  const prefillObjetivo =
+    assignment.test.type === "PLAN_ACCION" ? await latestObjetivoData(assignment.clientId) : undefined
   return c.json({
     ...assignment,
     revoked: assignment.completedAt === null && Boolean(assignment.accessRevokedAt),
     prefillIdea,
+    prefillPiramide,
+    prefillObjetivo,
     // Gaby's return on the coach's own test, and their one post-review edit.
     feedback: assignment.supervision
       ? assignment.supervision.coachFeedback || assignment.supervision.supervisorNotes
@@ -1411,6 +1419,51 @@ async function openSupervisionForOwnTest(userId: string, assignmentId: string) {
     ).catch(() => {})
   }
 }
+
+/**
+ * POST /student/my-tests/:id/upload
+ * Mismo contrato que `/client/t/:token/upload`: subida de archivo para el
+ * test de Collage, el componente embute la URL en el payload de submit.
+ */
+student.post("/my-tests/:id/upload", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const assignment = await loadMyAssignment(user.id, id)
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  if (assignment.test.type !== "COLLAGE") return c.json({ error: "unsupported_test" }, 400)
+  if (assignment.accessRevokedAt) return c.json({ error: "test_revoked" }, 403)
+
+  if (!isR2Configured()) {
+    return c.json({ error: "La subida de archivos no está configurada (falta CLOUDFLARE_R2_*)." }, 503)
+  }
+
+  const { buildCollageKey, checkUpload } = await import("../lib/uploads.js")
+
+  const form = await c.req.formData()
+  const file = form.get("file")
+  if (!(file instanceof File)) return c.json({ error: "No se recibió ningún archivo" }, 400)
+
+  const check = checkUpload(file.name, file.size)
+  if (!check.ok) return c.json({ error: check.error }, 400)
+
+  const key = buildCollageKey(assignment.id, file.name, check.extension)
+  const buffer = Buffer.from(await file.arrayBuffer())
+
+  let url: string
+  try {
+    url = await uploadToR2(key, buffer, check.mimeType)
+  } catch {
+    return c.json({ error: "No se pudo subir el archivo. Revisá la configuración de R2." }, 502)
+  }
+
+  return c.json({
+    fileUrl: url,
+    fileKey: key,
+    fileName: file.name,
+    mimeType: check.mimeType,
+    sizeBytes: file.size,
+  })
+})
 
 /** POST /student/my-tests/:id/ai-insight */
 student.post("/my-tests/:id/ai-insight", async (c) => {

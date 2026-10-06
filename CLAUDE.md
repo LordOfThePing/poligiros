@@ -101,6 +101,16 @@ Estímulos exercise, with its own consigna intro screen — assignable like any
 other test, including as a module item (kind `TEST`, `DUPLA` or `REGISTRO`).
 `POST /student/assignments/:id/resend` mints a fresh token + resets `completeBy`.
 
+**Prefills entre tests** — algunos tests leen el resultado más reciente de otro para
+pre-llenar campos (siempre editables, con un aviso de dónde salió):
+- `MODELO_NEGOCIO` ← `TABLERO_IDEAS` (idea elegida + brainstorm), vía `latestTableroData()`.
+- `OBJETIVO_CARRERA` ← `PIRAMIDE_PROPOSITO` (`rol` + `valores`), vía `latestPiramideData()`.
+- `PLAN_ACCION` ← `OBJETIVO_CARRERA` (`sintesis` → objetivo general), vía `latestObjetivoData()`.
+
+Los tres helpers viven en `backend/src/routes/client.ts` (exportados) y los consume
+tanto `GET /client/t/:token` como `GET /student/my-tests/:id` para que el form-state
+los devuelva con un nombre predecible (`prefillPiramide`, `prefillObjetivo`, etc.).
+
 `MODELO_NEGOCIO` ("Modelo de Negocio") is a normal assignable test like the others
 (its own catalog row + magic link), not a post-test add-on. Its form
 (`frontend/src/pages/client/tests/ModeloNegocioTest.tsx`) lets the client pick a
@@ -164,6 +174,9 @@ different shape:
 | `TABLERO_IDEAS` | `saber[]`, `saberPassion[]` (parallel bool), `saberRanking[]` (strings), `querer[]`, `quererRanking[]`, `sonar[]`, `sonarRanking[]`, `brainstormIdeas[]`, `aiIdeas[]`, `selectedIdea` |
 | `PIRAMIDE_PROPOSITO` | `rol`, `valores`, `fortalezas`, `contextos`, `especialidad`, `propositoFinal` |
 | `MODELO_NEGOCIO` | `kind` (`"CANVAS"` \| `"JOB"`), `selectedIdea`, `content{}` (keyed by canvas-block or job-field key) |
+| `COLLAGE` | `fileUrl`, `fileKey`, `fileName`, `mimeType`, `sizeBytes`, `notes?` — el blob vive en R2 (prefix `collage/<assignmentId>/…`), se sube vía `POST /client/t/:token/upload` o `POST /student/my-tests/:id/upload` **antes** de hacer submit |
+| `OBJETIVO_CARRERA` | `puesto`, `tareas`, `area`, `tipoOrganizacion`, `rubro`, `condiciones`, `valores`, `sintesis` (la frase final auto-armada) |
+| `PLAN_ACCION` | `estrategia`, `objetivoGeneral`, `objetivos[]` donde cada uno es `{ titulo, accion, recursos, tiempo, soporte }` |
 
 The supervisor's `ResponseViewer` (`frontend/src/pages/supervisor/SupervisionDetailPage.tsx`)
 branches on `testType`. The Tablero branch prefers the `*Ranking` arrays and

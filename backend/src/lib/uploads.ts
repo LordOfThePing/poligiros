@@ -74,3 +74,17 @@ export function buildObjectKey(itemId: string, fileName: string, extension: stri
 
   return `modules/${itemId}/${Date.now()}-${base || "archivo"}.${extension}`
 }
+
+/** Object key for a coachee's test upload (hoy solo lo usa Collage). */
+export function buildCollageKey(assignmentId: string, fileName: string, extension: string): string {
+  const base = fileName
+    .slice(0, fileName.length - extension.length - 1)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+
+  return `collage/${assignmentId}/${Date.now()}-${base || "collage"}.${extension}`
+}

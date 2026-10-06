@@ -6,10 +6,20 @@
 // Strip any trailing slash so `${base}/submit` never becomes `//submit`.
 const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
+export type UploadResult = {
+  fileUrl: string
+  fileKey: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+}
+
 export interface TestApi {
   submit(responses: unknown): Promise<Response>
   aiInsight(payload: unknown): Promise<{ insight: string | null }>
   aiIdeas(payload: unknown): Promise<{ ideas: string[] }>
+  /** Multipart upload — hoy sólo lo usa Collage. */
+  uploadFile(file: File): Promise<{ ok: true; data: UploadResult } | { ok: false; error: string }>
 }
 
 function post(body: unknown): RequestInit {
@@ -38,6 +48,24 @@ function makeApi(base: string): TestApi {
         return res.ok ? await res.json() : { ideas: [] }
       } catch {
         return { ideas: [] }
+      }
+    },
+    uploadFile: async (file) => {
+      try {
+        const fd = new FormData()
+        fd.append("file", file)
+        const res = await fetch(`${base}/upload`, {
+          method: "POST",
+          credentials: "include",
+          body: fd,
+        })
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({ error: "" }))) as { error?: string }
+          return { ok: false, error: j.error || "No se pudo subir el archivo" }
+        }
+        return { ok: true, data: (await res.json()) as UploadResult }
+      } catch {
+        return { ok: false, error: "Error de red" }
       }
     },
   }

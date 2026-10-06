@@ -6,6 +6,9 @@ import { formatShortDate } from "@/lib/date"
 import { AnclasResult } from "@/components/results/AnclasResult"
 import { RawDataView } from "@/components/RawDataView"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
+import { CollageResult } from "@/components/results/CollageResult"
+import { ObjetivoCarreraResult } from "@/components/results/ObjetivoCarreraResult"
+import { PlanAccionResult } from "@/components/results/PlanAccionResult"
 import { PV_SECTIONS } from "@/lib/planVital"
 import { DownloadResultPdf } from "@/components/DownloadResultPdf"
 
@@ -110,6 +113,10 @@ export default function ResultsView({
 
       {/* Modelo de Negocio — read-only canvas / job research */}
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioResult responses={responses} />}
+
+      {testType === "COLLAGE" && <CollageResult responses={responses} />}
+      {testType === "OBJETIVO_CARRERA" && <ObjetivoCarreraResult responses={responses} />}
+      {testType === "PLAN_ACCION" && <PlanAccionResult responses={responses} />}
 
       {/* Tareas de exploración — post-Tablero tasks */}
       {testType === "TAREAS_EXPLORACION" && (

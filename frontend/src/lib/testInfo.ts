@@ -14,6 +14,9 @@ export const TEST_TITLES: Record<string, string> = {
   MODELO_NEGOCIO: "Desarrollo de idea de negocio/proyecto/trabajo",
   PLAN_VITAL: "Plan Vital Integral®",
   PIRAMIDE_PROPOSITO: "Pirámide del Propósito",
+  COLLAGE: "Collage",
+  OBJETIVO_CARRERA: "Objetivo de Carrera",
+  PLAN_ACCION: "Plan de Acción",
 }
 
 /** Canonical display order. Insertion order of TEST_TITLES is the order. */

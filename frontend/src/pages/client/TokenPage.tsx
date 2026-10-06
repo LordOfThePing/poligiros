@@ -8,6 +8,9 @@ import PiramideTest from "./tests/PiramideTest"
 import { ModeloNegocioTest } from "./tests/ModeloNegocioTest"
 import PlanVitalTest from "./tests/PlanVitalTest"
 import TareasExploracionTest from "./tests/TareasExploracionTest"
+import CollageTest from "./tests/CollageTest"
+import ObjetivoCarreraTest from "./tests/ObjetivoCarreraTest"
+import PlanAccionTest from "./tests/PlanAccionTest"
 import ResultsView from "./ResultsView"
 import { EditableResult } from "@/components/EditableResult"
 import { useToast } from "@/hooks/use-toast"
@@ -17,7 +20,16 @@ const API_URL = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
 
 type TokenState =
   | { state: "loading" }
-  | { state: "form"; testType: string; assignmentId: string; title: string; selectedIdea?: string; prefillIdeas?: string[] }
+  | {
+      state: "form"
+      testType: string
+      assignmentId: string
+      title: string
+      selectedIdea?: string
+      prefillIdeas?: string[]
+      prefillPiramide?: { rol: string; valores: string; propositoFinal: string }
+      prefillObjetivo?: { objetivoGeneral: string }
+    }
   | {
       state: "results"
       testType: string
@@ -205,7 +217,24 @@ export default function TokenPage() {
           {data.testType === "TAREAS_EXPLORACION" && (
             <TareasExploracionTest api={api} assignmentId={data.assignmentId} />
           )}
-          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION"].includes(data.testType) && (
+          {data.testType === "COLLAGE" && (
+            <CollageTest api={api} assignmentId={data.assignmentId} />
+          )}
+          {data.testType === "OBJETIVO_CARRERA" && (
+            <ObjetivoCarreraTest
+              api={api}
+              assignmentId={data.assignmentId}
+              prefillPiramide={data.prefillPiramide}
+            />
+          )}
+          {data.testType === "PLAN_ACCION" && (
+            <PlanAccionTest
+              api={api}
+              assignmentId={data.assignmentId}
+              prefillObjetivo={data.prefillObjetivo}
+            />
+          )}
+          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION", "COLLAGE", "OBJETIVO_CARRERA", "PLAN_ACCION"].includes(data.testType) && (
             <div className="text-center py-16">
               <h2 className="font-serif text-2xl">{data.title}</h2>
               <p className="text-muted-foreground mt-2">Este tipo de test no está disponible en este momento.</p>

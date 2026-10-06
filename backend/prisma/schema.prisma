@@ -24,6 +24,12 @@ enum TestType {
   MODELO_NEGOCIO
   /// "Tareas de exploración" — a separate post-Tablero task (item 9).
   TAREAS_EXPLORACION
+  /// Collage de valores / inspiración armado en Canva — el coachee sube el PDF o imagen.
+  COLLAGE
+  /// Objetivo de carrera (Gaby Kyriazis) — modalidad, rol, área, organización, rubro, condiciones, valores.
+  OBJETIVO_CARRERA
+  /// Plan de acción — estrategia + objetivo general + N objetivos (acción, recursos, tiempo, soporte).
+  PLAN_ACCION
 }
 
 enum SupervisionStatus {

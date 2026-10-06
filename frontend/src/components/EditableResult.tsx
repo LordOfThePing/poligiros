@@ -45,6 +45,9 @@ export function EditableResult({
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioEditor data={data} setField={setField} />}
       {testType === "PLAN_VITAL" && <PlanVitalEditor data={data} setField={setField} />}
       {testType === "TAREAS_EXPLORACION" && <TareasExploracionEditor data={data} setField={setField} />}
+      {testType === "COLLAGE" && <CollageEditor data={data} setField={setField} />}
+      {testType === "OBJETIVO_CARRERA" && <ObjetivoCarreraEditor data={data} setField={setField} />}
+      {testType === "PLAN_ACCION" && <PlanAccionEditor data={data} setField={setField} />}
       <Button onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
         <Save className="h-4 w-4 mr-2" /> {saving ? "Guardando..." : "Guardar cambios"}
       </Button>
@@ -277,6 +280,210 @@ function PiramideEditor({ data, setField }: { data: Data; setField: (k: string, 
           <Textarea value={data[f] ?? ""} onChange={(e) => setField(f, e.target.value)} className="text-sm min-h-[60px]" />
         </div>
       ))}
+    </div>
+  )
+}
+
+// Collage: no se re-sube un archivo nuevo desde el editor de EditableResult —
+// el editor sólo permite corregir el nombre del archivo y las notas que lo
+// acompañan. Para cambiar el PDF/imagen, re-asignar el test es más limpio
+// que inyectar un endpoint de upload en un componente genérico que no sabe
+// de token/sesión.
+function CollageEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  const fileUrl = typeof data.fileUrl === "string" ? data.fileUrl : ""
+  const fileName = typeof data.fileName === "string" ? data.fileName : ""
+  return (
+    <div className="space-y-3">
+      {fileUrl && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+          Archivo subido:{" "}
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand-accent hover:underline"
+          >
+            {fileName || "ver archivo"} ↗
+          </a>
+          <p className="mt-1 italic">
+            Para cambiar el archivo re-asigná el test — este editor sólo corrige
+            el nombre y las notas.
+          </p>
+        </div>
+      )}
+      <div className="space-y-1">
+        <Label className="text-xs">Nombre del archivo</Label>
+        <Input
+          value={data.fileName ?? ""}
+          onChange={(e) => setField("fileName", e.target.value)}
+          className="text-sm"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Notas</Label>
+        <Textarea
+          value={data.notes ?? ""}
+          onChange={(e) => setField("notes", e.target.value)}
+          className="text-sm min-h-[80px]"
+        />
+      </div>
+    </div>
+  )
+}
+
+const OBJETIVO_FIELDS: { key: string; label: string; multiline?: boolean }[] = [
+  { key: "puesto", label: "Puesto / Rol / Función" },
+  { key: "tareas", label: "Tareas", multiline: true },
+  { key: "area", label: "Área" },
+  { key: "tipoOrganizacion", label: "Tipo de organización / Negocio" },
+  { key: "rubro", label: "Rubro / Nicho" },
+  { key: "condiciones", label: "Condiciones de satisfacción", multiline: true },
+  { key: "valores", label: "Valores centrales" },
+]
+
+function ObjetivoCarreraEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  return (
+    <div className="space-y-3">
+      {OBJETIVO_FIELDS.map((f) => (
+        <div key={f.key} className="space-y-1">
+          <Label className="text-xs">{f.label}</Label>
+          {f.multiline ? (
+            <Textarea
+              value={data[f.key] ?? ""}
+              onChange={(e) => setField(f.key, e.target.value)}
+              className="text-sm min-h-[70px]"
+            />
+          ) : (
+            <Input
+              value={data[f.key] ?? ""}
+              onChange={(e) => setField(f.key, e.target.value)}
+              className="text-sm"
+            />
+          )}
+        </div>
+      ))}
+      <div className="space-y-1">
+        <Label className="text-xs">Síntesis (frase final — regenerá a mano si corregís los campos)</Label>
+        <Textarea
+          value={data.sintesis ?? ""}
+          onChange={(e) => setField("sintesis", e.target.value)}
+          className="text-sm min-h-[90px]"
+        />
+      </div>
+    </div>
+  )
+}
+
+type PlanObjetivo = {
+  titulo?: string
+  accion?: string
+  recursos?: string
+  tiempo?: string
+  soporte?: string
+}
+
+function PlanAccionEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+  const objetivos: PlanObjetivo[] = Array.isArray(data.objetivos) ? data.objetivos : []
+  const setObjetivo = (i: number, patch: PlanObjetivo) => {
+    setField(
+      "objetivos",
+      objetivos.map((o, idx) => (idx === i ? { ...o, ...patch } : o)),
+    )
+  }
+  const addObjetivo = () =>
+    setField("objetivos", [
+      ...objetivos,
+      { titulo: "", accion: "", recursos: "", tiempo: "", soporte: "" },
+    ])
+  const removeObjetivo = (i: number) =>
+    setField("objetivos", objetivos.filter((_, idx) => idx !== i))
+  const moveObjetivo = (i: number, dir: -1 | 1) => {
+    const j = i + dir
+    if (j < 0 || j >= objetivos.length) return
+    const next = [...objetivos]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setField("objetivos", next)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label className="text-xs">Estrategia</Label>
+        <Textarea
+          value={data.estrategia ?? ""}
+          onChange={(e) => setField("estrategia", e.target.value)}
+          className="text-sm min-h-[80px]"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Objetivo general</Label>
+        <Textarea
+          value={data.objetivoGeneral ?? ""}
+          onChange={(e) => setField("objetivoGeneral", e.target.value)}
+          className="text-sm min-h-[80px]"
+        />
+      </div>
+      <div className="space-y-3">
+        <Label className="text-xs">Objetivos específicos</Label>
+        {objetivos.map((o, i) => (
+          <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[0.7rem] uppercase tracking-wide text-brand-accent">
+                Objetivo {i + 1}
+              </span>
+              <div className="flex items-center gap-0.5">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveObjetivo(i, -1)}>
+                  <ChevronUp className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveObjetivo(i, 1)}>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive"
+                  onClick={() => removeObjetivo(i)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <Input
+              value={o.titulo ?? ""}
+              onChange={(e) => setObjetivo(i, { titulo: e.target.value })}
+              placeholder="Título"
+              className="text-sm"
+            />
+            <Textarea
+              value={o.accion ?? ""}
+              onChange={(e) => setObjetivo(i, { accion: e.target.value })}
+              placeholder="¿Qué voy a hacer? (acción)"
+              className="text-sm min-h-[60px]"
+            />
+            <Textarea
+              value={o.recursos ?? ""}
+              onChange={(e) => setObjetivo(i, { recursos: e.target.value })}
+              placeholder="¿Qué necesito? (recursos)"
+              className="text-sm min-h-[60px]"
+            />
+            <Input
+              value={o.tiempo ?? ""}
+              onChange={(e) => setObjetivo(i, { tiempo: e.target.value })}
+              placeholder="Tiempo (fechas)"
+              className="text-sm"
+            />
+            <Input
+              value={o.soporte ?? ""}
+              onChange={(e) => setObjetivo(i, { soporte: e.target.value })}
+              placeholder="Soporte / Feedback"
+              className="text-sm"
+            />
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={addObjetivo}>
+          <Plus className="h-3 w-3 mr-1" /> Agregar objetivo
+        </Button>
+      </div>
     </div>
   )
 }

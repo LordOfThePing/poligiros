@@ -33,6 +33,9 @@ const TEST_LABELS: { type: TestType; label: string }[] = [
   { type: "MODELO_NEGOCIO", label: "Desarrollo de idea de negocio/proyecto/trabajo" },
   { type: "PLAN_VITAL", label: "Plan Vital Integral®" },
   { type: "PIRAMIDE_PROPOSITO", label: "Pirámide del Propósito" },
+  { type: "COLLAGE", label: "Collage" },
+  { type: "OBJETIVO_CARRERA", label: "Objetivo de Carrera" },
+  { type: "PLAN_ACCION", label: "Plan de Acción" },
 ]
 
 export default function PoolsPage() {

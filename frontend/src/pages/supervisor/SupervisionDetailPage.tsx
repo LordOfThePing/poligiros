@@ -13,6 +13,9 @@ import { groupRankedAnchors } from "@/lib/anclas"
 import { RawDataView } from "@/components/RawDataView"
 import { EditableResult } from "@/components/EditableResult"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
+import { CollageResult } from "@/components/results/CollageResult"
+import { ObjetivoCarreraResult } from "@/components/results/ObjetivoCarreraResult"
+import { PlanAccionResult } from "@/components/results/PlanAccionResult"
 import { PV_SECTIONS } from "@/lib/planVital"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -138,6 +141,18 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
 
   if (testType === "MODELO_NEGOCIO") {
     return <ModeloNegocioResult responses={responses} />
+  }
+
+  if (testType === "COLLAGE") {
+    return <CollageResult responses={responses} />
+  }
+
+  if (testType === "OBJETIVO_CARRERA") {
+    return <ObjetivoCarreraResult responses={responses} />
+  }
+
+  if (testType === "PLAN_ACCION") {
+    return <PlanAccionResult responses={responses} />
   }
 
   if (testType === "PLAN_VITAL") {

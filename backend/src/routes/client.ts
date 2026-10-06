@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { sendTestCompletedToCoach, sendTestCompletedToClient } from "../lib/email.js"
 import { applyPostReviewEdit, PostReviewEditError } from "../lib/postReviewEdit.js"
+import { isR2Configured, uploadToR2 } from "../lib/r2.js"
+import { buildCollageKey, checkUpload } from "../lib/uploads.js"
 
 const client = new Hono()
 
@@ -35,6 +37,44 @@ async function latestTableroData(
 export async function latestTableroIdea(clientId: string): Promise<string> {
   const { selectedIdea } = await latestTableroData(clientId)
   return selectedIdea
+}
+
+/**
+ * Pirámide del Propósito data for the Objetivo de Carrera pre-fill: rol
+ * (verbos que me representan) y valores (los tres centrales). Vacío si la
+ * coachee aún no completó la Pirámide — el form lo deja editable igual.
+ */
+export async function latestPiramideData(
+  clientId: string,
+): Promise<{ rol: string; valores: string; propositoFinal: string }> {
+  const piramide = await prisma.testAssignment.findFirst({
+    where: { clientId, test: { type: "PIRAMIDE_PROPOSITO" }, completedAt: { not: null } },
+    orderBy: { completedAt: "desc" },
+    include: { response: true },
+  })
+  const r = (piramide?.response?.responses ?? {}) as Record<string, unknown>
+  return {
+    rol: typeof r.rol === "string" ? r.rol : "",
+    valores: typeof r.valores === "string" ? r.valores : "",
+    propositoFinal: typeof r.propositoFinal === "string" ? r.propositoFinal : "",
+  }
+}
+
+/**
+ * Objetivo de Carrera data for the Plan de Acción pre-fill: la frase objetivo
+ * armada en el test anterior. El coachee la puede editar igual.
+ */
+export async function latestObjetivoData(
+  clientId: string,
+): Promise<{ objetivoGeneral: string }> {
+  const objetivo = await prisma.testAssignment.findFirst({
+    where: { clientId, test: { type: "OBJETIVO_CARRERA" }, completedAt: { not: null } },
+    orderBy: { completedAt: "desc" },
+    include: { response: true },
+  })
+  const r = (objetivo?.response?.responses ?? {}) as Record<string, unknown>
+  const sintesis = typeof r.sintesis === "string" ? r.sintesis : ""
+  return { objetivoGeneral: sintesis }
 }
 
 /** Token state machine helper */
@@ -98,6 +138,14 @@ client.get("/t/:token", async (c) => {
       ...(assignment.test.type === "MODELO_NEGOCIO"
         ? await latestTableroData(assignment.clientId)
         : {}),
+      // Objetivo de Carrera: rol + valores de la Pirámide (siempre editables).
+      ...(assignment.test.type === "OBJETIVO_CARRERA"
+        ? { prefillPiramide: await latestPiramideData(assignment.clientId) }
+        : {}),
+      // Plan de Acción: objetivo general de la última Objetivo de Carrera.
+      ...(assignment.test.type === "PLAN_ACCION"
+        ? { prefillObjetivo: await latestObjetivoData(assignment.clientId) }
+        : {}),
     })
   }
 
@@ -112,6 +160,64 @@ client.get("/t/:token", async (c) => {
     // Siempre editable: cada edición vuelve al tablero de Gaby — ya no hace
     // falta esperar su devolución (ver applyPostReviewEdit).
     canEdit: true,
+  })
+})
+
+/**
+ * POST /client/t/:token/upload
+ * Subida de archivo para los tests que llevan un entregable binario (hoy
+ * COLLAGE). Multipart, campo `file`. Mismo allowlist y cap que los uploads de
+ * módulos (`checkUpload`); el MIME almacenado se deriva de la extensión, no
+ * del header del browser. Devuelve `{ fileUrl, fileKey, fileName, mimeType,
+ * sizeBytes }` para que el componente lo guarde adentro de `responses` al
+ * hacer submit. No persiste nada por sí mismo — el blob queda en R2 pero
+ * sólo pasa a ser "la respuesta" cuando el test se envía.
+ */
+client.post("/t/:token/upload", async (c) => {
+  const token = c.req.param("token")
+
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { accessToken: token },
+    include: { test: true },
+  })
+  if (!assignment) return c.json({ error: "invalid" }, 404)
+  if (assignment.test.type !== "COLLAGE") {
+    return c.json({ error: "unsupported_test" }, 400)
+  }
+
+  const state = getAssignmentState(assignment)
+  if (state === "expired") return c.json({ state: "expired" }, 410)
+  if (state === "revoked") return c.json({ error: "revoked" }, 403)
+  // Edición post-envío: también permitimos subir un archivo nuevo. applyPostReviewEdit
+  // se encarga del resto cuando el submit llega por /edit.
+
+  if (!isR2Configured()) {
+    return c.json({ error: "La subida de archivos no está configurada (falta CLOUDFLARE_R2_*)." }, 503)
+  }
+
+  const form = await c.req.formData()
+  const file = form.get("file")
+  if (!(file instanceof File)) return c.json({ error: "No se recibió ningún archivo" }, 400)
+
+  const check = checkUpload(file.name, file.size)
+  if (!check.ok) return c.json({ error: check.error }, 400)
+
+  const key = buildCollageKey(assignment.id, file.name, check.extension)
+  const buffer = Buffer.from(await file.arrayBuffer())
+
+  let url: string
+  try {
+    url = await uploadToR2(key, buffer, check.mimeType)
+  } catch {
+    return c.json({ error: "No se pudo subir el archivo. Revisá la configuración de R2." }, 502)
+  }
+
+  return c.json({
+    fileUrl: url,
+    fileKey: key,
+    fileName: file.name,
+    mimeType: check.mimeType,
+    sizeBytes: file.size,
   })
 })
 

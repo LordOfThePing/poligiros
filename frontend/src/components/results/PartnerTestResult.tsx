@@ -44,6 +44,9 @@ const TEST_LABEL: Record<string, string> = {
   PIRAMIDE_PROPOSITO: "Pirámide del Propósito",
   MODELO_NEGOCIO: "Modelo de Negocio",
   TAREAS_EXPLORACION: "Tareas de Exploración",
+  COLLAGE: "Collage",
+  OBJETIVO_CARRERA: "Objetivo de Carrera",
+  PLAN_ACCION: "Plan de Acción",
 }
 
 /**

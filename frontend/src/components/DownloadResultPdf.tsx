@@ -13,6 +13,9 @@ const TEST_LABELS: Record<string, string> = {
   MODELO_NEGOCIO: "Desarrollo de idea de negocio-proyecto-trabajo",
   TAREAS_EXPLORACION: "Tareas a explorar",
   PLAN_VITAL: "Plan Vital Integral",
+  COLLAGE: "Collage",
+  OBJETIVO_CARRERA: "Objetivo de Carrera",
+  PLAN_ACCION: "Plan de Accion",
 }
 
 function slugify(label: string) {

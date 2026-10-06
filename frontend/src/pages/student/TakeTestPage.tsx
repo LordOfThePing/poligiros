@@ -10,6 +10,9 @@ import PiramideTest from "@/pages/client/tests/PiramideTest"
 import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
 import PlanVitalTest from "@/pages/client/tests/PlanVitalTest"
 import TareasExploracionTest from "@/pages/client/tests/TareasExploracionTest"
+import CollageTest from "@/pages/client/tests/CollageTest"
+import ObjetivoCarreraTest from "@/pages/client/tests/ObjetivoCarreraTest"
+import PlanAccionTest from "@/pages/client/tests/PlanAccionTest"
 import ResultsView from "@/pages/client/ResultsView"
 import { EditableResult } from "@/components/EditableResult"
 import { Button } from "@/components/ui/button"
@@ -25,6 +28,8 @@ type Assignment = {
   supervision?: { reviewedAt?: string | null } | null
   prefillIdea?: string
   prefillIdeas?: string[]
+  prefillPiramide?: { rol: string; valores: string; propositoFinal: string }
+  prefillObjetivo?: { objetivoGeneral: string }
   feedback?: string | null
   canEdit?: boolean
 }
@@ -175,7 +180,22 @@ export default function StudentTakeTestPage() {
       )}
       {t === "PLAN_VITAL" && <PlanVitalTest api={api} assignmentId={assignment.id} />}
       {t === "TAREAS_EXPLORACION" && <TareasExploracionTest api={api} assignmentId={assignment.id} />}
-      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION"].includes(t) && (
+      {t === "COLLAGE" && <CollageTest api={api} assignmentId={assignment.id} />}
+      {t === "OBJETIVO_CARRERA" && (
+        <ObjetivoCarreraTest
+          api={api}
+          assignmentId={assignment.id}
+          prefillPiramide={assignment.prefillPiramide}
+        />
+      )}
+      {t === "PLAN_ACCION" && (
+        <PlanAccionTest
+          api={api}
+          assignmentId={assignment.id}
+          prefillObjetivo={assignment.prefillObjetivo}
+        />
+      )}
+      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION", "COLLAGE", "OBJETIVO_CARRERA", "PLAN_ACCION"].includes(t) && (
         <p className="text-muted-foreground text-sm">Este tipo de test no está disponible.</p>
       )}
     </div>
