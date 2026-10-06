@@ -35,6 +35,17 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
+- [ ] **Agregar 3 tests nuevos: Collage, Objetivo de Carrera, Plan de Acción.**
+      Collage sube un archivo (PDF/JPG/PNG, 25 MB cap) a R2 vía un endpoint
+      nuevo de token-upload. Objetivo de Carrera es un formulario con los
+      factores (puesto/rol/tareas, área, tipo de organización, rubro,
+      condiciones, valores) que pre-llena `rol` y `valores` desde la última
+      Pirámide del coachee (editable, con aclaración de de dónde salió).
+      Plan de Acción es tabla (estrategia, objetivo general, N objetivos con
+      acción/recursos/tiempo/soporte) y pre-llena el objetivo general desde
+      Objetivo de Carrera (editable). Orden en catálogo: Collage →
+      Objetivo → Plan de Acción (al final).
+
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
