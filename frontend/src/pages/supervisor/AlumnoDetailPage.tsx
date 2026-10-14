@@ -564,9 +564,9 @@ export default function AlumnoDetailPage() {
       </Card>
 
       <div className="space-y-4">
-        <h2 className="font-serif text-xl">Clientes</h2>
+        <h2 className="font-serif text-xl">Coachees</h2>
         {student.clients.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Sin clientes asignados</p>
+          <p className="text-muted-foreground text-sm">Sin coachees asignados</p>
         ) : (
           student.clients.map((client: any) => (
             <Card key={client.id} className="bg-white">
@@ -835,7 +835,7 @@ export default function AlumnoDetailPage() {
             <div className="space-y-4">
               <DialogDescription>
                 ¿Borrar a <strong>{student.name}</strong> definitivamente? Esta acción elimina
-                todos sus datos: clientes, tests, entregas, comentarios, supervisiones, registros y
+                todos sus datos: coachees, tests, entregas, comentarios, supervisiones, registros y
                 su acceso a los CIC. <span className="text-destructive font-medium">No se puede deshacer.</span>
               </DialogDescription>
               <DialogFooter>

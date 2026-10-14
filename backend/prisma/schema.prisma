@@ -324,6 +324,13 @@ model Client {
   student     User             @relation(fields: [studentId], references: [id])
   name        String
   email       String
+  // Coachee profile — these were cargados per-SessionRecord before, which
+  // forced the coach to retype them every session. Now they live on the
+  // coachee (Client) and sessions reuse them.
+  age         String?
+  sex         String?
+  works       Boolean?
+  position    String?
   // For a coach-as-coachee, points at the coach's own User (they take tests
   // logged-in). null for normal coachees (no login, magic-link only).
   userId      String?          @unique

@@ -53,7 +53,7 @@ student.get("/clients", async (c) => {
 /** POST /student/clients */
 student.post("/clients", async (c) => {
   const user = c.get("user")
-  const { name, email } = await c.req.json()
+  const { name, email, age, sex, works, position } = await c.req.json()
 
   const access = await getCoachAccess(user.id)
   if (!access.canPractice) {
@@ -61,13 +61,47 @@ student.post("/clients", async (c) => {
   }
 
   const clientRecord = await prisma.client.create({
-    data: { studentId: user.id, name, email },
+    data: {
+      studentId: user.id,
+      name,
+      email,
+      age: age ?? null,
+      sex: sex ?? null,
+      works: typeof works === "boolean" ? works : null,
+      position: position ?? null,
+    },
     include: {
       assignments: { include: { test: true, response: true, supervision: true } },
     },
   })
 
   return c.json(clientRecord, 201)
+})
+
+/** PUT /student/clients/:id — edit the coachee's profile (name/email + the
+ *  coachee-profile fields migrated here from SessionRecord). */
+student.put("/clients/:id", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("id")
+  const body = await c.req.json()
+
+  const existing = await prisma.client.findFirst({ where: { id, studentId: user.id } })
+  if (!existing) return c.json({ error: "Not found" }, 404)
+
+  const updated = await prisma.client.update({
+    where: { id },
+    data: {
+      ...(typeof body.name === "string" ? { name: body.name } : {}),
+      ...(typeof body.email === "string" ? { email: body.email } : {}),
+      ...(body.age !== undefined ? { age: body.age ?? null } : {}),
+      ...(body.sex !== undefined ? { sex: body.sex ?? null } : {}),
+      ...(body.works !== undefined
+        ? { works: typeof body.works === "boolean" ? body.works : null }
+        : {}),
+      ...(body.position !== undefined ? { position: body.position ?? null } : {}),
+    },
+  })
+  return c.json(updated)
 })
 
 /** GET /student/clients/:id */
@@ -353,6 +387,19 @@ student.put("/sessions/:id", async (c) => {
     if (!clientRecord) return c.json({ error: "Client not found" }, 404)
   }
 
+  // Keep the coachee profile on Client in sync with the latest session edit.
+  await prisma.client.update({
+    where: { id: clientId ?? existing.clientId },
+    data: {
+      ...(typeof coacheeAge === "string" ? { age: coacheeAge } : {}),
+      ...(typeof coacheeSex === "string" ? { sex: coacheeSex } : {}),
+      ...(typeof coacheeWorks === "boolean" ? { works: coacheeWorks } : {}),
+      ...(coacheeWorks && typeof coacheePosition === "string"
+        ? { position: coacheePosition }
+        : {}),
+    },
+  })
+
   const updated = await prisma.sessionRecord.update({
     where: { id },
     data: {
@@ -397,6 +444,21 @@ student.post("/sessions", async (c) => {
     where: { id: clientId, studentId: user.id },
   })
   if (!clientRecord) return c.json({ error: "Client not found" }, 404)
+
+  // Persist the coachee profile on the Client row too, so it pre-fills on the
+  // next session (and the UI can edit the coachee without going through a
+  // session). Only overwrite fields that were actually sent on this payload.
+  await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      ...(typeof coacheeAge === "string" ? { age: coacheeAge } : {}),
+      ...(typeof coacheeSex === "string" ? { sex: coacheeSex } : {}),
+      ...(typeof coacheeWorks === "boolean" ? { works: coacheeWorks } : {}),
+      ...(coacheeWorks && typeof coacheePosition === "string"
+        ? { position: coacheePosition }
+        : {}),
+    },
+  })
 
   const record = await prisma.sessionRecord.create({
     data: {
@@ -1509,6 +1571,25 @@ student.post("/assignments/:id/reset-request", async (c) => {
     data: { assignmentId: id, requestedById: user.id, reason: reason || null },
   })
   return c.json(request, 201)
+})
+
+/**
+ * GET /student/responses/:assignmentId — read-only fetch of a submitted
+ * response the coach is allowed to edit. Shared by the full-screen editors.
+ */
+student.get("/responses/:assignmentId", async (c) => {
+  const user = c.get("user")
+  const id = c.req.param("assignmentId")
+  const assignment = await prisma.testAssignment.findFirst({
+    where: { id, client: { OR: [{ studentId: user.id }, { userId: user.id }] } },
+    include: { test: true, response: true },
+  })
+  if (!assignment) return c.json({ error: "Not found" }, 404)
+  if (!assignment.response) return c.json({ error: "No response yet" }, 404)
+  return c.json({
+    testType: assignment.test.type,
+    responses: assignment.response.responses,
+  })
 })
 
 /**

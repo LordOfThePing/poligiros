@@ -152,7 +152,7 @@ export default function StudentSupervisionPage() {
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Comentarios, dudas o contexto sobre este cliente..."
+              placeholder="Comentarios, dudas o contexto sobre este coachee..."
               rows={4}
             />
           </div>

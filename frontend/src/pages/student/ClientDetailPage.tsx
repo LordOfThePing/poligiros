@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2, MoreHorizontal, Send, RefreshCw } from "lucide-react"
+import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2, MoreHorizontal, Send, RefreshCw, Download } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -20,8 +23,10 @@ import { apiJson, apiPost, apiTry } from "@/lib/api"
 import { EditableResult } from "@/components/EditableResult"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { useCoachAccess } from "@/lib/useCoachAccess"
+import { useAuth } from "@/lib/auth"
 import type { TestType } from "@/lib/access"
 import { TEST_TITLES } from "@/lib/testInfo"
+import { downloadBulkSessionRecordsPdf } from "@/lib/bulkSessionPdf"
 
 const TEST_INFO: Record<string, { title: string; comingSoon?: boolean }> = Object.fromEntries(
   Object.entries(TEST_TITLES).map(([type, title]) => [type, { title }]),
@@ -36,6 +41,9 @@ const TEST_ORDER: { type: string; order: string; indent?: boolean }[] = [
   { type: "MODELO_NEGOCIO", order: "2.2", indent: true },
   { type: "PLAN_VITAL", order: "3" },
   { type: "PIRAMIDE_PROPOSITO", order: "4" },
+  { type: "COLLAGE", order: "5" },
+  { type: "OBJETIVO_CARRERA", order: "6" },
+  { type: "PLAN_ACCION", order: "7" },
 ]
 
 type Assignment = {
@@ -53,20 +61,34 @@ type SessionRecord = {
   sessionNum: number
   sessionDate: string
   coacheeName: string
+  coacheeAge: string
+  coacheeSex: string
+  coacheeWorks: boolean
+  coacheePosition: string | null
+  mainOutputs: string
+  toolsAndResults: string
+  conclusions: string
 }
 
 type Client = {
   id: string
   name: string
   email: string
+  age: string | null
+  sex: string | null
+  works: boolean | null
+  position: string | null
   assignments: Assignment[]
   sessions: SessionRecord[]
 }
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const { access } = useCoachAccess()
+  const { user } = useAuth()
+  const [bulkDownloading, setBulkDownloading] = useState(false)
   const [client, setClient] = useState<Client | null>(null)
   const [tests, setTests] = useState<{ id: string; type: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -149,7 +171,7 @@ export default function ClientDetailPage() {
   }
 
   if (loading) return <LoadingBadge />
-  if (!client) return <div className="text-muted-foreground text-sm py-8">Cliente no encontrado</div>
+  if (!client) return <div className="text-muted-foreground text-sm py-8">Coachee no encontrado</div>
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -162,6 +184,11 @@ export default function ClientDetailPage() {
           <p className="text-muted-foreground text-sm">{client.email}</p>
         </div>
       </div>
+
+      <CoacheeProfileCard
+        client={client}
+        onSaved={() => refreshClient()}
+      />
 
       <Card className="bg-white">
         <CardHeader>
@@ -246,7 +273,16 @@ export default function ClientDetailPage() {
                           )}
                           {canEdit && (
                             <DropdownMenuItem
-                              onSelect={() =>
+                              onSelect={() => {
+                                // Modelo de Negocio canvas needs the full
+                                // viewport width — a 2xl Dialog would compress
+                                // its 5-column reference layout into a stack.
+                                if (assignment.test.type === "MODELO_NEGOCIO") {
+                                  navigate(
+                                    `/student/clientes/${id}/editar/${assignment.id}`,
+                                  )
+                                  return
+                                }
                                 setResultModal({
                                   assignmentId: assignment.id,
                                   title: info.title,
@@ -254,7 +290,7 @@ export default function ClientDetailPage() {
                                   responses: assignment.response!.responses,
                                   completedAt: assignment.completedAt!,
                                 })
-                              }
+                              }}
                             >
                               <Pencil className="h-4 w-4" /> Editar
                             </DropdownMenuItem>
@@ -292,23 +328,48 @@ export default function ClientDetailPage() {
 
       <Card className="bg-white">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="font-serif text-lg">Sesiones</CardTitle>
-            <Button size="sm" className="bg-brand-accent hover:bg-brand-accent-dark" asChild>
-              <Link to={`/student/registros/nuevo?clientId=${id}`}>
-                <Plus className="h-3 w-3 mr-1" /> Nueva sesión
-              </Link>
-            </Button>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="font-serif text-lg">Registros de sesión</CardTitle>
+            <div className="flex items-center gap-2">
+              {client.sessions.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkDownloading}
+                  onClick={async () => {
+                    setBulkDownloading(true)
+                    try {
+                      await downloadBulkSessionRecordsPdf(
+                        client.sessions,
+                        user?.name ?? "",
+                        client.name,
+                        `registros-${client.name.toLowerCase().replace(/\s+/g, "-")}.pdf`,
+                      )
+                    } finally {
+                      setBulkDownloading(false)
+                    }
+                  }}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  {bulkDownloading ? "Generando..." : "Descargar todos"}
+                </Button>
+              )}
+              <Button size="sm" className="bg-brand-accent hover:bg-brand-accent-dark" asChild>
+                <Link to={`/student/registros/nuevo?clientId=${id}`}>
+                  <Plus className="h-3 w-3 mr-1" /> Nuevo registro
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {client.sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin sesiones registradas aún</p>
+            <p className="text-sm text-muted-foreground">Sin registros de sesión aún</p>
           ) : (
             <div className="space-y-2">
               {client.sessions.map((s) => (
                 <div key={s.id} className="flex items-center gap-3 text-sm">
-                  <Badge variant="outline">Sesión #{s.sessionNum}</Badge>
+                  <Badge variant="outline">Registro #{s.sessionNum}</Badge>
                   <span className="text-foreground">{s.coacheeName}</span>
                   <span className="text-muted-foreground">{formatShortDate(s.sessionDate)}</span>
                 </div>
@@ -329,7 +390,7 @@ export default function ClientDetailPage() {
             <Textarea
               value={supervisionNotes}
               onChange={(e) => setSupervisionNotes(e.target.value)}
-              placeholder="Comentarios, dudas o contexto sobre este cliente..."
+              placeholder="Comentarios, dudas o contexto sobre este coachee..."
               rows={4}
             />
           </div>
@@ -410,5 +471,127 @@ export default function ClientDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function CoacheeProfileCard({
+  client,
+  onSaved,
+}: {
+  client: Client
+  onSaved: () => void
+}) {
+  const { toast } = useToast()
+  const [editing, setEditing] = useState(false)
+  const [age, setAge] = useState(client.age ?? "")
+  const [sex, setSex] = useState(client.sex ?? "")
+  const [works, setWorks] = useState<boolean>(client.works ?? false)
+  const [position, setPosition] = useState(client.position ?? "")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setAge(client.age ?? "")
+    setSex(client.sex ?? "")
+    setWorks(client.works ?? false)
+    setPosition(client.position ?? "")
+  }, [client.id, client.age, client.sex, client.works, client.position])
+
+  async function save() {
+    setSaving(true)
+    try {
+      await apiJson<Client>(`/student/clients/${client.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ age, sex, works, position: works ? position : null }),
+      })
+      toast({ title: "Datos del coachee guardados" })
+      setEditing(false)
+      onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const hasData =
+    client.age || client.sex || typeof client.works === "boolean" || client.position
+
+  return (
+    <Card className="bg-white">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="font-serif text-lg">Datos del coachee</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => setEditing((v) => !v)}>
+            <Pencil className="h-3 w-3 mr-1" /> {editing ? "Cancelar" : "Editar"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!editing ? (
+          hasData ? (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Edad</p>
+                <p className="text-foreground">{client.age || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Sexo</p>
+                <p className="text-foreground">{client.sex || "—"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-0.5">¿Trabaja?</p>
+                <p className="text-foreground">
+                  {typeof client.works === "boolean" ? (client.works ? "Sí" : "No") : "—"}
+                  {client.works && client.position ? ` · ${client.position}` : ""}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Todavía no cargaste los datos del coachee. Se completan solos la primera vez
+              que grabes un registro de sesión, o podés editarlos acá.
+            </p>
+          )
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Edad</Label>
+                <Input value={age} onChange={(e) => setAge(e.target.value)} placeholder="Ej: 35" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Sexo</Label>
+                <Select value={sex} onValueChange={setSex}>
+                  <SelectTrigger><SelectValue placeholder="Seleccioná" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Femenino">Femenino</SelectItem>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Prefiero no decir">Prefiero no decir</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={works} onCheckedChange={setWorks} id="works-profile" />
+              <Label htmlFor="works-profile">¿Trabaja actualmente?</Label>
+            </div>
+            {works && (
+              <div className="space-y-1">
+                <Label className="text-xs">Posición actual</Label>
+                <Input
+                  value={position}
+                  onChange={(e) => setPosition(e.target.value)}
+                  placeholder="Ej: Gerente de Marketing"
+                />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
+                {saving ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

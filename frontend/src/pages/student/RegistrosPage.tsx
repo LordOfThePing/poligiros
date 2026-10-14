@@ -76,7 +76,7 @@ export default function RegistrosPage() {
                       to={`/student/registros/${s.id}/editar`}
                       className="flex items-center gap-3 flex-1 min-w-0"
                     >
-                      <Badge variant="outline">Sesión #{s.sessionNum}</Badge>
+                      <Badge variant="outline">Registro #{s.sessionNum}</Badge>
                       <span className="text-foreground">{s.coacheeName}</span>
                       <span className="text-muted-foreground">{formatShortDate(s.sessionDate)}</span>
                     </Link>

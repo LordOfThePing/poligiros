@@ -12,7 +12,14 @@ import { useToast } from "@/hooks/use-toast"
 import { apiJson, apiPost } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
 
-type Client = { id: string; name: string }
+type Client = {
+  id: string
+  name: string
+  age: string | null
+  sex: string | null
+  works: boolean | null
+  position: string | null
+}
 
 type SessionRecord = {
   id: string
@@ -59,7 +66,13 @@ export default function NuevoRegistroPage() {
       setClients(data)
       if (!isEdit && preselectedClientId) {
         const found = data.find((c) => c.id === preselectedClientId)
-        if (found) setCoacheeName(found.name)
+        if (found) {
+          setCoacheeName(found.name)
+          if (found.age) setCoacheeAge(found.age)
+          if (found.sex) setCoacheeSex(found.sex)
+          if (typeof found.works === "boolean") setCoacheeWorks(found.works)
+          if (found.position) setCoacheePosition(found.position)
+        }
       }
     }).catch(() => {})
   }, [preselectedClientId, isEdit])
@@ -89,16 +102,23 @@ export default function NuevoRegistroPage() {
   }, [id, isEdit, navigate, toast])
 
   useEffect(() => {
-    // Only auto-fill the coachee name from the client when creating a new record.
+    // Only auto-fill from the coachee profile when creating a new record;
+    // editing an existing one keeps whatever that record saved.
     if (!isEdit && clientId) {
       const found = clients.find((c) => c.id === clientId)
-      if (found) setCoacheeName(found.name)
+      if (found) {
+        setCoacheeName(found.name)
+        if (found.age) setCoacheeAge(found.age)
+        if (found.sex) setCoacheeSex(found.sex)
+        if (typeof found.works === "boolean") setCoacheeWorks(found.works)
+        if (found.position) setCoacheePosition(found.position)
+      }
     }
   }, [clientId, clients, isEdit])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!clientId) { toast({ title: "Seleccioná un cliente", variant: "destructive" }); return }
+    if (!clientId) { toast({ title: "Seleccioná un coachee", variant: "destructive" }); return }
 
     setSaving(true)
     const payload = {
@@ -137,10 +157,10 @@ export default function NuevoRegistroPage() {
           <CardHeader><CardTitle className="font-serif text-lg">Datos del coachee</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Cliente *</Label>
+              <Label>Coachee *</Label>
               <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccioná un cliente" />
+                  <SelectValue placeholder="Seleccioná un coachee" />
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (

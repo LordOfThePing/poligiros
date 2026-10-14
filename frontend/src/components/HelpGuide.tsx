@@ -80,7 +80,7 @@ const COACH_GUIDE: Guide = {
       title: "Práctica con coachees",
       lines: [
         "Se habilita más adelante. Cuando esté abierta aparecen tres secciones nuevas en el menú.",
-        "Mis Clientes: cargás a tu coachee y le enviás un enlace para que haga el test. No necesita usuario.",
+        "Mis Coachees: cargás a tu coachee y le enviás un enlace para que haga el test. No necesita usuario.",
         "Supervisión: mandás el caso para que lo revisemos y recibís la devolución.",
         "Mis Registros: registrás cada sesión que hacés.",
       ],
@@ -114,7 +114,7 @@ const SUPERVISOR_GUIDE: Guide = {
       title: "Camadas (CIC)",
       lines: [
         "Creás la camada, inscribís coaches y copiás sus emails para la invitación de Zoom.",
-        "El switch de práctica con coachees es lo que les abre Mis Clientes, Supervisión y Mis Registros.",
+        "El switch de práctica con coachees es lo que les abre Mis Coachees, Supervisión y Mis Registros.",
       ],
     },
     {
@@ -130,7 +130,7 @@ const SUPERVISOR_GUIDE: Guide = {
       title: "Seguimiento",
       lines: [
         "Tests y Tareas son tus dos bandejas. Los registros de sesión de los alumnos están en Tareas.",
-        "Al revisar un test escribís dos cosas: el feedback interno (lo ve solo la coach) y el feedback para el cliente (aparece en su enlace de resultados).",
+        "Al revisar un test escribís dos cosas: el feedback interno (lo ve solo la coach) y el feedback para el coachee (aparece en su enlace de resultados).",
       ],
     },
     {

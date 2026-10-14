@@ -227,12 +227,12 @@ function FeedbackBox({
           />
         </div>
         <div className="space-y-2">
-          <Label>Feedback para el cliente (visible en el enlace de resultados)</Label>
+          <Label>Feedback para el coachee (visible en el enlace de resultados)</Label>
           <Textarea
             value={coachFeedback}
             onChange={(e) => setCoachFeedback(e.target.value)}
             rows={3}
-            placeholder="Mensaje visible para el cliente cuando vea sus resultados..."
+            placeholder="Mensaje visible para el coachee cuando vea sus resultados..."
             disabled={locked}
           />
         </div>
@@ -367,7 +367,7 @@ export default function SupervisionDetailPage() {
             {responses && (
               <Card className="bg-white">
                 <CardHeader className="flex-row items-center justify-between space-y-0">
-                  <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
+                  <CardTitle className="font-serif text-lg">Respuesta del coachee</CardTitle>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowRaw((v) => !v)}>
                       {showRaw ? "Ver vista completa" : "Ver vista cruda"}
@@ -428,7 +428,7 @@ export default function SupervisionDetailPage() {
           {responses && (
             <Card className="bg-white">
               <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="font-serif text-lg">Respuesta del cliente</CardTitle>
+                <CardTitle className="font-serif text-lg">Respuesta del coachee</CardTitle>
                 <div className="flex items-center gap-2">
                   {testType === "TABLERO_IDEAS" || testType === "PLAN_VITAL" ? (
                     // Tablero's 3-column + scroll layout and PVI's long
