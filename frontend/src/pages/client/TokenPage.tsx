@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { Loader2, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import AnclasTest from "./tests/AnclasTest"
@@ -47,6 +47,7 @@ type TokenState =
 
 export default function TokenPage() {
   const { token } = useParams<{ token: string }>()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const [data, setData] = useState<TokenState>({ state: "loading" })
   const [editing, setEditing] = useState(false)
@@ -177,7 +178,19 @@ export default function TokenPage() {
             completedAt={data.completedAt}
             personName={data.clientName}
             footer={data.canEdit ? (
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Canvas needs the full viewport width — hop into the
+                  // dedicated full-screen edit route for MODELO_NEGOCIO.
+                  if (data.testType === "MODELO_NEGOCIO") {
+                    navigate(`/t/${token}/editar`)
+                    return
+                  }
+                  setEditing(true)
+                }}
+              >
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
                 Editar mis respuestas
               </Button>

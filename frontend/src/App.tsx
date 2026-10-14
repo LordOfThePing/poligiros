@@ -38,6 +38,10 @@ import StudentClientDetailPage from "@/pages/student/ClientDetailPage"
 import StudentSupervisionPage from "@/pages/student/SupervisionPage"
 import StudentRegistrosPage from "@/pages/student/RegistrosPage"
 import StudentNuevoRegistroPage from "@/pages/student/NuevoRegistroPage"
+import {
+  ClientEditModeloNegocioPage,
+  StudentEditModeloNegocioPage,
+} from "@/pages/EditModeloNegocioPage"
 
 // Pages - admin
 import AdminPage from "@/pages/admin/AdminPage"
@@ -104,6 +108,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/invite/:token" element={<RegisterPage />} />
           <Route path="/t/:token" element={<TokenPage />} />
+          <Route path="/t/:token/editar" element={<ClientEditModeloNegocioPage />} />
           <Route path="/inscripcion/:token" element={<InscripcionPage />} />
           <Route path="/cambiar-password" element={<ChangePasswordPage />} />
 
@@ -158,6 +163,10 @@ export default function App() {
             <Route path="my-tests/:id" element={<StudentTakeTestPage />} />
             <Route path="clientes" element={<StudentClientesPage />} />
             <Route path="clientes/:id" element={<StudentClientDetailPage />} />
+            <Route
+              path="clientes/:clientId/editar/:assignmentId"
+              element={<StudentEditModeloNegocioPage />}
+            />
             <Route path="supervision" element={<StudentSupervisionPage />} />
             <Route path="registros" element={<StudentRegistrosPage />} />
             <Route path="registros/nuevo" element={<StudentNuevoRegistroPage />} />

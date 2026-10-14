@@ -10,14 +10,31 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { apiJson, apiPost } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { Tooltip } from "@/components/ui/tooltip"
+import { TEST_TITLES } from "@/lib/testInfo"
 
-const TEST_ORDER = ["ANCLAS_CARRERA", "TABLERO_IDEAS", "PLAN_VITAL", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO"]
+// Mirrors ClientDetailPage TEST_ORDER (canonical program order).
+const TEST_ORDER = [
+  "ANCLAS_CARRERA",
+  "TABLERO_IDEAS",
+  "TAREAS_EXPLORACION",
+  "MODELO_NEGOCIO",
+  "PLAN_VITAL",
+  "PIRAMIDE_PROPOSITO",
+  "COLLAGE",
+  "OBJETIVO_CARRERA",
+  "PLAN_ACCION",
+]
 const TEST_CODES: Record<string, string> = {
   ANCLAS_CARRERA: "AC",
   TABLERO_IDEAS: "TI",
+  TAREAS_EXPLORACION: "TE",
+  MODELO_NEGOCIO: "DI",
   PLAN_VITAL: "PV",
   PIRAMIDE_PROPOSITO: "PP",
-  MODELO_NEGOCIO: "MN",
+  COLLAGE: "CO",
+  OBJETIVO_CARRERA: "OC",
+  PLAN_ACCION: "PA",
 }
 
 type Assignment = {
@@ -67,18 +84,18 @@ export default function ClientesPage() {
     setNewName("")
     setNewEmail("")
     setShowAdd(false)
-    toast({ title: "Cliente agregado" })
+    toast({ title: "Coachee agregado" })
   }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl text-foreground mb-1">Mis Clientes</h1>
-          <p className="text-muted-foreground text-sm">{clients.length} clientes</p>
+          <h1 className="font-serif text-3xl text-foreground mb-1">Mis Coachees</h1>
+          <p className="text-muted-foreground text-sm">{clients.length} coachees</p>
         </div>
         <Button className="bg-brand-accent hover:bg-brand-accent-dark" onClick={() => setShowAdd(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Agregar cliente
+          <Plus className="h-4 w-4 mr-2" /> Agregar coachee
         </Button>
       </div>
 
@@ -91,7 +108,7 @@ export default function ClientesPage() {
                 <div className="text-xs text-muted-foreground">{client.email}</div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   {TEST_ORDER.map((type) => {
                     const assignment = client.assignments.find((a) => a.test.type === type)
                     const status = assignment?.completedAt
@@ -100,10 +117,12 @@ export default function ClientesPage() {
                       ? "pending"
                       : "unassigned"
                     return (
-                      <div key={type} className="flex items-center gap-1">
-                        <TestDot status={status} />
-                        <span className="text-xs text-muted-foreground">{TEST_CODES[type]}</span>
-                      </div>
+                      <Tooltip key={type} label={TEST_TITLES[type] ?? type}>
+                        <span className="flex items-center gap-1">
+                          <TestDot status={status} />
+                          <span className="text-xs text-muted-foreground">{TEST_CODES[type]}</span>
+                        </span>
+                      </Tooltip>
                     )
                   })}
                 </div>
@@ -116,7 +135,7 @@ export default function ClientesPage() {
 
         {!loading && clients.length === 0 && (
           <div className="col-span-2 text-center text-muted-foreground py-12">
-            No tenés clientes aún. Agregá el primero.
+            No tenés coachees aún. Agregá el primero.
           </div>
         )}
       </div>
@@ -124,16 +143,16 @@ export default function ClientesPage() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-serif">Agregar cliente</DialogTitle>
+            <DialogTitle className="font-serif">Agregar coachee</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nombre completo</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre del cliente" />
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre del coachee" />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="cliente@email.com" />
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="coachee@email.com" />
             </div>
           </div>
           <DialogFooter>

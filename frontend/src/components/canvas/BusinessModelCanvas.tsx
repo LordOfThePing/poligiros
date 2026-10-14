@@ -84,7 +84,7 @@ export function BusinessModelCanvas({
           <Input
             value={label}
             onChange={(e) => onRename(e.target.value)}
-            className="h-7 flex-1 border-0 bg-white/70 px-1.5 text-xs font-semibold focus-visible:ring-1"
+            className="h-7 min-w-0 flex-1 border-0 bg-white/70 px-2 text-xs font-semibold focus-visible:ring-1"
             aria-label={`Nombre del bloque ${blockKey}`}
           />
           {onRemove && (
