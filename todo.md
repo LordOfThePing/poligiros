@@ -2,7 +2,40 @@
 
 Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe.
 
-## De `fixes.md`
+## En curso (nuevo fixes.md)
+
+- [ ] **Modelo de Negocio: editar en pantalla completa.** El Canvas se comprime
+      dentro del `Dialog max-w-2xl` del coach y en el `max-w-2xl` del coachee.
+      Mover la edición de MODELO_NEGOCIO a una ruta propia full-screen (y de
+      paso corregir el header "Soios clave" que aparece recortado al editar).
+- [ ] **Plan Vital Integral (y demás PDFs): paginar en A4 sin cortar cajas.**
+      Hoy `DownloadResultPdf.tsx` arma una sola página de altura dinámica, y la
+      impresora recorta todo a un A4 → sólo imprime la primera. Paginar con
+      salto entre bloques, dejando espacio en blanco antes que partir uno.
+- [ ] **Tareas (supervisora): filtro por alumno + descarga masiva.** En
+      `EntregasPage` agregar filtro de coach; cuando hay uno seleccionado,
+      mostrar botón "Descargar todos los registros de sesión de este alumno"
+      (sólo los `PracticeRecord` del módulo — no los `SessionRecord` reales).
+- [ ] **Tareas (supervisora): botón de descarga PDF por fila.** Cada registro
+      de sesión del módulo pasa a tener un botón de descarga individual.
+- [ ] **Registros de sesión en el módulo (coach): descargar PDF.** Dentro de
+      la tarjeta REGISTRO (`RegistroCard.tsx`), cuando ya se envió, agregar
+      botón "Descargar PDF".
+- [ ] **"Mis Coachees": abreviaciones completas + orden canónico + tooltip
+      propio.** Hoy sólo muestra AC/TI/PV/PP/MN. Agregar TE, MN, CO, OC, PA en
+      el orden del programa, con un tooltip propio al hacer hover (nunca
+      nativo).
+- [ ] **Unificar Cliente ↔ Coachee.** Renombrar "Cliente" por "Coachee" en toda
+      la UI (navegación, títulos, botones), mover edad/sexo/trabaja/posición
+      del `SessionRecord` al `Client` (pre-llenado al registrar sesión),
+      renombrar "Sesión" por "Registro de sesión", y en la ficha del coachee
+      agregar botón para descargar todos sus registros juntos.
+- [ ] **Replicar Collage, Objetivo de Carrera y Plan de Acción para
+      coachees.** Agregar los 3 al `TEST_ORDER` de `ClientDetailPage.tsx` y a
+      los dots de "Mis Coachees". Verificar que Objetivo y Plan de Acción
+      figuren en el selector de tests al crear una card `kind=TEST`.
+
+## De `fixes.md` (previo)
 
 - [x] **Supervisor "Tareas a revisar": filtro Tipo + quitar header intermedio.**
       `EntregasPage` tiene filtro Tipo (Todos / Entregas / Registros de sesión) y
