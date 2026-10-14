@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Check, ChevronDown, Mail } from "lucide-react"
+import { Check, ChevronDown, Download, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
 import { apiJson, apiTry } from "@/lib/api"
@@ -15,6 +15,8 @@ import { LoadingBadge } from "@/components/LoadingBadge"
 import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { usePersistedState } from "@/lib/persistedState"
+import { PracticeRecordPdf } from "@/components/PracticeRecordPdf"
+import { downloadBulkPracticeRecordsPdf } from "@/lib/bulkPracticePdf"
 
 type Submission = {
   id: string
@@ -61,8 +63,10 @@ export default function EntregasPage() {
   const [cohortFilter, setCohortFilter] = usePersistedState<string>("entregas.cohort", "all")
   const [itemFilter, setItemFilter] = usePersistedState<string>("entregas.item", "all")
   const [typeFilter, setTypeFilter] = usePersistedState<TypeFilter>("entregas.type", "all")
+  const [coachFilter, setCoachFilter] = usePersistedState<string>("entregas.coach", "all")
   const [sortOrder, setSortOrder] = usePersistedState<SortOrder>("entregas.sort", "recent")
   const [loading, setLoading] = useState(true)
+  const [bulkDownloading, setBulkDownloading] = useState(false)
   const [reviewing, setReviewing] = useState<Submission | null>(null)
   const [feedback, setFeedback] = useState("")
   const [saving, setSaving] = useState(false)
@@ -87,6 +91,12 @@ export default function EntregasPage() {
   const itemTitles = Array.from(
     new Set([...submissions.map((s) => s.item.title), ...practices.map((r) => r.item.title)])
   ).sort()
+  // Alumno = coach. One row per unique coach from both lists.
+  const coachList = Array.from(
+    new Map(
+      [...submissions, ...practices].map((r) => [r.coach.id, { id: r.coach.id, name: r.coach.name }]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name))
   const matchesState = (reviewedAt: string | null) =>
     filter === "all" || (filter === "pending" ? !reviewedAt : !!reviewedAt)
   const visibleSubmissions = submissions
@@ -95,7 +105,8 @@ export default function EntregasPage() {
         matchesState(s.reviewedAt) &&
         (typeFilter === "all" || typeFilter === "entrega") &&
         (cohortFilter === "all" || s.cohorts.includes(cohortFilter)) &&
-        (itemFilter === "all" || s.item.title === itemFilter)
+        (itemFilter === "all" || s.item.title === itemFilter) &&
+        (coachFilter === "all" || s.coach.id === coachFilter)
     )
   const visiblePractices = practices
     .filter(
@@ -103,16 +114,23 @@ export default function EntregasPage() {
         matchesState(r.reviewedAt) &&
         (typeFilter === "all" || typeFilter === "registro") &&
         (cohortFilter === "all" || r.cohorts.includes(cohortFilter)) &&
-        (itemFilter === "all" || r.item.title === itemFilter)
+        (itemFilter === "all" || r.item.title === itemFilter) &&
+        (coachFilter === "all" || r.coach.id === coachFilter)
     )
-  // Tab counts follow the other filters (CIC/Tipo/Tarea) but not the state tab itself.
-  const matchesOthers = (kind: "entrega" | "registro", cohorts: string[], title: string) =>
+  // Tab counts follow the other filters (CIC/Tipo/Tarea/Alumno) but not the state tab itself.
+  const matchesOthers = (
+    kind: "entrega" | "registro",
+    cohorts: string[],
+    title: string,
+    coachId: string,
+  ) =>
     (typeFilter === "all" || typeFilter === kind) &&
     (cohortFilter === "all" || cohorts.includes(cohortFilter)) &&
-    (itemFilter === "all" || title === itemFilter)
+    (itemFilter === "all" || title === itemFilter) &&
+    (coachFilter === "all" || coachId === coachFilter)
   const allRows = [
-    ...submissions.filter((s) => matchesOthers("entrega", s.cohorts, s.item.title)),
-    ...practices.filter((r) => matchesOthers("registro", r.cohorts, r.item.title)),
+    ...submissions.filter((s) => matchesOthers("entrega", s.cohorts, s.item.title, s.coach.id)),
+    ...practices.filter((r) => matchesOthers("registro", r.cohorts, r.item.title, r.coach.id)),
   ]
   const pendingCount = allRows.filter((r) => !r.reviewedAt).length
   const reviewedCount = allRows.length - pendingCount
@@ -218,6 +236,18 @@ export default function EntregasPage() {
           </Select>
         </div>
         <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Alumno</Label>
+          <Select value={coachFilter} onValueChange={setCoachFilter}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los alumnos</SelectItem>
+              {coachList.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Ordenar por</Label>
           <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -227,6 +257,39 @@ export default function EntregasPage() {
             </SelectContent>
           </Select>
         </div>
+        {coachFilter !== "all" && visiblePractices.length > 0 && (
+          <Button
+            variant="outline"
+            disabled={bulkDownloading}
+            onClick={async () => {
+              setBulkDownloading(true)
+              try {
+                const selectedCoach = coachList.find((c) => c.id === coachFilter)
+                await downloadBulkPracticeRecordsPdf(
+                  visiblePractices.map((r) => ({
+                    coachName: r.coach.name,
+                    coacheeName: r.coachee.name,
+                    moduleTitle: r.module.title,
+                    itemTitle: r.item.title,
+                    sessionDate: r.sessionDate,
+                    mainOutputs: r.mainOutputs,
+                    toolsAndResults: r.toolsAndResults,
+                    conclusions: r.conclusions,
+                    feedback: r.feedback,
+                  })),
+                  `registros-${(selectedCoach?.name ?? "alumno").toLowerCase().replace(/\s+/g, "-")}.pdf`,
+                )
+              } finally {
+                setBulkDownloading(false)
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            {bulkDownloading
+              ? "Generando..."
+              : `Descargar ${visiblePractices.length} registro${visiblePractices.length === 1 ? "" : "s"}`}
+          </Button>
+        )}
       </div>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
@@ -304,6 +367,22 @@ export default function EntregasPage() {
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
+                        {f.kind === "registro" && (
+                          <PracticeRecordPdf
+                            record={{
+                              sessionDate: f.data.sessionDate,
+                              mainOutputs: f.data.mainOutputs,
+                              toolsAndResults: f.data.toolsAndResults,
+                              conclusions: f.data.conclusions,
+                              feedback: f.data.feedback,
+                            }}
+                            coachName={f.data.coach.name}
+                            coacheeName={f.data.coachee.name}
+                            moduleTitle={f.data.module.title}
+                            itemTitle={f.data.item.title}
+                            label="PDF"
+                          />
+                        )}
                         <Button
                           size="sm"
                           variant={d.reviewedAt ? "outline" : "default"}

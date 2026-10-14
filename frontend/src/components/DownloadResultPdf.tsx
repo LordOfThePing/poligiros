@@ -3,8 +3,8 @@ import { createPortal } from "react-dom"
 import { Printer, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ResultsView from "@/pages/client/ResultsView"
-import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
+import { paginateCanvasToPdf } from "@/lib/pdfPaginate"
 
 const TEST_LABELS: Record<string, string> = {
   ANCLAS_CARRERA: "Anclas de Carrera",
@@ -88,6 +88,12 @@ export function DownloadResultPdf({
       await document.fonts.ready
       const el = captureRef.current
       if (!el) throw new Error("no capture")
+      // Tag every rounded card/box as a pagination-aware block. The paginator
+      // avoids splitting these between pages, so a Plan Vital section box
+      // either fits on the current page or starts on the next one.
+      el.querySelectorAll(".rounded-xl, .rounded-lg").forEach((n) => {
+        ;(n as HTMLElement).setAttribute("data-pdf-block", "")
+      })
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
@@ -96,13 +102,7 @@ export function DownloadResultPdf({
         imageTimeout: 15000,
         backgroundColor: "#ffffff",
       })
-      const imgData = canvas.toDataURL("image/jpeg", 0.92)
-      // Build a single PDF page that grows to the full content height, so there
-      // are no page cuts in the middle of results.
-      const pageW = 794 // ~A4 width in pt
-      const imgH = (canvas.height * pageW) / canvas.width
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [pageW, Math.ceil(imgH)] })
-      pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH)
+      const pdf = await paginateCanvasToPdf(canvas, el)
       pdf.save(`${fileBase}.pdf`)
     } catch (e) {
       console.error(e)

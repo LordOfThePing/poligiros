@@ -521,6 +521,7 @@ export default function ProgramaPage() {
                   {current.item.kind === "REGISTRO" ? (
                     <RegistroCard
                       item={current.item}
+                      moduleTitle={current.module.title}
                       onSaved={() =>
                         apiJson<StudentModule[]>("/student/modules")
                           .then(setModules)

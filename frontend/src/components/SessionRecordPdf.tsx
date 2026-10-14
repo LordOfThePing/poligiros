@@ -2,9 +2,9 @@ import { useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { formatShortDate } from "@/lib/date"
+import { paginateCanvasToPdf } from "@/lib/pdfPaginate"
 
 type RecordShape = {
   sessionNum: number
@@ -54,7 +54,7 @@ export function SessionRecordPdf({
           ["Conclusiones", record.conclusions],
         ].map(([title, body]) => {
           return (
-            <div key={title} className="mb-4" style={{ whiteSpace: "pre-wrap" }}>
+            <div key={title} data-pdf-block className="mb-4" style={{ whiteSpace: "pre-wrap" }}>
               <p className="text-xs text-slate-400 mb-1">{title}</p>
               <p className="text-sm">{body}</p>
             </div>
@@ -67,15 +67,12 @@ export function SessionRecordPdf({
   async function handleDownload() {
     setDownloading(true)
     try {
-      await new Promise((r) => setTimeout(r, 200))
+      await document.fonts.ready
+      await new Promise((r) => setTimeout(r, 50))
       const el = captureRef.current
       if (!el) throw new Error("no capture")
       const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: false, logging: false, imageTimeout: 15000, backgroundColor: "#ffffff" })
-      const imgData = canvas.toDataURL("image/jpeg", 0.92)
-      const pageW = 794
-      const imgH = (canvas.height * pageW) / canvas.width
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [pageW, Math.ceil(imgH)] })
-      pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH)
+      const pdf = await paginateCanvasToPdf(canvas, el)
       pdf.save("registro-sesion-" + record.sessionNum + ".pdf")
     } catch (e) {
       console.error(e)

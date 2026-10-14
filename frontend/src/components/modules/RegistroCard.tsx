@@ -14,6 +14,8 @@ import { Markdown } from "@/components/Markdown"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { SaveIndicator } from "@/components/SaveIndicator"
 import ResultsView from "@/pages/client/ResultsView"
+import { PracticeRecordPdf } from "@/components/PracticeRecordPdf"
+import { useAuth } from "@/lib/auth"
 import type { DuplaCandidate, StudentModuleItem } from "@/lib/modules"
 
 type PartnerResult = {
@@ -77,12 +79,15 @@ const DEFAULT_PLACEHOLDERS = {
  */
 export function RegistroCard({
   item,
+  moduleTitle,
   onSaved,
 }: {
   item: StudentModuleItem
+  moduleTitle?: string
   onSaved: () => void
 }) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [candidates, setCandidates] = useState<DuplaCandidate[]>([])
   // The registro is long-form writing that used to live only in React state:
   // a refresh mid-write threw it away. It is drafted to localStorage now, and
@@ -238,6 +243,19 @@ export function RegistroCard({
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar mi registro
             </Button>
+            <PracticeRecordPdf
+              record={{
+                sessionDate: item.practice!.sessionDate,
+                mainOutputs: item.practice!.mainOutputs,
+                toolsAndResults: item.practice!.toolsAndResults,
+                conclusions: item.practice!.conclusions,
+                feedback: item.practice!.feedback,
+              }}
+              coachName={user?.name ?? ""}
+              coacheeName={item.practice!.coachee.name}
+              moduleTitle={moduleTitle}
+              itemTitle={item.title}
+            />
             <span className="text-xs text-muted-foreground">
               Podés editarlo las veces que quieras — cada edición le vuelve a Gaby.
             </span>
