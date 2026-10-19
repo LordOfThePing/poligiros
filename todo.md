@@ -35,13 +35,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
-- [ ] **Modelo de Negocio: card por clase que "actualiza" la última versión.**
-      Agregar una card de MODELO_NEGOCIO en cada módulo relevante y hacer que
-      todas apunten al mismo `TestAssignment` (ya pasa gracias al unique
-      `testId_clientId` del upsert en `start`). Falta que el edit del coach
-      (`PUT /student/responses/:assignmentId`) llame a `markTestItemsDone`
-      para que una clase recién liberada tilde su card cuando la alumna
-      actualice (hoy solo tilda en el primer submit, no en ediciones).
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
