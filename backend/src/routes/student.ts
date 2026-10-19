@@ -1604,12 +1604,19 @@ student.put("/responses/:assignmentId", async (c) => {
   // Coach may edit results of clients they own (studentId) or their own self-tests.
   const assignment = await prisma.testAssignment.findFirst({
     where: { id, client: { OR: [{ studentId: user.id }, { userId: user.id }] } },
+    include: { client: { select: { userId: true } } },
   })
   if (!assignment) return c.json({ error: "Not found" }, 404)
   const { responses } = await c.req.json()
 
   try {
     const updated = await applyPostReviewEdit(id, responses, "coach")
+    // Si es un self-test del coach, re-tildar las cards de módulos liberados:
+    // una card de una clase que se liberó DESPUÉS del primer submit queda
+    // destildada hasta que la alumna actualice su respuesta.
+    if (assignment.client.userId === user.id) {
+      await markTestItemsDone(user.id, assignment.testId)
+    }
     return c.json(updated)
   } catch (e) {
     if (e instanceof PostReviewEditError) {
