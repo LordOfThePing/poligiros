@@ -35,6 +35,13 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
+- [ ] **Editar Pirámide: usar el mismo flujo del test con datos prellenados.**
+      El editor actual (`EditableResult` → `PiramideEditor`) muestra textareas
+      sueltas por campo, lo que rompe la metodología (pools → elegir 3 →
+      especialidad). Hay que reemplazarlo por el componente `PiramideTest`
+      prellenado desde `responses` (pools + selected + especialidades + step),
+      sin la pantalla de intro, y que al enviar llame al mismo `onSave` que
+      hoy usa el editor genérico.
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
