@@ -8,6 +8,8 @@ import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/ca
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 import { PV_SECTIONS } from "@/lib/planVital"
 import { QUESTIONS, calcScores, rankAnchors } from "@/lib/anclas"
+import PiramideTest, { type PiramideEditInitial } from "@/pages/client/tests/PiramideTest"
+import type { TestApi, UploadResult } from "@/lib/testApi"
 
 // Editable test result (F7 follow-up): coach + supervisor can modify fields,
 // values, and order, then save back to the stored response.
@@ -37,11 +39,18 @@ export function EditableResult({
     }
   }
 
+  // Pirámide se edita con el mismo flujo del test (pills → elegir 3 →
+  // especialidad por contexto), no con textareas sueltas, para preservar la
+  // metodología. El componente usa su propio botón de submit → acá no va la
+  // barra "Guardar cambios" genérica.
+  if (testType === "PIRAMIDE_PROPOSITO") {
+    return <PiramideEditorFull responses={responses} onSave={onSave} />
+  }
+
   return (
     <div className="space-y-4">
       {testType === "ANCLAS_CARRERA" && <AnclasEditor data={data} setField={setField} />}
       {testType === "TABLERO_IDEAS" && <TableroEditor data={data} setField={setField} />}
-      {testType === "PIRAMIDE_PROPOSITO" && <PiramideEditor data={data} setField={setField} />}
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioEditor data={data} setField={setField} />}
       {testType === "PLAN_VITAL" && <PlanVitalEditor data={data} setField={setField} />}
       {testType === "TAREAS_EXPLORACION" && <TareasExploracionEditor data={data} setField={setField} />}
@@ -52,6 +61,95 @@ export function EditableResult({
         <Save className="h-4 w-4 mr-2" /> {saving ? "Guardando..." : "Guardar cambios"}
       </Button>
     </div>
+  )
+}
+
+type PillKey = "rol" | "valores" | "fortalezas" | "contextos"
+const PIRAMIDE_KEYS: PillKey[] = ["rol", "valores", "fortalezas", "contextos"]
+
+function buildPiramideInitial(responses: Record<string, unknown>): PiramideEditInitial {
+  const pools: PiramideEditInitial["pools"] = {
+    rol: [], valores: [], fortalezas: [], contextos: [],
+  }
+  const selected: PiramideEditInitial["selected"] = {
+    rol: [], valores: [], fortalezas: [], contextos: [],
+  }
+
+  const poolKey = (k: PillKey) => (`${k}Pool`) as `${PillKey}Pool`
+  for (const k of PIRAMIDE_KEYS) {
+    const p = (responses as any)[poolKey(k)]
+    if (Array.isArray(p)) {
+      pools[k] = p.filter((s): s is string => typeof s === "string" && s.trim() !== "")
+    }
+    const sel = (responses as any)[k]
+    if (typeof sel === "string" && sel.trim()) {
+      selected[k] = sel.split(",").map((s) => s.trim()).filter(Boolean)
+    }
+  }
+  // Legacy fallback: sin pool guardado, usamos las 3 elegidas como pool.
+  // Y si una elegida no estuviera en el pool, la agregamos para que sea
+  // seleccionable sin tener que re-escribirla.
+  for (const k of PIRAMIDE_KEYS) {
+    if (pools[k].length === 0 && selected[k].length > 0) {
+      pools[k] = [...selected[k]]
+      continue
+    }
+    for (const s of selected[k]) {
+      if (!pools[k].some((p) => p.toLowerCase() === s.toLowerCase())) {
+        pools[k].push(s)
+      }
+    }
+  }
+
+  let especialidades: Record<string, string> = {}
+  const esMap = (responses as any).especialidadPorContexto
+  if (esMap && typeof esMap === "object") {
+    for (const [k, v] of Object.entries(esMap)) {
+      if (typeof v === "string") especialidades[k] = v
+    }
+  }
+  if (Object.keys(especialidades).length === 0 && typeof (responses as any).especialidad === "string") {
+    const parts = (responses as any).especialidad.split(",").map((s: string) => s.trim())
+    selected.contextos.forEach((c, i) => {
+      if (parts[i]) especialidades[c] = parts[i]
+    })
+  }
+
+  return { pools, selected, especialidades }
+}
+
+function PiramideEditorFull({
+  responses,
+  onSave,
+}: {
+  responses: Record<string, unknown>
+  onSave: (responses: Record<string, unknown>) => Promise<void>
+}) {
+  const [initial] = useState<PiramideEditInitial>(() => buildPiramideInitial(responses))
+  const [editSessionId] = useState(() => `edit-${Math.random().toString(36).slice(2)}`)
+
+  // `PiramideTest` espera un `TestApi` real. Para el modo edición le pasamos
+  // un stub que toma el payload (shape ya final de respuestas) y lo entrega
+  // al onSave del padre; devolvemos una `Response` ok para que el componente
+  // siga su flujo normal post-submit.
+  const editApi: TestApi = {
+    async submit(payload: unknown) {
+      try {
+        await onSave(payload as Record<string, unknown>)
+        return new Response(null, { status: 200 })
+      } catch {
+        return new Response(null, { status: 500 })
+      }
+    },
+    async aiInsight() { return { insight: null } },
+    async aiIdeas() { return { ideas: [] } },
+    async uploadFile(): Promise<{ ok: false; error: string } | { ok: true; data: UploadResult }> {
+      return { ok: false, error: "No disponible en edición" }
+    },
+  }
+
+  return (
+    <PiramideTest api={editApi} assignmentId={editSessionId} editInitial={initial} />
   )
 }
 
@@ -268,20 +366,6 @@ function PlanVitalEditor({ data, setField }: { data: Data; setField: (k: string,
 function TareasExploracionEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
   const list = (k: string): string[] => (Array.isArray(data[k]) ? data[k] : [])
   return <ListEditor label="Tareas" items={list("tasks")} onChange={(v) => setField("tasks", v)} />
-}
-
-function PiramideEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
-  const fields = ["rol", "valores", "fortalezas", "contextos", "especialidad", "propositoFinal"]
-  return (
-    <div className="space-y-2">
-      {fields.map((f) => (
-        <div key={f} className="space-y-1">
-          <Label className="text-xs uppercase">{f}</Label>
-          <Textarea value={data[f] ?? ""} onChange={(e) => setField(f, e.target.value)} className="text-sm min-h-[60px]" />
-        </div>
-      ))}
-    </div>
-  )
 }
 
 // Collage: no se re-sube un archivo nuevo desde el editor de EditableResult —

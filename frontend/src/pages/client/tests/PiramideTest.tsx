@@ -349,9 +349,22 @@ function HelperPanel({ items, onSelect }: { items: string[]; onSelect: (item: st
   )
 }
 
+export interface PiramideEditInitial {
+  pools: Record<PillKey, string[]>
+  selected: Record<PillKey, string[]>
+  especialidades: Record<string, string>
+}
+
 interface PiramideTestProps {
   api: TestApi
   assignmentId: string
+  /**
+   * Si viene seteado, el componente se usa como editor: arranca sin la intro,
+   * en el paso de especialidad, con los pools/selected/especialidades ya
+   * cargados y sin tocar el draft en localStorage. El `submit` de la api se
+   * encarga de persistir — el padre decide a dónde (edit endpoint).
+   */
+  editInitial?: PiramideEditInitial
 }
 
 type Step = "brainstorm" | "select" | "especialidad"
@@ -369,21 +382,29 @@ interface DraftShape {
   contextos?: string
 }
 
-export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
+export default function PiramideTest({ api, assignmentId, editInitial }: PiramideTestProps) {
   const { toast } = useToast()
+  const isEditing = Boolean(editInitial)
 
-  const [pools, setPools] = useState<Pools>(emptyPools)
-  const [selected, setSelected] = useState<Selected>(emptyPools)
-  const [especialidades, setEspecialidades] = useState<Record<string, string>>({})
-  const [step, setStep] = useState<Step>("brainstorm")
+  const [pools, setPools] = useState<Pools>(() =>
+    editInitial ? { ...emptyPools(), ...editInitial.pools } : emptyPools(),
+  )
+  const [selected, setSelected] = useState<Selected>(() =>
+    editInitial ? { ...emptyPools(), ...editInitial.selected } : emptyPools(),
+  )
+  const [especialidades, setEspecialidades] = useState<Record<string, string>>(
+    () => (editInitial ? { ...editInitial.especialidades } : {}),
+  )
+  const [step, setStep] = useState<Step>(isEditing ? "especialidad" : "brainstorm")
   const [activeLevel, setActiveLevel] = useState<string>("rol")
-  const [showIntro, setShowIntro] = useState(true)
+  const [showIntro, setShowIntro] = useState(!isEditing)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
+  const [hydrated, setHydrated] = useState(isEditing)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
+    if (isEditing) return
     const d = loadDraft<DraftShape>(DRAFT_KEY(assignmentId))
     if (d) {
       const nextPools = emptyPools()
@@ -441,12 +462,12 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
       else setStep("brainstorm")
     }
     setHydrated(true)
-  }, [assignmentId])
+  }, [assignmentId, isEditing])
 
   useAutosave(
     DRAFT_KEY(assignmentId),
     { pools, selected, especialidades, step },
-    hydrated && !submitted,
+    hydrated && !submitted && !isEditing,
   )
 
   function addPill(key: PillKey, raw: string) {
@@ -553,6 +574,11 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
     setSaving(false)
 
     if (res.ok) {
+      if (isEditing) {
+        // El padre (EditableResult) hace su propio toast + cierre/reload — no
+        // mostramos la pantalla "¡Enviada!" ni duplicamos el toast.
+        return
+      }
       discardDraft(DRAFT_KEY(assignmentId))
       toast({ title: "¡Pirámide enviada!" })
       setSubmitted(true)
@@ -910,7 +936,9 @@ export default function PiramideTest({ api, assignmentId }: PiramideTestProps) {
                 disabled={saving || !canSubmit}
                 className="flex-1 bg-brand-accent hover:bg-brand-accent-dark"
               >
-                {saving ? "Enviando..." : "Enviar mi pirámide"}
+                {saving
+                  ? isEditing ? "Guardando..." : "Enviando..."
+                  : isEditing ? "Guardar cambios" : "Enviar mi pirámide"}
               </Button>
             </div>
             {!canSubmit && (
