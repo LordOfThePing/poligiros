@@ -9,6 +9,7 @@ import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 import { CollageResult } from "@/components/results/CollageResult"
 import { ObjetivoCarreraResult } from "@/components/results/ObjetivoCarreraResult"
 import { PlanAccionResult } from "@/components/results/PlanAccionResult"
+import { PiramideResult } from "@/components/piramide/PiramideResult"
 import { PV_SECTIONS } from "@/lib/planVital"
 import { DownloadResultPdf } from "@/components/DownloadResultPdf"
 
@@ -92,21 +93,7 @@ export default function ResultsView({
 
       {testType === "PIRAMIDE_PROPOSITO" && (
         <div className="space-y-4">
-          <h2 className="font-serif text-2xl text-foreground">Tu Pirámide del Propósito</h2>
-          {(["rol", "valores", "fortalezas", "contextos", "especialidad"] as const).map((field) => (
-            responses[field] ? (
-              <div key={field} className="bg-white rounded-xl border border-border p-4">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{field}</p>
-                <p className="text-sm text-foreground">{responses[field] as string}</p>
-              </div>
-            ) : null
-          ))}
-          {Boolean(responses.propositoFinal) && (
-            <div className="bg-gray-900 text-white rounded-xl p-5">
-              <p className="text-xs text-gray-400 mb-2">Mi propósito</p>
-              <p className="text-sm leading-relaxed">{responses.propositoFinal as string}</p>
-            </div>
-          )}
+          <PiramideResult responses={responses} />
           <RawDataView testType={testType} responses={responses} />
         </div>
       )}

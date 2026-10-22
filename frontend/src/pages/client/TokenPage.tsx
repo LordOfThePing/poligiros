@@ -128,12 +128,19 @@ export default function TokenPage() {
   }
 
   if (data.state === "results") {
-    const wide = data.testType === "MODELO_NEGOCIO" || data.testType === "TABLERO_IDEAS"
+    const wide =
+      data.testType === "MODELO_NEGOCIO" ||
+      data.testType === "TABLERO_IDEAS" ||
+      data.testType === "PIRAMIDE_PROPOSITO"
 
     if (editing && data.canEdit) {
+      // Pirámide usa el mismo formulario del test (pills + pirámide) → necesita
+      // el mismo ancho que la toma del test, no `max-w-2xl` que aprieta el
+      // layout a 2 columnas.
+      const editWidth = data.testType === "PIRAMIDE_PROPOSITO" ? "max-w-5xl" : "max-w-2xl"
       return (
         <div className="min-h-dvh bg-brand-bg py-8">
-          <div className="max-w-2xl mx-auto px-4 space-y-4">
+          <div className={`${editWidth} mx-auto px-4 space-y-4`}>
             <button
               onClick={() => setEditing(false)}
               className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
