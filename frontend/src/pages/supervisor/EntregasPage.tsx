@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Check, ChevronDown, Download, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
+import { testTitle } from "@/lib/testInfo"
 import { apiJson, apiTry } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
 import { Markdown } from "@/components/Markdown"
@@ -39,6 +40,7 @@ type PracticeRecord = {
   cohorts: string[]
   item: { id: string; title: string }
   module: { id: string; title: string }
+  test: { type: string; title: string } | null
   sessionDate: string | null
   mainOutputs: string
   toolsAndResults: string
@@ -352,6 +354,9 @@ export default function EntregasPage() {
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {d.module.title} · {d.item.title}
+                          {f.kind === "registro" && f.data.test && (
+                            <> · <span className="font-medium text-foreground">{testTitle(f.data.test.type, f.data.test.title)}</span></>
+                          )}
                         </p>
                         {f.kind === "entrega" ? (
                           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">

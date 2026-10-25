@@ -2226,7 +2226,14 @@ supervisor.get("/practice-records", async (c) => {
         },
       },
       coachee: { select: { id: true, name: true } },
-      item: { select: { id: true, title: true, module: { select: { id: true, title: true } } } },
+      item: {
+        select: {
+          id: true,
+          title: true,
+          module: { select: { id: true, title: true } },
+          test: { select: { type: true, title: true } },
+        },
+      },
     },
   })
 
@@ -2238,6 +2245,8 @@ supervisor.get("/practice-records", async (c) => {
       cohorts: r.coach.enrollments.map((e) => e.cohort.name),
       item: { id: r.item.id, title: r.item.title },
       module: { id: r.item.module.id, title: r.item.module.title },
+      // The test the session was run on — shown in the row's subtitle.
+      test: r.item.test,
       sessionDate: r.sessionDate,
       mainOutputs: r.mainOutputs,
       toolsAndResults: r.toolsAndResults,

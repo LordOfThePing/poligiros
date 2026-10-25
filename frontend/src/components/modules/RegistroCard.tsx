@@ -8,6 +8,7 @@ import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, U
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { formatShortDate } from "@/lib/date"
+import { testTitle } from "@/lib/testInfo"
 import { apiJson, apiTry } from "@/lib/api"
 import { useDraft } from "@/lib/draft"
 import { Markdown } from "@/components/Markdown"
@@ -227,7 +228,7 @@ export function RegistroCard({
             </div>
           )}
           <ReadOnlyRecord
-            heading={`Sesión con ${item.practice!.coachee.name}`}
+            heading={`Sesión con ${item.practice!.coachee.name}${item.test ? ` · ${testTitle(item.test.type, item.test.title)}` : ""}`}
             date={item.practice!.sessionDate}
             mainOutputs={item.practice!.mainOutputs}
             toolsAndResults={item.practice!.toolsAndResults}
