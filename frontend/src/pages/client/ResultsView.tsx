@@ -8,6 +8,7 @@ import { RawDataView } from "@/components/RawDataView"
 import { ModeloNegocioResult } from "@/components/canvas/ModeloNegocioResult"
 import { CollageResult } from "@/components/results/CollageResult"
 import { ObjetivoCarreraResult } from "@/components/results/ObjetivoCarreraResult"
+import { testTitle } from "@/lib/testInfo"
 import { PlanAccionResult } from "@/components/results/PlanAccionResult"
 import { PiramideResult } from "@/components/piramide/PiramideResult"
 import { PV_SECTIONS } from "@/lib/planVital"
@@ -102,7 +103,7 @@ export default function ResultsView({
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioResult responses={responses} />}
 
       {testType === "COLLAGE" && <CollageResult responses={responses} />}
-      {testType === "OBJETIVO_CARRERA" && <ObjetivoCarreraResult responses={responses} />}
+      {(testType === "OBJETIVO_CARRERA" || testType === "OBJETIVO_CARRERA_LARGO") && <ObjetivoCarreraResult responses={responses} title={testTitle(testType)} />}
       {testType === "PLAN_ACCION" && <PlanAccionResult responses={responses} />}
 
       {/* Tareas de exploración — post-Tablero tasks */}

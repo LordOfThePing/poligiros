@@ -11,6 +11,7 @@ import { ModeloNegocioTest } from "@/pages/client/tests/ModeloNegocioTest"
 import PlanVitalTest from "@/pages/client/tests/PlanVitalTest"
 import TareasExploracionTest from "@/pages/client/tests/TareasExploracionTest"
 import CollageTest from "@/pages/client/tests/CollageTest"
+import { testTitle } from "@/lib/testInfo"
 import ObjetivoCarreraTest from "@/pages/client/tests/ObjetivoCarreraTest"
 import PlanAccionTest from "@/pages/client/tests/PlanAccionTest"
 import ResultsView from "@/pages/client/ResultsView"
@@ -181,11 +182,12 @@ export default function StudentTakeTestPage() {
       {t === "PLAN_VITAL" && <PlanVitalTest api={api} assignmentId={assignment.id} />}
       {t === "TAREAS_EXPLORACION" && <TareasExploracionTest api={api} assignmentId={assignment.id} />}
       {t === "COLLAGE" && <CollageTest api={api} assignmentId={assignment.id} />}
-      {t === "OBJETIVO_CARRERA" && (
+      {(t === "OBJETIVO_CARRERA" || t === "OBJETIVO_CARRERA_LARGO") && (
         <ObjetivoCarreraTest
           api={api}
           assignmentId={assignment.id}
           prefillPiramide={assignment.prefillPiramide}
+          title={testTitle(t)}
         />
       )}
       {t === "PLAN_ACCION" && (
@@ -195,7 +197,7 @@ export default function StudentTakeTestPage() {
           prefillObjetivo={assignment.prefillObjetivo}
         />
       )}
-      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION", "COLLAGE", "OBJETIVO_CARRERA", "PLAN_ACCION"].includes(t) && (
+      {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION", "COLLAGE", "OBJETIVO_CARRERA", "OBJETIVO_CARRERA_LARGO", "PLAN_ACCION"].includes(t) && (
         <p className="text-muted-foreground text-sm">Este tipo de test no está disponible.</p>
       )}
     </div>

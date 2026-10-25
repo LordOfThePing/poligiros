@@ -12,6 +12,7 @@ export type TestType =
   | "TAREAS_EXPLORACION"
   | "COLLAGE"
   | "OBJETIVO_CARRERA"
+  | "OBJETIVO_CARRERA_LARGO"
   | "PLAN_ACCION"
 
 export type CoachAccess = {

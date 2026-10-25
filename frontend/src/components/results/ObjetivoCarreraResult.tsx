@@ -8,12 +8,18 @@ const FIELDS: { key: string; label: string }[] = [
   { key: "valores", label: "Valores centrales" },
 ]
 
-export function ObjetivoCarreraResult({ responses }: { responses: Record<string, unknown> }) {
+export function ObjetivoCarreraResult({
+  responses,
+  title = "Objetivo de Carrera",
+}: {
+  responses: Record<string, unknown>
+  title?: string
+}) {
   const sintesis = typeof responses.sintesis === "string" ? responses.sintesis : ""
 
   return (
     <div className="space-y-4">
-      <h2 className="font-serif text-2xl text-foreground">Objetivo de Carrera</h2>
+      <h2 className="font-serif text-2xl text-foreground">{title}</h2>
 
       <div className="space-y-3">
         {FIELDS.map((f) => {

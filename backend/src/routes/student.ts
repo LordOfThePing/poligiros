@@ -8,7 +8,7 @@ import {
   sendTestAssignedToClient,
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
-import { latestTableroIdea, latestPiramideData, latestObjetivoData } from "./client.js"
+import { latestTableroIdea, latestPiramideData, latestObjetivoData, isObjetivoType } from "./client.js"
 import { getCoachAccess } from "../lib/cohort.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
 import { notifyTarget } from "../lib/notify.js"
@@ -1383,7 +1383,7 @@ student.get("/my-tests/:id", async (c) => {
     assignment.test.type === "MODELO_NEGOCIO" ? await latestTableroIdea(assignment.clientId) : undefined
   // Objetivo de Carrera pre-fills rol + valores desde la Pirámide (editable).
   const prefillPiramide =
-    assignment.test.type === "OBJETIVO_CARRERA" ? await latestPiramideData(assignment.clientId) : undefined
+    isObjetivoType(assignment.test.type) ? await latestPiramideData(assignment.clientId) : undefined
   // Plan de Acción pre-fills el objetivo general desde Objetivo de Carrera.
   const prefillObjetivo =
     assignment.test.type === "PLAN_ACCION" ? await latestObjetivoData(assignment.clientId) : undefined

@@ -67,15 +67,21 @@ const TEST_CATALOG = [
   },
   {
     type: TestType.OBJETIVO_CARRERA,
-    title: "Objetivo de Carrera",
-    description: "Diseñá tu objetivo de carrera: modalidad, rol, área, organización, rubro, condiciones y valores.",
+    title: "Objetivo 1. Corto plazo",
+    description: "Diseñá tu objetivo de carrera a corto plazo: modalidad, rol, área, organización, rubro, condiciones y valores.",
     orderIndex: 8,
+  },
+  {
+    type: TestType.OBJETIVO_CARRERA_LARGO,
+    title: "Objetivo 2. Mediano/largo plazo",
+    description: "Diseñá tu objetivo de carrera a mediano/largo plazo: modalidad, rol, área, organización, rubro, condiciones y valores.",
+    orderIndex: 9,
   },
   {
     type: TestType.PLAN_ACCION,
     title: "Plan de Acción",
     description: "Armá tu estrategia, tu objetivo general y los objetivos específicos con acciones, recursos, tiempos y soporte.",
-    orderIndex: 9,
+    orderIndex: 10,
   },
 ]
 

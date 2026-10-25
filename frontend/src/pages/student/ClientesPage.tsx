@@ -23,6 +23,7 @@ const TEST_ORDER = [
   "PIRAMIDE_PROPOSITO",
   "COLLAGE",
   "OBJETIVO_CARRERA",
+  "OBJETIVO_CARRERA_LARGO",
   "PLAN_ACCION",
 ]
 const TEST_CODES: Record<string, string> = {
@@ -33,7 +34,8 @@ const TEST_CODES: Record<string, string> = {
   PLAN_VITAL: "PV",
   PIRAMIDE_PROPOSITO: "PP",
   COLLAGE: "CO",
-  OBJETIVO_CARRERA: "OC",
+  OBJETIVO_CARRERA: "O1",
+  OBJETIVO_CARRERA_LARGO: "O2",
   PLAN_ACCION: "PA",
 }
 

@@ -15,7 +15,8 @@ export const TEST_TITLES: Record<string, string> = {
   PLAN_VITAL: "Plan Vital Integral®",
   PIRAMIDE_PROPOSITO: "Pirámide del Propósito",
   COLLAGE: "Collage",
-  OBJETIVO_CARRERA: "Objetivo de Carrera",
+  OBJETIVO_CARRERA: "Objetivo 1. Corto plazo",
+  OBJETIVO_CARRERA_LARGO: "Objetivo 2. Mediano/largo plazo",
   PLAN_ACCION: "Plan de Acción",
 }
 

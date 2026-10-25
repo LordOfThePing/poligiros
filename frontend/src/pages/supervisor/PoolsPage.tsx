@@ -34,7 +34,8 @@ const TEST_LABELS: { type: TestType; label: string }[] = [
   { type: "PLAN_VITAL", label: "Plan Vital Integral®" },
   { type: "PIRAMIDE_PROPOSITO", label: "Pirámide del Propósito" },
   { type: "COLLAGE", label: "Collage" },
-  { type: "OBJETIVO_CARRERA", label: "Objetivo de Carrera" },
+  { type: "OBJETIVO_CARRERA", label: "Objetivo 1. Corto plazo" },
+  { type: "OBJETIVO_CARRERA_LARGO", label: "Objetivo 2. Mediano/largo plazo" },
   { type: "PLAN_ACCION", label: "Plan de Acción" },
 ]
 

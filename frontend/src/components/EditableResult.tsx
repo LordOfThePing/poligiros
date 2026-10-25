@@ -55,7 +55,7 @@ export function EditableResult({
       {testType === "PLAN_VITAL" && <PlanVitalEditor data={data} setField={setField} />}
       {testType === "TAREAS_EXPLORACION" && <TareasExploracionEditor data={data} setField={setField} />}
       {testType === "COLLAGE" && <CollageEditor data={data} setField={setField} />}
-      {testType === "OBJETIVO_CARRERA" && <ObjetivoCarreraEditor data={data} setField={setField} />}
+      {(testType === "OBJETIVO_CARRERA" || testType === "OBJETIVO_CARRERA_LARGO") && <ObjetivoCarreraEditor data={data} setField={setField} />}
       {testType === "PLAN_ACCION" && <PlanAccionEditor data={data} setField={setField} />}
       <Button onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
         <Save className="h-4 w-4 mr-2" /> {saving ? "Guardando..." : "Guardar cambios"}

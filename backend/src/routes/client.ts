@@ -60,15 +60,23 @@ export async function latestPiramideData(
   }
 }
 
+/** Los dos tests de Objetivo (1. Corto plazo / 2. Mediano/largo plazo) — mismo form y mismo shape. */
+export const OBJETIVO_TYPES = ["OBJETIVO_CARRERA", "OBJETIVO_CARRERA_LARGO"] as const
+
+export function isObjetivoType(type: string): boolean {
+  return (OBJETIVO_TYPES as readonly string[]).includes(type)
+}
+
 /**
- * Objetivo de Carrera data for the Plan de Acción pre-fill: la frase objetivo
- * armada en el test anterior. El coachee la puede editar igual.
+ * Objetivo data for the Plan de Acción pre-fill: la frase objetivo armada en
+ * el Objetivo (corto o mediano/largo plazo) completado más recientemente. El
+ * coachee la puede editar igual.
  */
 export async function latestObjetivoData(
   clientId: string,
 ): Promise<{ objetivoGeneral: string }> {
   const objetivo = await prisma.testAssignment.findFirst({
-    where: { clientId, test: { type: "OBJETIVO_CARRERA" }, completedAt: { not: null } },
+    where: { clientId, test: { type: { in: [...OBJETIVO_TYPES] } }, completedAt: { not: null } },
     orderBy: { completedAt: "desc" },
     include: { response: true },
   })
@@ -138,11 +146,11 @@ client.get("/t/:token", async (c) => {
       ...(assignment.test.type === "MODELO_NEGOCIO"
         ? await latestTableroData(assignment.clientId)
         : {}),
-      // Objetivo de Carrera: rol + valores de la Pirámide (siempre editables).
-      ...(assignment.test.type === "OBJETIVO_CARRERA"
+      // Objetivo 1 y 2: rol + valores de la Pirámide (siempre editables).
+      ...(isObjetivoType(assignment.test.type)
         ? { prefillPiramide: await latestPiramideData(assignment.clientId) }
         : {}),
-      // Plan de Acción: objetivo general de la última Objetivo de Carrera.
+      // Plan de Acción: objetivo general del último Objetivo (1 o 2).
       ...(assignment.test.type === "PLAN_ACCION"
         ? { prefillObjetivo: await latestObjetivoData(assignment.clientId) }
         : {}),

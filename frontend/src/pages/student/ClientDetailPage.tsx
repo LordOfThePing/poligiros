@@ -43,7 +43,8 @@ const TEST_ORDER: { type: string; order: string; indent?: boolean }[] = [
   { type: "PIRAMIDE_PROPOSITO", order: "4" },
   { type: "COLLAGE", order: "5" },
   { type: "OBJETIVO_CARRERA", order: "6" },
-  { type: "PLAN_ACCION", order: "7" },
+  { type: "OBJETIVO_CARRERA_LARGO", order: "7" },
+  { type: "PLAN_ACCION", order: "8" },
 ]
 
 type Assignment = {

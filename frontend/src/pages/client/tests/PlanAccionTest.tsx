@@ -162,7 +162,7 @@ export default function PlanAccionTest({
           <Sparkles className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
           <p>
             Pre-llenamos el <strong>objetivo general</strong> con la frase que armaste en tu
-            Objetivo de Carrera. Es editable — ajustala si para este plan te hace
+            último Objetivo (corto o mediano/largo plazo). Es editable — ajustala si para este plan te hace
             falta recortarla o reformularla.
           </p>
         </div>

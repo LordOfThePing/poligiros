@@ -147,8 +147,8 @@ function ResponseViewer({ testType, responses }: { testType: string; responses: 
     return <CollageResult responses={responses} />
   }
 
-  if (testType === "OBJETIVO_CARRERA") {
-    return <ObjetivoCarreraResult responses={responses} />
+  if (testType === "OBJETIVO_CARRERA" || testType === "OBJETIVO_CARRERA_LARGO") {
+    return <ObjetivoCarreraResult responses={responses} title={testTitle(testType)} />
   }
 
   if (testType === "PLAN_ACCION") {

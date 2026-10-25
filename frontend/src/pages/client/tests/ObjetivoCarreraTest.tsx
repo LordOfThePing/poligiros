@@ -19,6 +19,8 @@ interface ObjetivoCarreraTestProps {
   api: TestApi
   assignmentId: string
   prefillPiramide?: Prefill
+  /** "Objetivo 1. Corto plazo" o "Objetivo 2. Mediano/largo plazo" — mismo form. */
+  title?: string
 }
 
 const DRAFT_KEY = (id: string) => `objetivo-carrera-draft-${id}`
@@ -122,6 +124,7 @@ export default function ObjetivoCarreraTest({
   api,
   assignmentId,
   prefillPiramide,
+  title = "Objetivo de Carrera",
 }: ObjetivoCarreraTestProps) {
   const { toast } = useToast()
   const [form, setForm] = useState<Form>(EMPTY)
@@ -186,7 +189,7 @@ export default function ObjetivoCarreraTest({
   return (
     <div className="space-y-6 pb-24 max-w-2xl mx-auto">
       <div>
-        <h2 className="font-serif text-2xl text-foreground mb-1">Objetivo de Carrera</h2>
+        <h2 className="font-serif text-2xl text-foreground mb-1">{title}</h2>
         <p className="text-sm text-muted-foreground">
           Completá los factores con la información pertinente, de acuerdo a tus
           motivaciones. Mientras escribís se va armando la frase síntesis de tu

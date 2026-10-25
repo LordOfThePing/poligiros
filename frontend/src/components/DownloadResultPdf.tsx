@@ -14,7 +14,8 @@ const TEST_LABELS: Record<string, string> = {
   TAREAS_EXPLORACION: "Tareas a explorar",
   PLAN_VITAL: "Plan Vital Integral",
   COLLAGE: "Collage",
-  OBJETIVO_CARRERA: "Objetivo de Carrera",
+  OBJETIVO_CARRERA: "Objetivo 1 - Corto plazo",
+  OBJETIVO_CARRERA_LARGO: "Objetivo 2 - Mediano-largo plazo",
   PLAN_ACCION: "Plan de Accion",
 }
 

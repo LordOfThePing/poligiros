@@ -26,8 +26,10 @@ enum TestType {
   TAREAS_EXPLORACION
   /// Collage de valores / inspiración armado en Canva — el coachee sube el PDF o imagen.
   COLLAGE
-  /// Objetivo de carrera (Gaby Kyriazis) — modalidad, rol, área, organización, rubro, condiciones, valores.
+  /// "Objetivo 1. Corto plazo" (Gaby Kyriazis) — modalidad, rol, área, organización, rubro, condiciones, valores.
   OBJETIVO_CARRERA
+  /// "Objetivo 2. Mediano/largo plazo" — mismo formulario que OBJETIVO_CARRERA (que es el de corto plazo).
+  OBJETIVO_CARRERA_LARGO
   /// Plan de acción — estrategia + objetivo general + N objetivos (acción, recursos, tiempo, soporte).
   PLAN_ACCION
 }

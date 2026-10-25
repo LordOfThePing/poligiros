@@ -9,6 +9,7 @@ import { ModeloNegocioTest } from "./tests/ModeloNegocioTest"
 import PlanVitalTest from "./tests/PlanVitalTest"
 import TareasExploracionTest from "./tests/TareasExploracionTest"
 import CollageTest from "./tests/CollageTest"
+import { testTitle } from "@/lib/testInfo"
 import ObjetivoCarreraTest from "./tests/ObjetivoCarreraTest"
 import PlanAccionTest from "./tests/PlanAccionTest"
 import ResultsView from "./ResultsView"
@@ -240,11 +241,12 @@ export default function TokenPage() {
           {data.testType === "COLLAGE" && (
             <CollageTest api={api} assignmentId={data.assignmentId} />
           )}
-          {data.testType === "OBJETIVO_CARRERA" && (
+          {(data.testType === "OBJETIVO_CARRERA" || data.testType === "OBJETIVO_CARRERA_LARGO") && (
             <ObjetivoCarreraTest
               api={api}
               assignmentId={data.assignmentId}
               prefillPiramide={data.prefillPiramide}
+              title={testTitle(data.testType)}
             />
           )}
           {data.testType === "PLAN_ACCION" && (
@@ -254,7 +256,7 @@ export default function TokenPage() {
               prefillObjetivo={data.prefillObjetivo}
             />
           )}
-          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION", "COLLAGE", "OBJETIVO_CARRERA", "PLAN_ACCION"].includes(data.testType) && (
+          {!["ANCLAS_CARRERA", "TABLERO_IDEAS", "PIRAMIDE_PROPOSITO", "MODELO_NEGOCIO", "PLAN_VITAL", "TAREAS_EXPLORACION", "COLLAGE", "OBJETIVO_CARRERA", "OBJETIVO_CARRERA_LARGO", "PLAN_ACCION"].includes(data.testType) && (
             <div className="text-center py-16">
               <h2 className="font-serif text-2xl">{data.title}</h2>
               <p className="text-muted-foreground mt-2">Este tipo de test no está disponible en este momento.</p>

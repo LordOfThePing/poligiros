@@ -104,8 +104,14 @@ other test, including as a module item (kind `TEST`, `DUPLA` or `REGISTRO`).
 **Prefills entre tests** — algunos tests leen el resultado más reciente de otro para
 pre-llenar campos (siempre editables, con un aviso de dónde salió):
 - `MODELO_NEGOCIO` ← `TABLERO_IDEAS` (idea elegida + brainstorm), vía `latestTableroData()`.
-- `OBJETIVO_CARRERA` ← `PIRAMIDE_PROPOSITO` (`rol` + `valores`), vía `latestPiramideData()`.
-- `PLAN_ACCION` ← `OBJETIVO_CARRERA` (`sintesis` → objetivo general), vía `latestObjetivoData()`.
+- `OBJETIVO_CARRERA` / `OBJETIVO_CARRERA_LARGO` ← `PIRAMIDE_PROPOSITO` (`rol` + `valores`), vía `latestPiramideData()`.
+- `PLAN_ACCION` ← el Objetivo (1 o 2) completado más reciente (`sintesis` → objetivo general), vía `latestObjetivoData()`.
+
+**Objetivo 1 y 2:** `OBJETIVO_CARRERA` es "Objetivo 1. Corto plazo" y
+`OBJETIVO_CARRERA_LARGO` es "Objetivo 2. Mediano/largo plazo" — dos tests
+distintos (cada uno con su fila de catálogo y su link) que comparten el mismo
+form (`ObjetivoCarreraTest`, recibe `title`), resultado y editor. Usá
+`isObjetivoType()` / `OBJETIVO_TYPES` (`backend/src/routes/client.ts`) en el backend.
 
 Los tres helpers viven en `backend/src/routes/client.ts` (exportados) y los consume
 tanto `GET /client/t/:token` como `GET /student/my-tests/:id` para que el form-state
@@ -175,7 +181,7 @@ different shape:
 | `PIRAMIDE_PROPOSITO` | `rol`, `valores`, `fortalezas`, `contextos`, `especialidad`, `propositoFinal` |
 | `MODELO_NEGOCIO` | `kind` (`"CANVAS"` \| `"JOB"`), `selectedIdea`, `content{}` (keyed by canvas-block or job-field key) |
 | `COLLAGE` | `fileUrl`, `fileKey`, `fileName`, `mimeType`, `sizeBytes`, `notes?` — el blob vive en R2 (prefix `collage/<assignmentId>/…`), se sube vía `POST /client/t/:token/upload` o `POST /student/my-tests/:id/upload` **antes** de hacer submit |
-| `OBJETIVO_CARRERA` | `puesto`, `tareas`, `area`, `tipoOrganizacion`, `rubro`, `condiciones`, `valores`, `sintesis` (la frase final auto-armada) |
+| `OBJETIVO_CARRERA` / `OBJETIVO_CARRERA_LARGO` | `puesto`, `tareas`, `area`, `tipoOrganizacion`, `rubro`, `condiciones`, `valores`, `sintesis` (la frase final auto-armada) |
 | `PLAN_ACCION` | `estrategia`, `objetivoGeneral`, `objetivos[]` donde cada uno es `{ titulo, accion, recursos, tiempo, soporte }` |
 
 The supervisor's `ResponseViewer` (`frontend/src/pages/supervisor/SupervisionDetailPage.tsx`)
