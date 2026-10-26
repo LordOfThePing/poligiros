@@ -40,6 +40,8 @@ interface ResultsViewProps {
    * window, so the responsive classes would squeeze the columns on a desktop.
    */
   exportCopy?: boolean
+  /** Heading over `coachFeedback` — e.g. a dupla reading Gaby's devolución. */
+  feedbackLabel?: string
 }
 
 const TABLERO_COLUMNS = [
@@ -50,7 +52,7 @@ const TABLERO_COLUMNS = [
 
 export default function ResultsView({
   testType, responses, coachFeedback, completedAt, footer, hideExport, constrainHeight = true,
-  personName, exportCopy = false,
+  personName, exportCopy = false, feedbackLabel = "Feedback de tu coach:",
 }: ResultsViewProps) {
   const isDesktop = useMediaQuery("(min-width: 1024px)")
   // Tablero on a full page at desktop width: everything below the columns
@@ -64,6 +66,7 @@ export default function ResultsView({
       coachFeedback={coachFeedback}
       completedAt={completedAt}
       personName={personName}
+      feedbackLabel={feedbackLabel}
     />
   )
 
@@ -88,13 +91,14 @@ export default function ResultsView({
           fill={fillViewport}
           exportCopy={exportCopy}
           coachFeedback={coachFeedback}
+          feedbackLabel={feedbackLabel}
           exportBar={exportBar}
         />
       )}
 
       {testType === "PIRAMIDE_PROPOSITO" && (
         <div className="space-y-4">
-          <PiramideResult responses={responses} />
+          <PiramideResult responses={responses} exportCopy={exportCopy} />
           <RawDataView testType={testType} responses={responses} />
         </div>
       )}
@@ -171,7 +175,7 @@ export default function ResultsView({
       {/* Coach feedback */}
       {coachFeedback && !fillViewport && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5">
-          <p className="text-xs font-medium text-indigo-700 mb-2">Feedback de tu coach:</p>
+          <p className="text-xs font-medium text-indigo-700 mb-2">{feedbackLabel}</p>
           <p className="text-sm text-indigo-900 leading-relaxed">{coachFeedback}</p>
         </div>
       )}
@@ -233,13 +237,14 @@ function useFillViewportHeight(ref: React.RefObject<HTMLElement>, enabled: boole
  * content (mobile, embedded cards, the PDF capture).
  */
 function TableroResult({
-  responses, footer, fill, exportCopy, coachFeedback, exportBar,
+  responses, footer, fill, exportCopy, coachFeedback, feedbackLabel, exportBar,
 }: {
   responses: Record<string, unknown>
   footer?: React.ReactNode
   fill: boolean
   exportCopy: boolean
   coachFeedback: string | null
+  feedbackLabel: string
   exportBar: React.ReactNode
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -410,7 +415,7 @@ function TableroResult({
         {fill && coachFeedback && (
           // Capped so a long devolución never pushes the columns off the frame.
           <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 max-h-28 overflow-y-auto">
-            <p className="text-xs font-medium text-indigo-700 mb-1">Feedback de tu coach:</p>
+            <p className="text-xs font-medium text-indigo-700 mb-1">{feedbackLabel}</p>
             <p className="text-sm text-indigo-900 leading-relaxed">{coachFeedback}</p>
           </div>
         )}

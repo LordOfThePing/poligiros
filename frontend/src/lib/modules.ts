@@ -108,17 +108,6 @@ export type OwnPractice = {
   canEdit?: boolean
 }
 
-/** The session a partner ran on ME. No feedback: that devolución is theirs. */
-export type PracticeAboutMe = {
-  id: string
-  coach: { id: string; name: string }
-  sessionDate: string | null
-  mainOutputs: string
-  toolsAndResults: string
-  conclusions: string
-  submittedAt: string
-}
-
 export type StudentModuleItem = ModuleItem & {
   completed: boolean
   /** kind = TEST only: the coach own assignment, created on first open. */
@@ -128,7 +117,6 @@ export type StudentModuleItem = ModuleItem & {
   supervision: OwnSupervision | null
   submission: OwnSubmission | null
   practice: OwnPractice | null
-  practiceAboutMe: PracticeAboutMe | null
 }
 
 export type StudentModule = Omit<Module, "items"> & {

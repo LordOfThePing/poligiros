@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, Users, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -16,6 +15,7 @@ import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { SaveIndicator } from "@/components/SaveIndicator"
 import ResultsView from "@/pages/client/ResultsView"
 import { PracticeRecordPdf } from "@/components/PracticeRecordPdf"
+import { fetchPartnerTest } from "@/components/PartnerTestPdfSection"
 import { useAuth } from "@/lib/auth"
 import type { DuplaCandidate, StudentModuleItem } from "@/lib/modules"
 
@@ -25,6 +25,8 @@ type PartnerResult = {
   completedAt?: string
   testType?: string
   responses?: Record<string, unknown> | null
+  /** Gaby's devolución on the partner's own test. */
+  feedback?: string | null
 }
 
 /**
@@ -119,12 +121,6 @@ export function RegistroCard({
   // Server-side rejection (e.g. 409 "ya entregado, esperando devolución").
   const [serverError, setServerError] = useState<string | null>(null)
 
-  // The partner's test result, loaded on demand once a partner is picked.
-  const [result, setResult] = useState<PartnerResult | null>(null)
-  const [loadingResult, setLoadingResult] = useState(false)
-  const [showResult, setShowResult] = useState(false)
-
-  const [showAboutMe, setShowAboutMe] = useState(false)
 
   // Handed in → read-only until Gaby returns it; her devolución reopens it for
   // a correction, which goes back to her (see PUT .../registro). So the form is
@@ -140,26 +136,6 @@ export function RegistroCard({
       .catch(() => {})
   }, [item.id])
 
-
-  // Reset whenever the partner changes: showing a result from the previous pick
-  // next to a different name would be worse than showing nothing.
-  useEffect(() => {
-    setResult(null)
-    setShowResult(false)
-  }, [coacheeId])
-
-  async function loadResult() {
-    if (!coacheeId) return
-    setShowResult(true)
-    if (result) return
-    setLoadingResult(true)
-    try {
-      setResult(await apiJson<PartnerResult>(`/student/module-items/${item.id}/dupla/${coacheeId}`))
-    } catch {
-      setResult(null)
-    }
-    setLoadingResult(false)
-  }
 
   const missing = {
     coachee: !coacheeId,
@@ -234,6 +210,15 @@ export function RegistroCard({
             toolsAndResults={item.practice!.toolsAndResults}
             conclusions={item.practice!.conclusions}
           />
+          {/* The dupla's test stays visible after handing in the registro. */}
+          {item.test && (
+            <PartnerResultPanel
+              key={item.practice!.coachee.id}
+              itemId={item.id}
+              coacheeId={item.practice!.coachee.id}
+              partnerName={item.practice!.coachee.name}
+            />
+          )}
           {item.practice!.feedback && (
             <div className="bg-brand-accent/10 border border-brand-accent/30 rounded-lg p-3">
               <p className="text-xs text-muted-foreground mb-1">Devolución de Gaby</p>
@@ -256,6 +241,11 @@ export function RegistroCard({
               coacheeName={item.practice!.coachee.name}
               moduleTitle={moduleTitle}
               itemTitle={item.title}
+              loadPartnerTest={
+                item.test
+                  ? () => fetchPartnerTest(`/student/module-items/${item.id}/dupla/${item.practice!.coachee.id}`)
+                  : undefined
+              }
             />
             <span className="text-xs text-muted-foreground">
               Podés editarlo las veces que quieras — cada edición le vuelve a Gaby.
@@ -292,44 +282,7 @@ export function RegistroCard({
 
           {/* Preparing the devolución: the partner's own result for this card's test. */}
           {coacheeId && (
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <button
-                onClick={() => (showResult ? setShowResult(false) : loadResult())}
-                className="flex items-center gap-2 text-sm text-foreground"
-              >
-                {showResult ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <Users className="h-4 w-4 text-brand-accent" />
-                Ver el resultado de {partnerName ?? "tu dupla"}
-              </button>
-
-              {showResult && (
-                <div className="mt-3">
-                  {loadingResult ? (
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Cargando...
-                    </p>
-                  ) : result?.completed && result.responses && result.testType ? (
-                    <ResultsView
-                      testType={result.testType}
-                      responses={result.responses}
-                      coachFeedback={null}
-                      completedAt={result.completedAt ?? new Date().toISOString()}
-                      hideExport
-                      constrainHeight={false}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Todavía no completó ese test. Pedile que lo haga antes de la sesión: sin eso
-                      no vas a poder darle la devolución.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            <PartnerResultPanel key={coacheeId} itemId={item.id} coacheeId={coacheeId} partnerName={partnerName} />
           )}
 
           <div className="space-y-2">
@@ -445,30 +398,72 @@ export function RegistroCard({
         </div>
       )}
 
-      {/* ── The session my partner ran on me ──────────────────────────────── */}
-      {item.practiceAboutMe && (
-        <div className="border-t border-border pt-4">
-          <button
-            onClick={() => setShowAboutMe((v) => !v)}
-            className="flex items-center gap-2 text-sm text-foreground"
-          >
-            {showAboutMe ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            El registro que te hicieron a vos
-            <Badge variant="secondary" className="text-xs">
-              {item.practiceAboutMe.coach.name}
-            </Badge>
-          </button>
+    </div>
+  )
+}
 
-          {showAboutMe && (
-            <div className="mt-3">
-              <ReadOnlyRecord
-                heading={`Sesión conducida por ${item.practiceAboutMe.coach.name}`}
-                date={item.practiceAboutMe.sessionDate}
-                mainOutputs={item.practiceAboutMe.mainOutputs}
-                toolsAndResults={item.practiceAboutMe.toolsAndResults}
-                conclusions={item.practiceAboutMe.conclusions}
-              />
-            </div>
+/**
+ * Collapsible "Ver el resultado de <dupla>": the partner's own result for the
+ * card's test, plus Gaby's devolución on it. Keyed by partner at the call site,
+ * so a new pick never shows the previous one's result.
+ */
+function PartnerResultPanel({
+  itemId,
+  coacheeId,
+  partnerName,
+}: {
+  itemId: string
+  coacheeId: string
+  partnerName?: string
+}) {
+  const [result, setResult] = useState<PartnerResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [show, setShow] = useState(false)
+
+  async function load() {
+    setShow(true)
+    if (result) return
+    setLoading(true)
+    try {
+      setResult(await apiJson<PartnerResult>(`/student/module-items/${itemId}/dupla/${coacheeId}`))
+    } catch {
+      setResult(null)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <button
+        onClick={() => (show ? setShow(false) : load())}
+        className="flex items-center gap-2 text-sm text-foreground"
+      >
+        {show ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <Users className="h-4 w-4 text-brand-accent" />
+        Ver el resultado de {partnerName ?? "tu dupla"}
+      </button>
+
+      {show && (
+        <div className="mt-3">
+          {loading ? (
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> Cargando...
+            </p>
+          ) : result?.completed && result.responses && result.testType ? (
+            <ResultsView
+              testType={result.testType}
+              responses={result.responses}
+              coachFeedback={result.feedback ?? null}
+              feedbackLabel="Devolución de Gaby:"
+              completedAt={result.completedAt ?? new Date().toISOString()}
+              hideExport
+              constrainHeight={false}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Todavía no completó ese test. Pedile que lo haga antes de la sesión: sin eso
+              no vas a poder darle la devolución.
+            </p>
           )}
         </div>
       )}

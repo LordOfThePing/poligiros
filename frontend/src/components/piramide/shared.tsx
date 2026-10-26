@@ -42,51 +42,63 @@ export function PyramidSVG({
   // padding vacío arriba y abajo del contenido (polígonos y=10→110), que se
   // percibía como espacio de más arriba de la pirámide.
   const interactive = Boolean(onLevel)
+  // El ancho máximo y el centrado van en un div, no en el <svg>: html2canvas
+  // dibuja mal un <svg> con `max-width` + `margin: auto` (sale corrido y
+  // recortado en el PDF).
   return (
-    <svg viewBox="0 6 140 108" className="w-full max-w-sm mx-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
-      {LEVELS.map((level) => {
-        const isActive = active === level.key
-        return (
-          <g
-            key={level.key}
-            onClick={interactive ? () => onLevel?.(level.key) : undefined}
-            className={interactive ? "cursor-pointer" : undefined}
-          >
-            <polygon
-              points={level.points}
-              fill={isActive ? "#1E4D38" : level.color}
-              stroke="white"
-              strokeWidth="1"
-              className="transition-all duration-200"
-            />
-            <line
-              x1={level.rightX}
-              y1={level.cy}
-              x2={83}
-              y2={level.cy}
-              stroke={isActive ? "#1E4D38" : level.color}
-              strokeWidth="0.6"
-              opacity="0.7"
-            />
-            <text
-              x={85}
-              y={level.cy + 2}
-              textAnchor="start"
-              fill={isActive ? "#1E4D38" : "#1F2937"}
-              fontSize="6"
-              fontWeight="bold"
-              fontFamily="sans-serif"
+    <div className="w-full max-w-sm mx-auto">
+      <svg viewBox="0 6 140 108" className="block w-full h-auto" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}>
+        {LEVELS.map((level) => {
+          const isActive = active === level.key
+          return (
+            <g
+              key={level.key}
+              onClick={interactive ? () => onLevel?.(level.key) : undefined}
+              className={interactive ? "cursor-pointer" : undefined}
             >
-              {level.label}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+              <polygon
+                points={level.points}
+                fill={isActive ? "#1E4D38" : level.color}
+                stroke="white"
+                strokeWidth="1"
+                className="transition-all duration-200"
+              />
+              <line
+                x1={level.rightX}
+                y1={level.cy}
+                x2={83}
+                y2={level.cy}
+                stroke={isActive ? "#1E4D38" : level.color}
+                strokeWidth="0.6"
+                opacity="0.7"
+              />
+              <text
+                x={85}
+                y={level.cy + 2}
+                textAnchor="start"
+                fill={isActive ? "#1E4D38" : "#1F2937"}
+                fontSize="6"
+                fontWeight="bold"
+                fontFamily="sans-serif"
+              >
+                {level.label}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
   )
 }
 
-export function SelectionRecap({ selected }: { selected: PiramideSelected }) {
+export function SelectionRecap({
+  selected,
+  exportCopy = false,
+}: {
+  selected: PiramideSelected
+  /** PDF capture: sin `truncate` — html2canvas recorta el texto de las pills. */
+  exportCopy?: boolean
+}) {
   return (
     <div className="bg-white rounded-xl border border-border p-4 space-y-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -110,7 +122,11 @@ export function SelectionRecap({ selected }: { selected: PiramideSelected }) {
               selected[row.key].map((s) => (
                 <span
                   key={s}
-                  className="inline-block rounded-full bg-muted text-foreground text-[11px] px-2 py-0.5 max-w-[14rem] truncate"
+                  className={
+                    exportCopy
+                      ? "inline-block rounded-full bg-muted text-foreground text-[11px] px-2 py-0.5"
+                      : "inline-block rounded-full bg-muted text-foreground text-[11px] px-2 py-0.5 max-w-[14rem] truncate"
+                  }
                   title={s}
                 >
                   {s}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import html2canvas from "html2canvas"
 import { formatShortDate } from "@/lib/date"
 import { paginateCanvasToPdf } from "@/lib/pdfPaginate"
+import { PartnerTestPdfSection, tagPdfBlocks, type PartnerTest } from "@/components/PartnerTestPdfSection"
 
 type RecordShape = {
   sessionDate: string | null
@@ -18,6 +19,9 @@ type RecordShape = {
  * PDF for a `PracticeRecord` (module REGISTRO card). Both sides are coaches of
  * the same CIC, so this record carries no coachee-profile data (no edad/sexo
  * like `SessionRecord` has — see schema.prisma).
+ *
+ * With `loadPartnerTest`, the dupla's own result for the card's test is fetched
+ * on click and printed first, before the registro.
  */
 export function PracticeRecordPdf({
   record,
@@ -26,6 +30,7 @@ export function PracticeRecordPdf({
   moduleTitle,
   itemTitle,
   label = "Descargar PDF",
+  loadPartnerTest,
 }: {
   record: RecordShape
   coachName: string
@@ -33,8 +38,10 @@ export function PracticeRecordPdf({
   moduleTitle?: string
   itemTitle?: string
   label?: string
+  loadPartnerTest?: () => Promise<PartnerTest | null>
 }) {
   const [downloading, setDownloading] = useState(false)
+  const [partnerTest, setPartnerTest] = useState<PartnerTest | null>(null)
   const captureRef = useRef<HTMLDivElement | null>(null)
 
   const renderCapture = () => (
@@ -43,6 +50,7 @@ export function PracticeRecordPdf({
       style={{ position: "fixed", left: -10000, top: 0, width: 900, background: "#fff", color: "#1c1917" }}
     >
       <div className="p-8 space-y-5">
+        {partnerTest && <PartnerTestPdfSection test={partnerTest} partnerName={coacheeName} />}
         <div>
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">
             Registro de sesión {moduleTitle && itemTitle ? `· ${moduleTitle} · ${itemTitle}` : ""}
@@ -79,10 +87,13 @@ export function PracticeRecordPdf({
   async function handleDownload() {
     setDownloading(true)
     try {
-      await new Promise((r) => setTimeout(r, 50))
+      if (loadPartnerTest) setPartnerTest(await loadPartnerTest())
+      // Let the portal paint (with the dupla's test, if any) before capturing.
+      await new Promise((r) => setTimeout(r, 150))
       await document.fonts.ready
       const el = captureRef.current
       if (!el) throw new Error("no capture")
+      tagPdfBlocks(el)
       const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: false, logging: false, imageTimeout: 15000, backgroundColor: "#ffffff" })
       const pdf = await paginateCanvasToPdf(canvas, el)
       pdf.save(`registro-${coacheeName.toLowerCase().replace(/\s+/g, "-")}.pdf`)

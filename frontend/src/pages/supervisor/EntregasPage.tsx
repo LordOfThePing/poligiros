@@ -18,6 +18,7 @@ import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { usePersistedState } from "@/lib/persistedState"
 import { PracticeRecordPdf } from "@/components/PracticeRecordPdf"
 import { downloadBulkPracticeRecordsPdf } from "@/lib/bulkPracticePdf"
+import { fetchPartnerTest } from "@/components/PartnerTestPdfSection"
 
 type Submission = {
   id: string
@@ -267,8 +268,12 @@ export default function EntregasPage() {
               setBulkDownloading(true)
               try {
                 const selectedCoach = coachList.find((c) => c.id === coachFilter)
+                // Each registro opens with its dupla's test, so fetch those first.
+                const partnerTests = await Promise.all(
+                  visiblePractices.map((r) => fetchPartnerTest(`/supervisor/practice-records/${r.id}/partner-test`)),
+                )
                 await downloadBulkPracticeRecordsPdf(
-                  visiblePractices.map((r) => ({
+                  visiblePractices.map((r, i) => ({
                     coachName: r.coach.name,
                     coacheeName: r.coachee.name,
                     moduleTitle: r.module.title,
@@ -278,6 +283,7 @@ export default function EntregasPage() {
                     toolsAndResults: r.toolsAndResults,
                     conclusions: r.conclusions,
                     feedback: r.feedback,
+                    partnerTest: partnerTests[i],
                   })),
                   `registros-${(selectedCoach?.name ?? "alumno").toLowerCase().replace(/\s+/g, "-")}.pdf`,
                 )
@@ -386,6 +392,9 @@ export default function EntregasPage() {
                             moduleTitle={f.data.module.title}
                             itemTitle={f.data.item.title}
                             label="PDF"
+                            loadPartnerTest={() =>
+                              fetchPartnerTest(`/supervisor/practice-records/${f.data.id}/partner-test`)
+                            }
                           />
                         )}
                         <Button

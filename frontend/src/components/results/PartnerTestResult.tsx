@@ -12,6 +12,8 @@ type PartnerResult = {
   completedAt?: string
   testType?: string
   responses?: Record<string, unknown> | null
+  /** Gaby's devolución on the partner's own test. */
+  feedback?: string | null
 }
 
 type DuplaTest = {
@@ -19,6 +21,7 @@ type DuplaTest = {
   testType: string
   completedAt: string
   responses: Record<string, unknown>
+  feedback: string | null
 }
 
 type DuplaSubmission = {
@@ -169,7 +172,8 @@ export function PartnerTestResult({
               <ResultsView
                 testType={result.testType}
                 responses={result.responses}
-                coachFeedback={null}
+                coachFeedback={result.feedback ?? null}
+                feedbackLabel="Devolución de Gaby:"
                 completedAt={result.completedAt ?? new Date().toISOString()}
                 personName={partnerName}
                 constrainHeight={false}
@@ -228,7 +232,8 @@ export function PartnerTestResult({
                                 <ResultsView
                                   testType={t.testType}
                                   responses={t.responses}
-                                  coachFeedback={null}
+                                  coachFeedback={t.feedback}
+                                  feedbackLabel="Devolución de Gaby:"
                                   completedAt={t.completedAt}
                                   personName={partnerName}
                                   constrainHeight={false}

@@ -10,6 +10,7 @@ import {
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
 import { latestTableroIdea, latestPiramideData, latestObjetivoData, isObjetivoType } from "./client.js"
 import { getCoachAccess } from "../lib/cohort.js"
+import { latestCoachTestResult, duplaFeedback } from "../lib/duplaTest.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
 import { notifyTarget } from "../lib/notify.js"
 import { isR2Configured, uploadToR2, deleteFromR2 } from "../lib/r2.js"
@@ -630,19 +631,13 @@ student.get("/modules", async (c) => {
   })
 
   // The coach takes tests against their own coach-as-coachee Client.
-  const [myPractices, practicesAboutMe] = await Promise.all([
-    prisma.practiceRecord.findMany({
-      where: { coachId: user.id, item: { moduleId: { in: moduleIds } } },
-      include: { coachee: { select: { id: true, name: true } } },
-    }),
-    prisma.practiceRecord.findMany({
-      where: { coacheeId: user.id, item: { moduleId: { in: moduleIds } } },
-      include: { coach: { select: { id: true, name: true } } },
-    }),
-  ])
+  // Only the sessions I ran. What my dupla partner wrote about me is NOT sent:
+  // that registro is between them and Gaby.
+  const myPractices = await prisma.practiceRecord.findMany({
+    where: { coachId: user.id, item: { moduleId: { in: moduleIds } } },
+    include: { coachee: { select: { id: true, name: true } } },
+  })
   const practiceByItem = new Map(myPractices.map((r) => [r.itemId, r]))
-  // What my dupla partner wrote about me, for the same card.
-  const practiceAboutMeByItem = new Map(practicesAboutMe.map((r) => [r.itemId, r]))
 
   const mySubmissions = await prisma.moduleItemSubmission.findMany({
     where: { userId: user.id, item: { moduleId: { in: moduleIds } } },
@@ -686,7 +681,6 @@ student.get("/modules", async (c) => {
         const assignment = i.testId ? assignmentByTest.get(i.testId) : undefined
         const submission = submissionByItem.get(i.id)
         const practice = practiceByItem.get(i.id)
-        const practiceAboutMe = practiceAboutMeByItem.get(i.id)
         // The coach's own test supervision feedback, if any (read from the item).
         const ownSupervision = assignment ? supervisionByAssignment.get(assignment.id) : undefined
         return {
@@ -734,19 +728,6 @@ student.get("/modules", async (c) => {
                 editedAt: practice.editedAt,
                 // Siempre editable: cada edición se le vuelve a mandar.
                 canEdit: true,
-              }
-            : null,
-          // The session my dupla partner ran on ME. Read-only, and without the
-          // feedback Gaby wrote for THEM — that devolución is not mine to read.
-          practiceAboutMe: practiceAboutMe
-            ? {
-                id: practiceAboutMe.id,
-                coach: practiceAboutMe.coach,
-                sessionDate: practiceAboutMe.sessionDate,
-                mainOutputs: practiceAboutMe.mainOutputs,
-                toolsAndResults: practiceAboutMe.toolsAndResults,
-                conclusions: practiceAboutMe.conclusions,
-                submittedAt: practiceAboutMe.submittedAt,
               }
             : null,
         }
@@ -1011,25 +992,13 @@ student.get("/module-items/:itemId/dupla/:coachId", async (c) => {
     return c.json({ error: "No podés ver los resultados de esta persona" }, 403)
   }
 
-  // The coach takes their own tests against their coach-as-coachee Client.
   const coach = { id: peer.id, name: peer.name }
+  const result = await latestCoachTestResult(coachId, full.testId)
+  if (!result) return c.json({ coach, completed: false })
 
-  const theirClient = await prisma.client.findUnique({ where: { userId: coachId } })
-  if (!theirClient) return c.json({ coach, completed: false })
-
-  const assignment = await prisma.testAssignment.findFirst({
-    where: { clientId: theirClient.id, completedAt: { not: null }, testId: full.testId },
-    include: { response: true, test: { select: { type: true } } },
-  })
-  if (!assignment?.response) return c.json({ coach, completed: false })
-
-  return c.json({
-    coach,
-    completed: true,
-    completedAt: assignment.completedAt,
-    testType: assignment.test.type,
-    responses: assignment.response.responses,
-  })
+  // `feedback`: Gaby's devolución on the partner's test, so the coach can read
+  // it while preparing their own devolución.
+  return c.json({ coach, completed: true, ...result })
 })
 
 /**
@@ -1057,7 +1026,11 @@ student.get("/dupla/:coachId/all", async (c) => {
   const assignments = theirClient
     ? await prisma.testAssignment.findMany({
         where: { clientId: theirClient.id, completedAt: { not: null } },
-        include: { response: true, test: { select: { type: true } } },
+        include: {
+          response: true,
+          test: { select: { type: true } },
+          supervision: { select: { coachFeedback: true, supervisorNotes: true } },
+        },
         orderBy: { completedAt: "desc" },
       })
     : []
@@ -1069,6 +1042,7 @@ student.get("/dupla/:coachId/all", async (c) => {
       testType: a.test.type,
       completedAt: a.completedAt,
       responses: a.response!.responses,
+      feedback: duplaFeedback(a.supervision),
     }))
 
   // ENTREGAs the dupla has handed in. Only in modules the current coach can

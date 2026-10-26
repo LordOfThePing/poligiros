@@ -169,6 +169,15 @@ el mail de "nueva entrega". Las cards
 ya hay una entrega), y las filas de Entregas de la supervisora muestran el
 badge "Editado tras tu devolución" cuando `editedAt` está seteado.
 
+**Dupla y registro de sesión.** Un coach ve el test de su dupla (y la
+devolución de Gaby sobre ese test, `feedback` = `coachFeedback || supervisorNotes`,
+igual que lo ve la dueña) vía `latestCoachTestResult()` en
+`backend/src/lib/duplaTest.ts`. El registro que la dupla le hizo a una misma
+**no** se expone (ya no existe `practiceAboutMe`). El PDF del registro
+(`PracticeRecordPdf` y el bulk de `bulkPracticePdf`) arranca con el test de la
+dupla (`PartnerTestPdfSection`); la supervisora lo obtiene de
+`GET /supervisor/practice-records/:id/partner-test`.
+
 ## TestResponse JSON shapes
 
 `TestResponse.responses` is an untyped `Json` column. Each test type writes a

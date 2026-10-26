@@ -1,6 +1,10 @@
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
+import { createElement } from "react"
+import { flushSync } from "react-dom"
+import { createRoot, type Root } from "react-dom/client"
 import { formatShortDate } from "./date"
+import { PartnerTestPdfSection, tagPdfBlocks, type PartnerTest } from "@/components/PartnerTestPdfSection"
 
 const A4W = 595
 const A4H = 842
@@ -18,6 +22,8 @@ export type BulkPracticeRecord = {
   toolsAndResults: string
   conclusions: string
   feedback: string | null
+  /** The dupla's own result for the card's test — printed before the record. */
+  partnerTest?: PartnerTest | null
 }
 
 function escape(s: string): string {
@@ -30,9 +36,9 @@ function escape(s: string): string {
 
 function section(title: string, body: string): string {
   return `
-    <div data-pdf-block style="margin-bottom:16px;white-space:pre-wrap">
+    <div data-pdf-block style="margin-bottom:16px">
       <p style="font-size:11px;color:#94a3b8;margin:0 0 4px">${escape(title)}</p>
-      <p style="font-size:13px;margin:0">${escape(body)}</p>
+      <p style="font-size:13px;margin:0;white-space:pre-wrap">${escape(body)}</p>
     </div>
   `
 }
@@ -42,6 +48,7 @@ function renderRecord(record: BulkPracticeRecord): HTMLDivElement {
   host.style.cssText = "position:fixed;left:-10000px;top:0;width:900px;background:#fff;color:#1c1917"
   host.innerHTML = `
     <div style="padding:32px;font-family:system-ui,-apple-system,sans-serif;">
+      <div data-partner-test></div>
       <div data-pdf-block style="margin-bottom:16px">
         <p style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 4px">
           Registro de sesión · ${escape(record.moduleTitle)} · ${escape(record.itemTitle)}
@@ -70,9 +77,18 @@ async function appendRecordToPdf(
 ): Promise<void> {
   const host = renderRecord(record)
   document.body.appendChild(host)
+  // The dupla's test is the real React result view, mounted into the slot.
+  let root: Root | null = null
   try {
+    if (record.partnerTest) {
+      const slot = host.querySelector<HTMLElement>("[data-partner-test]")!
+      root = createRoot(slot)
+      const test = record.partnerTest
+      flushSync(() => root!.render(createElement(PartnerTestPdfSection, { test, partnerName: record.coacheeName })))
+      tagPdfBlocks(slot)
+    }
     await document.fonts.ready
-    await new Promise((r) => setTimeout(r, 20))
+    await new Promise((r) => setTimeout(r, record.partnerTest ? 150 : 20))
     const canvas = await html2canvas(host, {
       scale: 2,
       useCORS: true,
@@ -126,6 +142,7 @@ async function appendRecordToPdf(
       cursor = end
     }
   } finally {
+    root?.unmount()
     document.body.removeChild(host)
   }
 }

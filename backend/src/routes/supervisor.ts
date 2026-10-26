@@ -17,6 +17,7 @@ import { randomBytes } from "node:crypto"
 import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
 import { supervisorRecipient } from "../lib/notify.js"
 import { getCoachAccess } from "../lib/cohort.js"
+import { latestCoachTestResult } from "../lib/duplaTest.js"
 import type { AppVariables } from "../lib/types.js"
 
 const supervisor = new Hono<{ Variables: AppVariables }>()
@@ -2259,6 +2260,24 @@ supervisor.get("/practice-records", async (c) => {
       editedAt: r.editedAt,
     }))
   )
+})
+
+/**
+ * GET /supervisor/practice-records/:id/partner-test
+ * The interviewed dupla's own result for the card's test — it goes at the top
+ * of the registro's PDF. `{ completed: false }` when the card has no test or
+ * the dupla has not completed it.
+ */
+supervisor.get("/practice-records/:id/partner-test", async (c) => {
+  const record = await prisma.practiceRecord.findUnique({
+    where: { id: c.req.param("id") },
+    select: { coacheeId: true, item: { select: { testId: true } } },
+  })
+  if (!record) return c.json({ error: "Registro no encontrado" }, 404)
+  if (!record.item.testId) return c.json({ completed: false })
+
+  const result = await latestCoachTestResult(record.coacheeId, record.item.testId)
+  return c.json(result ? { completed: true, ...result } : { completed: false })
 })
 
 /** POST /supervisor/practice-records/:id/review — body: { feedback }. Editable after the fact. */

@@ -43,8 +43,15 @@ function buildEspecialidades(
 
 export function PiramideResult({
   responses,
+  exportCopy = false,
 }: {
   responses: Record<string, unknown>
+  /**
+   * Esta render ES la captura del PDF: layout fijo de 2 columnas. Los
+   * breakpoints de Tailwind siguen al ancho de la ventana, no al de la caja de
+   * 900px — en un celular apilarían todo y html2canvas desarma la pirámide.
+   */
+  exportCopy?: boolean
 }) {
   const selected = buildSelected(responses)
   const especialidades = buildEspecialidades(responses, selected.contextos)
@@ -62,10 +69,16 @@ export function PiramideResult({
     <div className="space-y-6">
       <h2 className="font-serif text-2xl text-foreground">Tu Pirámide del Propósito</h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
-        <div className="space-y-4 lg:sticky lg:top-8">
+      <div
+        className={
+          exportCopy
+            ? "grid grid-cols-2 gap-8 items-start"
+            : "grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start"
+        }
+      >
+        <div className={exportCopy ? "space-y-4" : "space-y-4 lg:sticky lg:top-8"}>
           <PyramidSVG />
-          <SelectionRecap selected={selected} />
+          <SelectionRecap selected={selected} exportCopy={exportCopy} />
         </div>
 
         <div className="bg-white rounded-xl border border-border p-5 space-y-4">
@@ -78,7 +91,11 @@ export function PiramideResult({
                 <div key={contexto} className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className="rounded-full bg-brand-accent/15 text-brand-accent text-xs font-medium uppercase tracking-wide px-2 py-0.5 max-w-full truncate"
+                      className={
+                        exportCopy
+                          ? "rounded-full bg-brand-accent/15 text-brand-accent text-xs font-medium uppercase tracking-wide px-2 py-0.5"
+                          : "rounded-full bg-brand-accent/15 text-brand-accent text-xs font-medium uppercase tracking-wide px-2 py-0.5 max-w-full truncate"
+                      }
                       title={contexto}
                     >
                       {contexto}

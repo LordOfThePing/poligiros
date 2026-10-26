@@ -39,6 +39,7 @@ export function DownloadResultPdf({
   coachFeedback,
   completedAt,
   personName,
+  feedbackLabel,
 }: {
   testType: string
   responses: Record<string, unknown>
@@ -46,6 +47,7 @@ export function DownloadResultPdf({
   completedAt: string
   /** Who took the test: shown on top of the PDF and appended to the filename. */
   personName?: string | null
+  feedbackLabel?: string
 }) {
   const label = TEST_LABELS[testType] ?? "Resultado"
   const fileBase = slugify(personName ? `${label} ${personName}` : label) || "resultado"
@@ -70,6 +72,7 @@ export function DownloadResultPdf({
           testType={testType}
           responses={responses}
           coachFeedback={coachFeedback}
+          feedbackLabel={feedbackLabel}
           completedAt={completedAt}
           hideExport
           exportCopy
