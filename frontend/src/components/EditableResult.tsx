@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Plus, X, ChevronUp, ChevronDown, Save } from "lucide-react"
+import { Plus, X, ChevronUp, ChevronDown, Save, Upload, FileText, Image as ImageIcon, Loader2 } from "lucide-react"
 import { JOB_FIELDS, FREELANCE_FIELDS, type CanvasConfig } from "@/components/canvas/canvasModel"
 import { BusinessModelCanvas } from "@/components/canvas/BusinessModelCanvas"
 import { PV_SECTIONS } from "@/lib/planVital"
 import { QUESTIONS, calcScores, rankAnchors } from "@/lib/anclas"
 import PiramideTest, { type PiramideEditInitial } from "@/pages/client/tests/PiramideTest"
 import type { TestApi, UploadResult } from "@/lib/testApi"
+import { useToast } from "@/hooks/use-toast"
 
 // Editable test result (F7 follow-up): coach + supervisor can modify fields,
 // values, and order, then save back to the stored response.
@@ -20,10 +21,14 @@ export function EditableResult({
   testType,
   responses,
   onSave,
+  api,
 }: {
   testType: string
   responses: Record<string, unknown>
   onSave: (responses: Record<string, unknown>) => Promise<void>
+  // Only Collage uses this — lets el coachee / coach re-subir el archivo desde
+  // el editor. Si no viene, el editor sólo muestra el link al archivo actual.
+  api?: TestApi
 }) {
   const [data, setData] = useState<Data>({ ...responses })
   const [saving, setSaving] = useState(false)
@@ -54,7 +59,7 @@ export function EditableResult({
       {testType === "MODELO_NEGOCIO" && <ModeloNegocioEditor data={data} setField={setField} />}
       {testType === "PLAN_VITAL" && <PlanVitalEditor data={data} setField={setField} />}
       {testType === "TAREAS_EXPLORACION" && <TareasExploracionEditor data={data} setField={setField} />}
-      {testType === "COLLAGE" && <CollageEditor data={data} setField={setField} />}
+      {testType === "COLLAGE" && <CollageEditor data={data} setField={setField} api={api} />}
       {(testType === "OBJETIVO_CARRERA" || testType === "OBJETIVO_CARRERA_LARGO") && <ObjetivoCarreraEditor data={data} setField={setField} />}
       {testType === "PLAN_ACCION" && <PlanAccionEditor data={data} setField={setField} />}
       <Button onClick={save} disabled={saving} className="bg-brand-accent hover:bg-brand-accent-dark">
@@ -368,47 +373,123 @@ function TareasExploracionEditor({ data, setField }: { data: Data; setField: (k:
   return <ListEditor label="Tareas" items={list("tasks")} onChange={(v) => setField("tasks", v)} />
 }
 
-// Collage: no se re-sube un archivo nuevo desde el editor de EditableResult —
-// el editor sólo permite corregir el nombre del archivo y las notas que lo
-// acompañan. Para cambiar el PDF/imagen, re-asignar el test es más limpio
-// que inyectar un endpoint de upload en un componente genérico que no sabe
-// de token/sesión.
-function CollageEditor({ data, setField }: { data: Data; setField: (k: string, v: unknown) => void }) {
+// Collage: con `api`, el coachee / coach pueden re-subir un archivo nuevo acá
+// mismo (mismo endpoint que la primera subida); sin `api` (supervisora o coach
+// editando a su coachee) el editor sólo muestra el archivo actual y permite
+// corregir las notas.
+function CollageEditor({
+  data,
+  setField,
+  api,
+}: {
+  data: Data
+  setField: (k: string, v: unknown) => void
+  api?: TestApi
+}) {
+  const { toast } = useToast()
+  const [uploading, setUploading] = useState(false)
   const fileUrl = typeof data.fileUrl === "string" ? data.fileUrl : ""
   const fileName = typeof data.fileName === "string" ? data.fileName : ""
+  const mimeType = typeof data.mimeType === "string" ? data.mimeType : ""
+  const sizeBytes = typeof data.sizeBytes === "number" ? data.sizeBytes : 0
+  const isImage = mimeType.startsWith("image/")
+
+  async function handleUpload(f: File) {
+    if (!api) return
+    setUploading(true)
+    const res = await api.uploadFile(f)
+    setUploading(false)
+    if (!res.ok) {
+      toast({ title: "Error al subir", description: res.error, variant: "destructive" })
+      return
+    }
+    const u: UploadResult = res.data
+    setField("fileUrl", u.fileUrl)
+    setField("fileKey", u.fileKey)
+    setField("fileName", u.fileName)
+    setField("mimeType", u.mimeType)
+    setField("sizeBytes", u.sizeBytes)
+  }
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {fileUrl && (
-        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-          Archivo subido:{" "}
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-brand-accent hover:underline"
-          >
-            {fileName || "ver archivo"} ↗
-          </a>
-          <p className="mt-1 italic">
-            Para cambiar el archivo re-asigná el test — este editor sólo corrige
-            el nombre y las notas.
-          </p>
+        <div className="rounded-lg border border-border bg-white p-3">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-brand-accent/10 flex items-center justify-center text-brand-accent">
+              {isImage ? <ImageIcon className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{fileName || "archivo"}</p>
+              {sizeBytes > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {(sizeBytes / 1024 / 1024).toFixed(2)} MB
+                </p>
+              )}
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-brand-accent hover:underline"
+              >
+                Ver archivo subido ↗
+              </a>
+            </div>
+          </div>
+          {isImage && (
+            <img
+              src={fileUrl}
+              alt="Preview del collage"
+              className="mt-3 w-full max-h-60 object-contain rounded-lg border border-border"
+            />
+          )}
         </div>
       )}
-      <div className="space-y-1">
-        <Label className="text-xs">Nombre del archivo</Label>
-        <Input
-          value={data.fileName ?? ""}
-          onChange={(e) => setField("fileName", e.target.value)}
-          className="text-sm"
-        />
-      </div>
+
+      {api ? (
+        <div className="rounded-xl border-2 border-dashed border-border bg-white p-4">
+          <label className="flex flex-col items-center justify-center gap-2 cursor-pointer py-3">
+            {uploading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-brand-accent" />
+            ) : (
+              <Upload className="h-6 w-6 text-muted-foreground" />
+            )}
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">
+                {uploading
+                  ? "Subiendo..."
+                  : fileUrl
+                    ? "Subir una nueva versión"
+                    : "Hacé click o arrastrá tu archivo"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">PDF, JPG o PNG · hasta 25 MB</p>
+            </div>
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/jpg"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleUpload(f)
+                e.target.value = ""
+              }}
+              disabled={uploading}
+            />
+          </label>
+        </div>
+      ) : fileUrl ? (
+        <p className="text-xs text-muted-foreground italic">
+          Para cambiar el archivo, pedile al coachee (o re-asigná el test).
+        </p>
+      ) : null}
+
       <div className="space-y-1">
         <Label className="text-xs">Notas</Label>
         <Textarea
           value={data.notes ?? ""}
           onChange={(e) => setField("notes", e.target.value)}
           className="text-sm min-h-[80px]"
+          placeholder="¿Qué quisiste representar? ¿Qué imágenes elegiste y por qué?"
         />
       </div>
     </div>

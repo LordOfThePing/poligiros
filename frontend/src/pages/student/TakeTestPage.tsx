@@ -100,6 +100,7 @@ export default function StudentTakeTestPage() {
         <EditableResult
           testType={assignment.test.type}
           responses={assignment.response.responses}
+          api={sessionTestApi(assignment.id)}
           onSave={async (responses) => {
             const res = await apiTry(`/student/responses/${assignment.id}`, {
               method: "PUT",

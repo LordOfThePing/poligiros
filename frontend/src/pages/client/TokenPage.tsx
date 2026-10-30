@@ -155,6 +155,7 @@ export default function TokenPage() {
             <EditableResult
               testType={data.testType}
               responses={data.responses}
+              api={tokenTestApi(token!)}
               onSave={async (responses) => {
                 const res = await fetch(`${API_URL}/client/t/${token}/edit`, {
                   method: "PUT",
