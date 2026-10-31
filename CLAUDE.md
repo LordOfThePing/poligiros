@@ -66,6 +66,13 @@ npm test                             # vitest run (Anclas tier-logic tests)
      `/supervisor/*` and `/student/*` are guarded by `authMiddleware` +
      `requireRole(...)` in `backend/src/index.ts`.
    - `loginUser` lazy-imports prisma so the JWT path stays DB-free and testable.
+   - **Password changes are always confirmed by mail.** "Olvidé mi contraseña"
+     (`/olvide-password` → `POST /auth/password-reset/request`) and the
+     Configuración card (`PasswordCard` → `POST /auth/password-change/request`)
+     mint the same link (`backend/src/lib/passwordReset.ts`): `/restablecer-password/:token`,
+     1 hour, single-use, at most one live per user and one mail per minute. Only
+     the SHA-256 is stored (`User.resetTokenHash`). `POST /auth/change-password`
+     is limited to the `mustChangePassword` screen, after Gaby's reset.
 
 2. **Client — magic link, no session** (the A1 model):
    - A `TestAssignment` carries `accessToken` (random), `completeBy`,
@@ -259,9 +266,9 @@ supervisor can edit a submitted Modelo via `ModeloNegocioEditor` in
 
 ## Email notifications
 
-Three fire-and-forget triggers in `backend/src/lib/email.ts`
+Fire-and-forget triggers in `backend/src/lib/email.ts`
 (`sendSupervisionSubmittedEmail`, `sendSupervisionReviewedEmail`,
-`sendSessionRecordedEmail`). The supervisor address is fetched via
+`sendSessionRecordedEmail`, `sendPasswordLinkEmail`, …). The supervisor address is fetched via
 `prisma.user.findFirst({ where: { role: "SUPERVISOR" } })`.
 
 ## Environment variables

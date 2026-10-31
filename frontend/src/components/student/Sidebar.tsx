@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
-import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, type LucideIcon } from "lucide-react"
+import { BookOpen, Users, ClipboardCheck, FileText, ListChecks, Settings, type LucideIcon } from "lucide-react"
 import { CollapsibleSidebar } from "@/components/CollapsibleSidebar"
 import { ProfileMenu } from "@/components/ProfileMenu"
 import { HelpLauncher, SupportLink } from "@/components/HelpGuide"
@@ -27,6 +27,10 @@ const groups: NavGroup[] = [
       { href: "/student/supervision", label: "Supervisión", icon: ClipboardCheck, needsPractice: true },
       { href: "/student/registros", label: "Mis Registros", icon: FileText, needsPractice: true },
     ],
+  },
+  {
+    title: "Cuenta",
+    items: [{ href: "/student/configuracion", label: "Configuración", icon: Settings }],
   },
 ]
 

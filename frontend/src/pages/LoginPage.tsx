@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -110,7 +110,15 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Link
+                    to={`/olvide-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                  >
+                    Olvidé mi contraseña
+                  </Link>
+                </div>
                 <PasswordInput
                   id="password"
                   placeholder="••••••••"

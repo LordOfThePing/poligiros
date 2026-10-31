@@ -33,8 +33,8 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (token: string, data: RegisterData) => Promise<void>
-  changePassword: (newPassword: string, currentPassword?: string) => Promise<void>
-  /** Lets the change-password screen clear the flag without a full reload. */
+  changePassword: (newPassword: string) => Promise<void>
+  /** Lets the mailed-link screen clear the flag without a full reload. */
   clearMustChange: () => void
   logout: () => Promise<void>
   /** Swaps the session to the linked account (see AuthUser.linkedUser). */
@@ -101,10 +101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user as AuthUser)
   }
 
-  async function changePassword(newPassword: string, currentPassword?: string) {
+  async function changePassword(newPassword: string) {
     const res = await api("/auth/change-password", {
       method: "POST",
-      body: JSON.stringify({ newPassword, currentPassword }),
+      body: JSON.stringify({ newPassword }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))

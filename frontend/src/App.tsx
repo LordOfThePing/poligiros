@@ -12,6 +12,8 @@ import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
 import TokenPage from "@/pages/client/TokenPage"
 import ChangePasswordPage from "@/pages/ChangePasswordPage"
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage"
+import ResetPasswordPage from "@/pages/ResetPasswordPage"
 
 // Pages - supervisor
 import SupervisorPanelPage from "@/pages/supervisor/PanelPage"
@@ -38,6 +40,7 @@ import StudentClientDetailPage from "@/pages/student/ClientDetailPage"
 import StudentSupervisionPage from "@/pages/student/SupervisionPage"
 import StudentRegistrosPage from "@/pages/student/RegistrosPage"
 import StudentNuevoRegistroPage from "@/pages/student/NuevoRegistroPage"
+import StudentConfiguracionPage from "@/pages/student/ConfiguracionPage"
 import {
   ClientEditModeloNegocioPage,
   StudentEditModeloNegocioPage,
@@ -111,6 +114,8 @@ export default function App() {
           <Route path="/t/:token/editar" element={<ClientEditModeloNegocioPage />} />
           <Route path="/inscripcion/:token" element={<InscripcionPage />} />
           <Route path="/cambiar-password" element={<ChangePasswordPage />} />
+          <Route path="/olvide-password" element={<ForgotPasswordPage />} />
+          <Route path="/restablecer-password/:token" element={<ResetPasswordPage />} />
 
           {/* Standalone (no sidebar) — opened as a new tab from the supervisor's
               detail page so a viewport-height result layout (Tablero de Ideas)
@@ -171,6 +176,7 @@ export default function App() {
             <Route path="registros" element={<StudentRegistrosPage />} />
             <Route path="registros/nuevo" element={<StudentNuevoRegistroPage />} />
             <Route path="registros/:id/editar" element={<StudentNuevoRegistroPage />} />
+            <Route path="configuracion" element={<StudentConfiguracionPage />} />
           </Route>
 
           {/* Admin panel — supergod */}

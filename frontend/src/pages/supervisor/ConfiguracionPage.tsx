@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
 import { apiJson, apiTry } from "@/lib/api"
 import { LoadingBadge } from "@/components/LoadingBadge"
+import { PasswordCard } from "@/components/PasswordCard"
 
 type Cohort = { id: string; name: string }
 type LinkedCoach = { id: string; email: string; name: string; cohorts: Cohort[] }
@@ -134,9 +135,11 @@ export default function ConfiguracionPage() {
       <div>
         <h1 className="font-serif text-3xl text-foreground mb-1">Configuración</h1>
         <p className="text-muted-foreground text-sm">
-          Vencimiento de los links y qué eventos te avisan por mail.
+          Tu contraseña, el vencimiento de los links y qué eventos te avisan por mail.
         </p>
       </div>
+
+      <PasswordCard />
 
       <Card className="bg-white">
         <CardHeader className="pb-3">

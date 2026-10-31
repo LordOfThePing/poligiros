@@ -2,10 +2,12 @@ import { Hono } from "hono"
 import { setCookie, deleteCookie, getCookie } from "hono/cookie"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "node:crypto"
-import { loginUser, signJWT, verifyJWT } from "../lib/auth.js"
+import { authMiddleware, loginUser, signJWT, verifyJWT } from "../lib/auth.js"
 import { prisma } from "../lib/prisma.js"
+import { hashResetToken, issuePasswordLink } from "../lib/passwordReset.js"
+import type { AppVariables } from "../lib/types.js"
 
-const auth = new Hono()
+const auth = new Hono<{ Variables: AppVariables }>()
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -238,10 +240,10 @@ auth.post("/switch", async (c) => {
 })
 
 /**
- * POST /auth/change-password — body: { currentPassword?, newPassword }
- * The logged-in coach chooses a fresh password. `currentPassword` is optional:
- * it is required only when the account was NOT reset by the supervisor, so
- * somebody else's opened session cannot silently change the password.
+ * POST /auth/change-password — body: { newPassword }
+ * Only for a coach force-reset by the supervisor, who is logged in with the
+ * temporary password. Any other change goes through the mailed link, so an
+ * opened session alone cannot change the password.
  */
 auth.post("/change-password", async (c) => {
   const token = getCookie(c, "token")
@@ -250,7 +252,7 @@ auth.post("/change-password", async (c) => {
   const payload = await verifyJWT(token)
   if (!payload) return c.json({ error: "Unauthorized" }, 401)
 
-  const { newPassword, currentPassword } = await c.req.json().catch(() => ({}))
+  const { newPassword } = await c.req.json().catch(() => ({}))
   const clean = String(newPassword ?? "")
   if (clean.length < 6) {
     return c.json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400)
@@ -258,19 +260,91 @@ auth.post("/change-password", async (c) => {
 
   const user = await prisma.user.findUnique({ where: { id: payload.id } })
   if (!user) return c.json({ error: "Not found" }, 404)
-
-  // A coach who was force-reset by the supervisor may change it right away
-  // (they are logging in with the fresh temporary password). Otherwise the
-  // current password must be confirmed.
-  const verified =
-    user.mustChangePassword ||
-    (user.password ? await bcrypt.compare(String(currentPassword ?? ""), user.password) : false)
-  if (!verified) return c.json({ error: "Contraseña actual incorrecta" }, 400)
+  if (!user.mustChangePassword) {
+    return c.json({ error: "Pedí el cambio desde Configuración: te llega un link por mail" }, 403)
+  }
 
   await prisma.user.update({
     where: { id: user.id },
     data: { password: await bcrypt.hash(clean, 12), mustChangePassword: false },
   })
+
+  return c.json({ ok: true })
+})
+
+/**
+ * POST /auth/password-reset/request — body: { email }
+ * "Olvidé mi contraseña". Answers the same whether or not the account exists,
+ * so it cannot be used to enumerate coaches.
+ */
+auth.post("/password-reset/request", async (c) => {
+  const { email } = await c.req.json().catch(() => ({}))
+  const clean = String(email ?? "").trim()
+  if (!clean) return c.json({ error: "Email requerido" }, 400)
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: clean, mode: "insensitive" } },
+  })
+  if (user) await issuePasswordLink(user)
+
+  return c.json({ ok: true })
+})
+
+/**
+ * POST /auth/password-change/request — the same link, from Configuración. It
+ * goes to the account's own address. An impersonating admin cannot trigger it:
+ * the mail would land on a user who never asked for it.
+ */
+auth.post("/password-change/request", authMiddleware, async (c) => {
+  if (c.get("admin")) {
+    return c.json({ error: "No disponible mientras ves la app como otro usuario" }, 403)
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: c.get("user").id } })
+  if (!user) return c.json({ error: "Not found" }, 404)
+  await issuePasswordLink(user)
+
+  return c.json({ ok: true, email: user.email })
+})
+
+/** GET /auth/password-reset/:token — link check for the new-password page. */
+auth.get("/password-reset/:token", async (c) => {
+  const user = await prisma.user.findUnique({
+    where: { resetTokenHash: hashResetToken(c.req.param("token")) },
+  })
+  if (!user) return c.json({ error: "invalid" }, 404)
+  if (!user.resetExpiresAt || new Date() > user.resetExpiresAt) {
+    return c.json({ error: "expired" }, 410)
+  }
+  return c.json({ email: user.email })
+})
+
+/**
+ * POST /auth/password-reset/:token — body: { password }
+ * The expiry and the clearing of the token share one UPDATE, so two submits of
+ * the same link cannot both win. Using it also lifts a pending supervisor
+ * reset: the mail already proved who is asking.
+ */
+auth.post("/password-reset/:token", async (c) => {
+  const { password } = await c.req.json().catch(() => ({}))
+  const clean = String(password ?? "")
+  if (clean.length < 6) {
+    return c.json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400)
+  }
+
+  const { count } = await prisma.user.updateMany({
+    where: {
+      resetTokenHash: hashResetToken(c.req.param("token")),
+      resetExpiresAt: { gt: new Date() },
+    },
+    data: {
+      password: await bcrypt.hash(clean, 12),
+      mustChangePassword: false,
+      resetTokenHash: null,
+      resetExpiresAt: null,
+    },
+  })
+  if (count === 0) return c.json({ error: "expired" }, 410)
 
   return c.json({ ok: true })
 })

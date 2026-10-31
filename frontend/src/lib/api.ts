@@ -22,6 +22,8 @@ export async function api(path: string, init?: RequestInit): Promise<Response> {
     // eagerly redirected to login before it can render.
     const isPublicPage =
       currentPath === "/login" ||
+      currentPath === "/olvide-password" ||
+      currentPath.startsWith("/restablecer-password/") ||
       currentPath.startsWith("/invite/") ||
       currentPath.startsWith("/t/") ||
       currentPath.startsWith("/inscripcion/")

@@ -100,6 +100,12 @@ model User {
   inviteToken     String?   @unique
   inviteExpiresAt DateTime?
 
+  /// Mailed password link ("olvidé mi contraseña" and the change from
+  /// Configuración). Only the SHA-256 is stored, and a user has at most one
+  /// live link: issuing another replaces it. See lib/passwordReset.ts.
+  resetTokenHash String?   @unique
+  resetExpiresAt DateTime?
+
   // Coach profile (filled by the coach at registration)
   phone        String?
   especialidad String?

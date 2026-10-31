@@ -241,6 +241,17 @@ export async function sendSubmissionReviewedEmail(
     `)
 }
 
+/** Single-use link to choose a new password, from the login page or Configuración. */
+export async function sendPasswordLinkEmail(email: string, name: string, link: string) {
+  await send(email, "Cambiá tu contraseña de Poligiros", `
+      <p>Hola ${name || ""},</p>
+      <p>Recibimos un pedido para cambiar la contraseña de tu cuenta de Poligiros.</p>
+      <p><a href="${link}">Elegir una contraseña nueva →</a></p>
+      <p>El enlace vence en 1 hora y se puede usar una sola vez.</p>
+      <p>Si no lo pediste, ignorá este mail: tu contraseña sigue siendo la misma.</p>
+    `)
+}
+
 /**
  * Sent to a coach after Gaby resets their password. They log in with the
  * temporary password and are forced to pick a new one right away.
