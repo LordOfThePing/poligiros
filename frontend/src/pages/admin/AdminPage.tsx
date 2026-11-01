@@ -3,7 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { PasswordCard } from "@/components/PasswordCard"
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -11,7 +16,7 @@ import { apiJson, apiTry } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { Eye, Copy, Check, LogOut } from "lucide-react"
+import { Eye, Copy, Check, LogOut, KeyRound } from "lucide-react"
 
 type AdminUser = {
   id: string
@@ -41,7 +46,8 @@ type CoacheeAssignment = {
 
 /**
  * Admin control panel. Two lists:
- *   - Every registered user, with an "Ver como…" button that starts impersonation.
+ *   - Every registered user, with an "Ver como…" button that starts impersonation
+ *     and a "Contraseña" one that sets a new password for them.
  *   - Every coachee's magic link (the coachees have no login — the link IS the
  *     credential), copied to clipboard so the admin can open it in an incognito
  *     tab to see what the coachee sees.
@@ -56,6 +62,13 @@ export default function AdminPage() {
   const [userQuery, setUserQuery] = useState("")
   const [coacheeQuery, setCoacheeQuery] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const [pwTarget, setPwTarget] = useState<AdminUser | null>(null)
+  const [pwValue, setPwValue] = useState("")
+  const [pwMustChange, setPwMustChange] = useState(true)
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState("")
+  const [pwResult, setPwResult] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -107,6 +120,32 @@ export default function AdminPage() {
     // Full reload as the target — every page refetches via /auth/me and the
     // ProtectedRoute redirect logic sends them to that role's home.
     window.location.href = target.role === "SUPERVISOR" ? "/supervisor/panel" : "/student/programa"
+  }
+
+  function openPasswordDialog(target: AdminUser) {
+    setPwTarget(target)
+    setPwValue("")
+    setPwMustChange(true)
+    setPwError("")
+    setPwResult(null)
+  }
+
+  async function savePassword() {
+    if (!pwTarget) return
+    setPwSaving(true)
+    setPwError("")
+    const res = await apiTry(`/admin/users/${pwTarget.id}/password`, {
+      method: "POST",
+      body: JSON.stringify({ password: pwValue || undefined, mustChange: pwMustChange }),
+    })
+    setPwSaving(false)
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setPwError(json.error || "No se pudo cambiar la contraseña")
+      return
+    }
+    setPwResult(json.password)
+    toast({ title: "Contraseña actualizada" })
   }
 
   async function copyLink(a: CoacheeAssignment) {
@@ -182,15 +221,26 @@ export default function AdminPage() {
                       {formatShortDate(u.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => impersonate(u)}
-                        disabled={u.role === "ADMIN"}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver como
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openPasswordDialog(u)}
+                          disabled={u.pending || u.id === user?.id}
+                        >
+                          <KeyRound className="h-4 w-4 mr-1" />
+                          Contraseña
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => impersonate(u)}
+                          disabled={u.role === "ADMIN"}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver como
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -283,6 +333,62 @@ export default function AdminPage() {
       </Card>
 
       <PasswordCard />
+
+      <Dialog open={!!pwTarget} onOpenChange={(open) => { if (!open) setPwTarget(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contraseña de {pwTarget?.name}</DialogTitle>
+            <DialogDescription>
+              {pwResult
+                ? "Esta es la única vez que se muestra. No se manda por mail: pasásela vos."
+                : "La contraseña actual deja de funcionar. No se le avisa por mail."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {pwResult ? (
+            <div className="space-y-4">
+              <p className="rounded-lg border p-4 text-center font-mono text-xl font-semibold break-all">
+                {pwResult}
+              </p>
+              <DialogFooter>
+                <Button onClick={() => setPwTarget(null)}>Listo</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-new-password">
+                  Contraseña nueva <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Input
+                  id="admin-new-password"
+                  autoComplete="off"
+                  value={pwValue}
+                  onChange={(e) => setPwValue(e.target.value)}
+                  placeholder="Si la dejás vacía, generamos una"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="admin-must-change">Obligar a cambiarla al entrar</Label>
+                <Switch
+                  id="admin-must-change"
+                  checked={pwMustChange}
+                  onCheckedChange={setPwMustChange}
+                />
+              </div>
+              {pwError && (
+                <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{pwError}</p>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPwTarget(null)}>Cancelar</Button>
+                <Button onClick={savePassword} disabled={pwSaving}>
+                  {pwSaving ? "Guardando..." : "Cambiar contraseña"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

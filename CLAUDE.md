@@ -73,6 +73,10 @@ npm test                             # vitest run (Anclas tier-logic tests)
      1 hour, single-use, at most one live per user and one mail per minute. Only
      the SHA-256 is stored (`User.resetTokenHash`). `POST /auth/change-password`
      is limited to the `mustChangePassword` screen, after Gaby's reset.
+     The one exception is the admin panel: `POST /admin/users/:id/password` sets
+     the password of any other registered account, supervisor included, with no
+     mail — the admin gets it back and hands it over. By default it forces
+     `mustChangePassword`, and it always voids a live reset link.
 
 2. **Client — magic link, no session** (the A1 model):
    - A `TestAssignment` carries `accessToken` (random), `completeBy`,

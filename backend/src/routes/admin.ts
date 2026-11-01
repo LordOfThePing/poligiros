@@ -1,5 +1,7 @@
 import { Hono } from "hono"
 import { setCookie, deleteCookie } from "hono/cookie"
+import bcrypt from "bcryptjs"
+import { randomBytes } from "node:crypto"
 import { prisma } from "../lib/prisma.js"
 import type { AppVariables } from "../lib/types.js"
 
@@ -64,6 +66,50 @@ admin.get("/users", async (c) => {
       pools: u.poolMemberships.map((m) => m.pool),
     }))
   )
+})
+
+/**
+ * POST /admin/users/:id/password — body: { password?, mustChange? }
+ * Sets the password of any other account, supervisor included. Without a
+ * `password` a random one is generated; either way it comes back in the
+ * response and the admin hands it over — nothing is mailed. `mustChange`
+ * (default true) sends the user to /cambiar-password on their next page load.
+ * A mailed reset link still alive is voided, or it could overwrite this one.
+ */
+admin.post("/users/:id/password", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}))
+  const typed = String(body.password ?? "").trim()
+  if (typed && typed.length < 6) {
+    return c.json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400)
+  }
+
+  const realAdmin = c.get("admin") ?? c.get("user")
+  if (id === realAdmin.id) {
+    return c.json({ error: "Tu propia contraseña se cambia desde tu tarjeta de contraseña" }, 400)
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, password: true },
+  })
+  if (!target) return c.json({ error: "Usuario no encontrado" }, 404)
+  if (!target.password) {
+    return c.json({ error: "Este usuario todavía no se registró. Reenviale la invitación." }, 400)
+  }
+
+  const password = typed || randomBytes(9).toString("base64url")
+  await prisma.user.update({
+    where: { id },
+    data: {
+      password: await bcrypt.hash(password, 12),
+      mustChangePassword: body.mustChange !== false,
+      resetTokenHash: null,
+      resetExpiresAt: null,
+    },
+  })
+
+  return c.json({ ok: true, password })
 })
 
 /**
