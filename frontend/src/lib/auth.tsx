@@ -74,7 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   async function login(email: string, password: string) {
-    const res = await api("/auth/login", {
+    // apiTry, not api: api throws on a 403 before the "not activated" error in
+    // the body can be read.
+    const res = await apiTry("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     })

@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { setCookie, deleteCookie } from "hono/cookie"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "node:crypto"
+import { findUserByEmail } from "../lib/auth.js"
 import { prisma } from "../lib/prisma.js"
 import type { AppVariables } from "../lib/types.js"
 
@@ -48,6 +49,7 @@ admin.get("/users", async (c) => {
       role: true,
       createdAt: true,
       password: true, // just to expose "pending invite" state
+      linkedUserId: true,
       enrollments: { select: { cohort: { select: { id: true, name: true } } } },
       poolMemberships: { select: { pool: { select: { id: true, name: true } } } },
     },
@@ -62,6 +64,7 @@ admin.get("/users", async (c) => {
       role: u.role,
       createdAt: u.createdAt,
       pending: !u.password,
+      linked: !!u.linkedUserId,
       cohorts: u.enrollments.map((e) => e.cohort),
       pools: u.poolMemberships.map((m) => m.pool),
     }))
@@ -113,6 +116,28 @@ admin.post("/users/:id/password", async (c) => {
   })
 
   return c.json({ ok: true, password })
+})
+
+/**
+ * POST /admin/login-check — body: { email, password }
+ * Answers why a login works or not, using the same lookup and comparison as
+ * /auth/login, without opening a session or changing anything. Exists so a
+ * failed login can be diagnosed from the panel instead of from the server.
+ */
+admin.post("/login-check", async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const found = await findUserByEmail(String(body.email ?? ""))
+  if (!found) return c.json({ found: false })
+
+  return c.json({
+    found: true,
+    account: { name: found.name, email: found.email, role: found.role, linked: !!found.linkedUserId },
+    pending: !found.password,
+    mustChange: found.mustChangePassword,
+    passwordOk: found.password
+      ? await bcrypt.compare(String(body.password ?? ""), found.password)
+      : false,
+  })
 })
 
 /**

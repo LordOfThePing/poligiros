@@ -63,7 +63,9 @@ export default function LoginPage() {
       setError(
         msg === "user_not_activated"
           ? "Tu cuenta aún no fue activada. Usá el enlace de invitación que te enviaron para registrarte."
-          : "Email o contraseña incorrectos"
+          : msg === "Credenciales incorrectas"
+            ? "Email o contraseña incorrectos"
+            : "No pudimos iniciar sesión. Probá de nuevo en un momento."
       )
       setLoading(false)
     }

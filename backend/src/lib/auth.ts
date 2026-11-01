@@ -36,13 +36,18 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
 
 /**
  * The login lookup: ignores case and stray spaces, because a phone keyboard
- * capitalises the first letter and addresses are stored lowercase.
+ * capitalises the first letter and addresses are stored lowercase. An exact
+ * match goes first so it always wins: `insensitive` is an ILIKE, and `findFirst`
+ * would pick any row among those that differ only in case (old invites kept the
+ * address as typed), or that a `_` in the address matches as a wildcard.
  */
 export async function findUserByEmail(email: string) {
   const { prisma } = await import("./prisma.js")
-  return prisma.user.findFirst({
-    where: { email: { equals: email.trim(), mode: "insensitive" } },
-  })
+  const clean = email.trim()
+  return (
+    (await prisma.user.findUnique({ where: { email: clean.toLowerCase() } })) ??
+    prisma.user.findFirst({ where: { email: { equals: clean, mode: "insensitive" } } })
+  )
 }
 
 export async function loginUser(

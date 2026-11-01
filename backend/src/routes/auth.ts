@@ -205,7 +205,9 @@ auth.get("/me", async (c) => {
     name: dbUser.name,
     email: dbUser.email,
     role: dbUser.role,
-    mustChangePassword: dbUser.mustChangePassword,
+    // Only the account's owner can clear the flag, so an impersonating admin
+    // must not be sent to a screen that would answer 403.
+    mustChangePassword: impersonatedBy ? false : dbUser.mustChangePassword,
     linkedUser,
     /** Real admin identity when impersonating; null otherwise. */
     impersonatedBy,

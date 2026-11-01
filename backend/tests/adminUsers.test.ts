@@ -32,12 +32,13 @@ vi.mock("../src/lib/prisma.js", () => ({
       },
     },
     user: {
-      findFirst: async ({ where }: { where: { email: { equals: string }; id: { not: string } } }) =>
+      findFirst: async ({ where }: { where: { email: { equals: string }; id?: { not: string } } }) =>
         db.users.find(
-          (u) => u.email.toLowerCase() === where.email.equals && u.id !== where.id.not
+          (u) =>
+            u.email.toLowerCase() === where.email.equals.toLowerCase() && u.id !== where.id?.not
         ) ?? null,
-      findUnique: async ({ where }: { where: { id: string } }) =>
-        db.users.find((u) => u.id === where.id) ?? null,
+      findUnique: async ({ where }: { where: { id?: string; email?: string } }) =>
+        db.users.find((u) => (where.id ? u.id === where.id : u.email === where.email)) ?? null,
       update: async ({ where, data }: { where: { id: string }; data: Partial<Row> }) =>
         Object.assign(db.users.find((u) => u.id === where.id)!, data),
     },
@@ -146,6 +147,48 @@ describe("POST /admin/users/:id/password", () => {
     expect((await post("ana", { password: "nueva-clave" }, "gaby", "SUPERVISOR")).status).toBe(403)
     expect((await post("gaby", { password: "nueva-clave" }, "ana", "STUDENT_COACH")).status).toBe(403)
     expect(await bcrypt.compare("vieja-clave", find("gaby").password!)).toBe(true)
+  })
+})
+
+describe("POST /admin/login-check", () => {
+  async function check(body: unknown, asId = "admin", asRole = "ADMIN") {
+    const token = await signJWT({ id: asId, role: asRole, name: asId, email: `${asId}@x.com` } as never)
+    return app.request("/admin/login-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: `token=${token}` },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it("confirms working credentials and names the account", async () => {
+    const r = await (await check({ email: " GABY@x.com ", password: "vieja-clave" })).json()
+    expect(r).toMatchObject({
+      found: true,
+      passwordOk: true,
+      account: { email: "gaby@x.com", role: "SUPERVISOR" },
+    })
+  })
+
+  it("tells a wrong password apart from an unknown email and a pending invite", async () => {
+    expect((await (await check({ email: "gaby@x.com", password: "otra" })).json()).passwordOk).toBe(false)
+    expect((await (await check({ email: "nadie@x.com", password: "x" })).json()).found).toBe(false)
+    expect((await (await check({ email: "invitada@x.com", password: "x" })).json()).pending).toBe(true)
+  })
+
+  it("prefers the exact address over one differing only in case", async () => {
+    db.users.unshift(row("legacy", "STUDENT_COACH", null))
+    find("legacy").email = "GABY@x.com"
+    const r = await (await check({ email: "gaby@x.com", password: "vieja-clave" })).json()
+    expect(r.account.role).toBe("SUPERVISOR")
+  })
+
+  it("never exposes the hash", async () => {
+    const text = await (await check({ email: "gaby@x.com", password: "x" })).text()
+    expect(text).not.toContain(find("gaby").password!)
+  })
+
+  it("is forbidden to the supervisor", async () => {
+    expect((await check({ email: "ana@x.com", password: "x" }, "gaby", "SUPERVISOR")).status).toBe(403)
   })
 })
 

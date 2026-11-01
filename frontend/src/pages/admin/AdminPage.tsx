@@ -19,7 +19,7 @@ import { apiJson, apiTry } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { Eye, Copy, Check, LogOut, KeyRound, Mail, MoreHorizontal } from "lucide-react"
+import { Eye, Copy, Check, LogOut, KeyRound, Mail, MoreHorizontal, LogIn } from "lucide-react"
 
 type AdminUser = {
   id: string
@@ -28,8 +28,25 @@ type AdminUser = {
   role: "SUPERVISOR" | "STUDENT_COACH" | "ADMIN"
   createdAt: string
   pending: boolean
+  linked: boolean
   cohorts: { id: string; name: string }[]
   pools: { id: string; name: string }[]
+}
+
+type LoginCheck = {
+  found: boolean
+  account?: { name: string; email: string; role: string; linked: boolean }
+  pending?: boolean
+  mustChange?: boolean
+  passwordOk?: boolean
+}
+
+function loginCheckMessage(r: LoginCheck): string {
+  if (!r.found || !r.account) return "No existe ninguna cuenta con ese email."
+  const who = `${r.account.name} (${r.account.role}${r.account.linked ? ", vinculada" : ""}, ${r.account.email})`
+  if (r.pending) return `Ese email es de ${who}, que todavía no se registró.`
+  if (!r.passwordOk) return `Ese email es de ${who}, pero la contraseña no coincide.`
+  return `El login funciona: entra como ${who}.${r.mustChange ? " Al entrar le va a pedir elegir una contraseña nueva." : ""}`
 }
 
 type CoacheeAssignment = {
@@ -77,6 +94,12 @@ export default function AdminPage() {
   const [emailValue, setEmailValue] = useState("")
   const [emailSaving, setEmailSaving] = useState(false)
   const [emailError, setEmailError] = useState("")
+
+  const [checkOpen, setCheckOpen] = useState(false)
+  const [checkEmail, setCheckEmail] = useState("")
+  const [checkPassword, setCheckPassword] = useState("")
+  const [checking, setChecking] = useState(false)
+  const [checkResult, setCheckResult] = useState<LoginCheck | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -181,6 +204,28 @@ export default function AdminPage() {
     toast({ title: "Email actualizado" })
   }
 
+  function openLoginCheck(target: AdminUser) {
+    setCheckEmail(target.email)
+    setCheckPassword("")
+    setCheckResult(null)
+    setCheckOpen(true)
+  }
+
+  async function runLoginCheck() {
+    setChecking(true)
+    setCheckResult(null)
+    const res = await apiTry("/admin/login-check", {
+      method: "POST",
+      body: JSON.stringify({ email: checkEmail, password: checkPassword }),
+    })
+    setChecking(false)
+    if (!res.ok) {
+      toast({ title: "No se pudo probar el login", variant: "destructive" })
+      return
+    }
+    setCheckResult(await res.json())
+  }
+
   async function copyLink(a: CoacheeAssignment) {
     const link = `${window.location.origin}/t/${a.accessToken}`
     try {
@@ -242,6 +287,11 @@ export default function AdminPage() {
                           Invitación pendiente
                         </Badge>
                       )}
+                      {u.linked && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          Vinculada
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">{u.email}</TableCell>
                     <TableCell>
@@ -273,6 +323,10 @@ export default function AdminPage() {
                           >
                             <KeyRound className="h-4 w-4 mr-2" />
                             Cambiar contraseña
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => openLoginCheck(u)}>
+                            <LogIn className="h-4 w-4 mr-2" />
+                            Probar login
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={() => impersonate(u)}
@@ -376,6 +430,56 @@ export default function AdminPage() {
 
       <PasswordCard />
 
+      <Dialog open={checkOpen} onOpenChange={setCheckOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Probar login</DialogTitle>
+            <DialogDescription>
+              Comprueba estos datos igual que la pantalla de ingreso. No abre sesión ni cambia nada.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              runLoginCheck()
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="login-check-email">Email</Label>
+              <Input
+                id="login-check-email"
+                required
+                autoComplete="off"
+                value={checkEmail}
+                onChange={(e) => setCheckEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="login-check-password">Contraseña</Label>
+              <Input
+                id="login-check-password"
+                required
+                autoComplete="off"
+                value={checkPassword}
+                onChange={(e) => setCheckPassword(e.target.value)}
+              />
+            </div>
+            {checkResult && (
+              <p className="text-sm bg-muted/40 px-3 py-2 rounded-md break-words">
+                {loginCheckMessage(checkResult)}
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCheckOpen(false)}>Cerrar</Button>
+              <Button type="submit" disabled={checking}>
+                {checking ? "Probando..." : "Probar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!emailTarget} onOpenChange={(open) => { if (!open) setEmailTarget(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -423,7 +527,7 @@ export default function AdminPage() {
             <DialogTitle>Contraseña de {pwTarget?.name}</DialogTitle>
             <DialogDescription>
               {pwResult
-                ? "Esta es la única vez que se muestra. No se manda por mail: pasásela vos."
+                ? `Entra con ${pwTarget?.email}. Esta es la única vez que se muestra y no se manda por mail: pasásela vos.`
                 : "La contraseña actual deja de funcionar. No se le avisa por mail."}
             </DialogDescription>
           </DialogHeader>
