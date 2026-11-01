@@ -113,6 +113,61 @@ admin.post("/users/:id/password", async (c) => {
 })
 
 /**
+ * PUT /admin/users/:id/email — body: { email }
+ * Changes the login address of any account, the admin's own included. Accounts
+ * reference each other by id, so a linked account (User.linkedUserId) survives
+ * this untouched. Links already mailed went to the old inbox, so a live
+ * password link and a pending invite are voided: the invite has to be resent.
+ * Stored lowercase because /auth/login and Google look the email up verbatim.
+ */
+admin.put("/users/:id/email", async (c) => {
+  const id = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}))
+  const email = String(body.email ?? "").trim().toLowerCase()
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return c.json({ error: "Email inválido" }, 400)
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, email: true },
+  })
+  if (!target) return c.json({ error: "Usuario no encontrado" }, 404)
+  if (email === target.email) return c.json({ ok: true, email })
+
+  const clash = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" }, id: { not: id } },
+    select: { id: true },
+  })
+  if (clash) return c.json({ error: "Ya existe un usuario con ese email" }, 409)
+
+  try {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id },
+        data: {
+          email,
+          resetTokenHash: null,
+          resetExpiresAt: null,
+          inviteToken: null,
+          inviteExpiresAt: null,
+        },
+      }),
+      // A coach's coach-as-coachee Client keeps its own copy of the address.
+      prisma.client.updateMany({ where: { userId: id }, data: { email } }),
+    ])
+  } catch (err) {
+    // Lost the race against another write of the same address.
+    if ((err as { code?: string }).code === "P2002") {
+      return c.json({ error: "Ya existe un usuario con ese email" }, 409)
+    }
+    throw err
+  }
+
+  return c.json({ ok: true, email })
+})
+
+/**
  * GET /admin/coachees — every Client with the still-valid magic link the admin
  * can hand-open to see the coachee's world. There is no session to impersonate
  * for a coachee: the link IS their credential.

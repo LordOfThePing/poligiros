@@ -77,6 +77,13 @@ npm test                             # vitest run (Anclas tier-logic tests)
      the password of any other registered account, supervisor included, with no
      mail — the admin gets it back and hands it over. By default it forces
      `mustChangePassword`, and it always voids a live reset link.
+   - **Changing an email** (`PUT /admin/users/:id/email`, per-row menu in the
+     admin panel) is safe for linked accounts: `linkedUserId` points at the id.
+     Notifications read the address from the DB, so they follow it. What does
+     NOT follow it: `SUPERVISOR_EMAIL` / `ADMIN_EMAIL` in the server `.env`.
+     Update them too, or `make prod-supervisor` / `make prod-admin` will create
+     a second account under the old address. The `+coach` address of a linked
+     account is only derived once, at creation.
 
 2. **Client — magic link, no session** (the A1 model):
    - A `TestAssignment` carries `accessToken` (random), `completeBy`,

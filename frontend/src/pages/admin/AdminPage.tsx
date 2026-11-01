@@ -10,13 +10,16 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { apiJson, apiTry } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { Eye, Copy, Check, LogOut, KeyRound } from "lucide-react"
+import { Eye, Copy, Check, LogOut, KeyRound, Mail, MoreHorizontal } from "lucide-react"
 
 type AdminUser = {
   id: string
@@ -46,8 +49,8 @@ type CoacheeAssignment = {
 
 /**
  * Admin control panel. Two lists:
- *   - Every registered user, with an "Ver como…" button that starts impersonation
- *     and a "Contraseña" one that sets a new password for them.
+ *   - Every registered user, with a per-row menu to change their email or
+ *     password, or to start impersonating them ("Ver como").
  *   - Every coachee's magic link (the coachees have no login — the link IS the
  *     credential), copied to clipboard so the admin can open it in an incognito
  *     tab to see what the coachee sees.
@@ -69,6 +72,11 @@ export default function AdminPage() {
   const [pwSaving, setPwSaving] = useState(false)
   const [pwError, setPwError] = useState("")
   const [pwResult, setPwResult] = useState<string | null>(null)
+
+  const [emailTarget, setEmailTarget] = useState<AdminUser | null>(null)
+  const [emailValue, setEmailValue] = useState("")
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailError, setEmailError] = useState("")
 
   useEffect(() => {
     Promise.all([
@@ -148,6 +156,31 @@ export default function AdminPage() {
     toast({ title: "Contraseña actualizada" })
   }
 
+  function openEmailDialog(target: AdminUser) {
+    setEmailTarget(target)
+    setEmailValue(target.email)
+    setEmailError("")
+  }
+
+  async function saveEmail() {
+    if (!emailTarget) return
+    setEmailSaving(true)
+    setEmailError("")
+    const res = await apiTry(`/admin/users/${emailTarget.id}/email`, {
+      method: "PUT",
+      body: JSON.stringify({ email: emailValue }),
+    })
+    setEmailSaving(false)
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setEmailError(json.error || "No se pudo cambiar el email")
+      return
+    }
+    setUsers((list) => list.map((u) => (u.id === emailTarget.id ? { ...u, email: json.email } : u)))
+    setEmailTarget(null)
+    toast({ title: "Email actualizado" })
+  }
+
   async function copyLink(a: CoacheeAssignment) {
     const link = `${window.location.origin}/t/${a.accessToken}`
     try {
@@ -221,26 +254,35 @@ export default function AdminPage() {
                       {formatShortDate(u.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openPasswordDialog(u)}
-                          disabled={u.pending || u.id === user?.id}
-                        >
-                          <KeyRound className="h-4 w-4 mr-1" />
-                          Contraseña
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => impersonate(u)}
-                          disabled={u.role === "ADMIN"}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Ver como
-                        </Button>
-                      </div>
+                      {/* modal={false}: a modal menu closing as the Dialog opens
+                          can leave pointer-events: none stuck on <body>. */}
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" aria-label={`Acciones de ${u.name}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onSelect={() => openEmailDialog(u)}>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Cambiar email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => openPasswordDialog(u)}
+                            disabled={u.pending || u.id === user?.id}
+                          >
+                            <KeyRound className="h-4 w-4 mr-2" />
+                            Cambiar contraseña
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => impersonate(u)}
+                            disabled={u.role === "ADMIN"}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver como
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -333,6 +375,47 @@ export default function AdminPage() {
       </Card>
 
       <PasswordCard />
+
+      <Dialog open={!!emailTarget} onOpenChange={(open) => { if (!open) setEmailTarget(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Email de {emailTarget?.name}</DialogTitle>
+            <DialogDescription>
+              {emailTarget?.pending
+                ? "La invitación ya enviada deja de funcionar: reenviala después desde la ficha del alumno."
+                : "Va a entrar con este email. El anterior deja de servir, y no se le avisa por mail."}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveEmail()
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-new-email">Email nuevo</Label>
+              <Input
+                id="admin-new-email"
+                type="email"
+                required
+                autoComplete="off"
+                value={emailValue}
+                onChange={(e) => setEmailValue(e.target.value)}
+              />
+            </div>
+            {emailError && (
+              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{emailError}</p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEmailTarget(null)}>Cancelar</Button>
+              <Button type="submit" disabled={emailSaving}>
+                {emailSaving ? "Guardando..." : "Cambiar email"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!pwTarget} onOpenChange={(open) => { if (!open) setPwTarget(null) }}>
         <DialogContent className="max-w-md">
