@@ -19,7 +19,7 @@ import { apiJson, apiTry } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
-import { Eye, Copy, Check, LogOut, KeyRound, Mail, MoreHorizontal, LogIn } from "lucide-react"
+import { Copy, Check, LogOut, KeyRound, Mail, MoreHorizontal, LogIn, ShieldCheck } from "lucide-react"
 
 type AdminUser = {
   id: string
@@ -66,8 +66,8 @@ type CoacheeAssignment = {
 
 /**
  * Admin control panel. Two lists:
- *   - Every registered user, with a per-row menu to change their email or
- *     password, or to start impersonating them ("Ver como").
+ *   - Every registered user, with a button to impersonate them and a per-row
+ *     menu to change their email or password, or to test a login.
  *   - Every coachee's magic link (the coachees have no login — the link IS the
  *     credential), copied to clipboard so the admin can open it in an incognito
  *     tab to see what the coachee sees.
@@ -243,7 +243,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-semibold">Panel Admin</h1>
           <p className="text-sm text-muted-foreground">
-            Hola {user?.name}. Desde acá podés ver la app como cualquier usuario, o abrir el link de un coachee.
+            Hola {user?.name}. Desde acá podés entrar como cualquier usuario, o abrir el link de un coachee.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={logout}>
@@ -304,6 +304,26 @@ export default function AdminPage() {
                       {formatShortDate(u.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
+                      <div className="flex justify-end items-center gap-1">
+                      {/* Opens to the left: on the right it would be cut off by
+                          the table's edge. */}
+                      <div className="relative group">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => impersonate(u)}
+                          disabled={u.role === "ADMIN"}
+                          aria-label={`Entrar como ${u.name}`}
+                        >
+                          <LogIn className="h-4 w-4" />
+                        </Button>
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute right-full top-1/2 z-10 mr-1 -translate-y-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                        >
+                          {u.role === "ADMIN" ? "No se puede entrar como un admin" : `Entrar como ${u.name}`}
+                        </span>
+                      </div>
                       {/* modal={false}: a modal menu closing as the Dialog opens
                           can leave pointer-events: none stuck on <body>. */}
                       <DropdownMenu modal={false}>
@@ -325,18 +345,12 @@ export default function AdminPage() {
                             Cambiar contraseña
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => openLoginCheck(u)}>
-                            <LogIn className="h-4 w-4 mr-2" />
+                            <ShieldCheck className="h-4 w-4 mr-2" />
                             Probar login
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => impersonate(u)}
-                            disabled={u.role === "ADMIN"}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver como
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
