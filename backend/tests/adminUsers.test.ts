@@ -93,6 +93,17 @@ describe("POST /admin/users/:id/password", () => {
     expect(find("gaby").mustChangePassword).toBe(true)
   })
 
+  it("saves a typed password verbatim, since login does not trim", async () => {
+    await post("ana", { password: " con espacios " })
+    expect(await bcrypt.compare(" con espacios ", find("ana").password!)).toBe(true)
+  })
+
+  it("treats a blank password as none given", async () => {
+    const { password } = await (await post("ana", { password: "   " })).json()
+    expect(password.trim()).toBe(password)
+    expect(password.length).toBeGreaterThanOrEqual(6)
+  })
+
   it("leaves the password as definitive when mustChange is false", async () => {
     await post("ana", { password: "nueva-clave", mustChange: false })
     expect(find("ana").mustChangePassword).toBe(false)

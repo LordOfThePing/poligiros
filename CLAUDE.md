@@ -79,11 +79,13 @@ npm test                             # vitest run (Anclas tier-logic tests)
      `mustChangePassword`, and it always voids a live reset link.
    - **Changing an email** (`PUT /admin/users/:id/email`, per-row menu in the
      admin panel) is safe for linked accounts: `linkedUserId` points at the id.
-     Notifications read the address from the DB, so they follow it. What does
-     NOT follow it: `SUPERVISOR_EMAIL` / `ADMIN_EMAIL` in the server `.env`.
-     Update them too, or `make prod-supervisor` / `make prod-admin` will create
-     a second account under the old address. The `+coach` address of a linked
-     account is only derived once, at creation.
+     The `+coach` address of a linked account is only derived once, at creation.
+   - **Logins live in the DB, never in the `.env`.** `SUPERVISOR_EMAIL` /
+     `ADMIN_EMAIL` and their passwords only seed a fresh database: with an
+     account of that role already present, `make prod-supervisor` /
+     `make prod-admin` do nothing unless `EMAIL=` is passed. Login ignores the
+     email's case. Supervisor notifications follow the DB address too, unless
+     `SUPERVISOR_NOTIFY_EMAIL` is set — that override goes first (`lib/notify.ts`).
 
 2. **Client — magic link, no session** (the A1 model):
    - A `TestAssignment` carries `accessToken` (random), `completeBy`,

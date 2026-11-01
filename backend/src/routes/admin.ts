@@ -79,7 +79,10 @@ admin.get("/users", async (c) => {
 admin.post("/users/:id/password", async (c) => {
   const id = c.req.param("id")
   const body = await c.req.json().catch(() => ({}))
-  const typed = String(body.password ?? "").trim()
+  // Saved exactly as typed: login compares verbatim, so trimming here would
+  // reject the very password the admin just set.
+  const raw = String(body.password ?? "")
+  const typed = raw.trim() ? raw : ""
   if (typed && typed.length < 6) {
     return c.json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400)
   }

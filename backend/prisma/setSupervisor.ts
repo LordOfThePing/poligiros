@@ -14,6 +14,8 @@
  *   make prod-supervisor EMAIL=gaby@poligiros.com PASSWORD=s3cret
  *
  * Behaviour:
+ *   - no --email and a SUPERVISOR already exists → does nothing. Her login lives
+ *     in the app (admin panel); the .env only seeds a fresh database
  *   - email not found        → creates a SUPERVISOR user
  *   - email found            → updates the password (and promotes to SUPERVISOR)
  *   - another SUPERVISOR exists under a different email → warns, since the app
@@ -31,6 +33,18 @@ function arg(flag: string): string | undefined {
 }
 
 async function main() {
+  if (!arg("email")) {
+    const current = await prisma.user.findFirst({
+      where: { role: Role.SUPERVISOR },
+      select: { email: true },
+    })
+    if (current) {
+      console.log(`ℹ️  Ya hay supervisora (${current.email}): se ignora el .env y no se toca nada.`)
+      console.log("   Cambiala desde el panel admin, o forzalo con EMAIL= y PASSWORD=.")
+      return
+    }
+  }
+
   const email = (arg("email") || process.env.SUPERVISOR_EMAIL || "").trim().toLowerCase()
   const password = arg("password") || process.env.SUPERVISOR_PASSWORD || ""
   const name = arg("name") || process.env.SUPERVISOR_NAME || "Gabriela Kyriazis"

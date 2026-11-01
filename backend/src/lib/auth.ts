@@ -34,12 +34,22 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
   }
 }
 
+/**
+ * The login lookup: ignores case and stray spaces, because a phone keyboard
+ * capitalises the first letter and addresses are stored lowercase.
+ */
+export async function findUserByEmail(email: string) {
+  const { prisma } = await import("./prisma.js")
+  return prisma.user.findFirst({
+    where: { email: { equals: email.trim(), mode: "insensitive" } },
+  })
+}
+
 export async function loginUser(
   email: string,
   password: string
 ): Promise<JWTPayload | null> {
-  const { prisma } = await import("./prisma.js")
-  const user = await prisma.user.findUnique({ where: { email } })
+  const user = await findUserByEmail(email)
   if (!user || !user.password) return null // null password = pending invite
 
   const match = await bcrypt.compare(password, user.password)

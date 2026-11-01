@@ -85,6 +85,18 @@ beforeEach(async () => {
   ]
 })
 
+describe("login", () => {
+  it("ignores case and stray spaces in the email", async () => {
+    const res = await post("/login", { email: " ANA@x.com ", password: "vieja-clave" })
+    expect(res.status).toBe(200)
+  })
+
+  it("still rejects a wrong password", async () => {
+    const res = await post("/login", { email: "ana@x.com", password: "otra-clave" })
+    expect(res.status).toBe(401)
+  })
+})
+
 describe("olvidé mi contraseña", () => {
   it("mails a link, and stores only its hash", async () => {
     const res = await post("/password-reset/request", { email: " ANA@x.com " })

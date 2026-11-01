@@ -22,6 +22,20 @@ function arg(flag: string): string | undefined {
 }
 
 async function main() {
+  // Once an admin exists their login lives in the app; the .env only seeds a
+  // fresh database. An explicit --email still forces it.
+  if (!arg("email")) {
+    const current = await prisma.user.findFirst({
+      where: { role: Role.ADMIN },
+      select: { email: true },
+    })
+    if (current) {
+      console.log(`ℹ️  Ya hay admin (${current.email}): se ignora el .env y no se toca nada.`)
+      console.log("   Cambialo desde el panel admin, o forzalo con EMAIL= y PASSWORD=.")
+      return
+    }
+  }
+
   const email = (arg("email") || process.env.ADMIN_EMAIL || "").trim().toLowerCase()
   const password = arg("password") || process.env.ADMIN_PASSWORD || ""
   const name = arg("name") || process.env.ADMIN_NAME || "Admin"

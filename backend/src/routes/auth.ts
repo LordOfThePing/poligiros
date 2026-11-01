@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { setCookie, deleteCookie, getCookie } from "hono/cookie"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "node:crypto"
-import { authMiddleware, loginUser, signJWT, verifyJWT } from "../lib/auth.js"
+import { authMiddleware, findUserByEmail, loginUser, signJWT, verifyJWT } from "../lib/auth.js"
 import { prisma } from "../lib/prisma.js"
 import { hashResetToken, issuePasswordLink } from "../lib/passwordReset.js"
 import type { AppVariables } from "../lib/types.js"
@@ -118,7 +118,7 @@ auth.get("/google/callback", async (c) => {
   const email = (info.email ?? "").trim().toLowerCase()
   if (!email || info.email_verified === false) return bail("email")
 
-  const user = await prisma.user.findUnique({ where: { email } })
+  const user = await findUserByEmail(email)
   if (!user) return bail("not_found", email)
   if (!user.password) return bail("not_activated")
 
@@ -138,12 +138,12 @@ auth.post("/login", async (c) => {
   }
 
   // Pending invite (no password yet) → tell the frontend to point them to the link.
-  const existing = await prisma.user.findUnique({ where: { email } })
+  const existing = await findUserByEmail(String(email))
   if (existing && !existing.password) {
     return c.json({ error: "user_not_activated" }, 403)
   }
 
-  const user = await loginUser(email, password)
+  const user = await loginUser(String(email), String(password))
   if (!user) {
     return c.json({ error: "Credenciales incorrectas" }, 401)
   }
