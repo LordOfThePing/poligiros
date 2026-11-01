@@ -16,6 +16,7 @@ import {
 import { randomBytes } from "node:crypto"
 import { getSettings, clampDays, daysFromNow } from "../lib/settings.js"
 import { supervisorRecipient } from "../lib/notify.js"
+import { normalizeEmail } from "../lib/normalizeEmail.js"
 import { getCoachAccess } from "../lib/cohort.js"
 import { latestCoachTestResult } from "../lib/duplaTest.js"
 import type { AppVariables } from "../lib/types.js"
@@ -279,7 +280,7 @@ supervisor.put("/students/:id", async (c) => {
     data.name = name
   }
   if (body.email !== undefined) {
-    const email = String(body.email).trim().toLowerCase()
+    const email = normalizeEmail(body.email)
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return c.json({ error: "Email inválido" }, 400)
     }
@@ -815,7 +816,7 @@ supervisor.post("/cohorts/:id/enroll", async (c) => {
   const supervisorUser = c.get("user")
   const id = c.req.param("id")
   const body = await c.req.json()
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+  const email = typeof body.email === "string" ? normalizeEmail(body.email) : ""
   const name = typeof body.name === "string" ? body.name.trim() : ""
   if (!email) return c.json({ error: "Email requerido" }, 400)
 
@@ -957,7 +958,7 @@ supervisor.post("/pools/:id/enroll", async (c) => {
   const supervisorUser = c.get("user")
   const id = c.req.param("id")
   const body = await c.req.json()
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+  const email = typeof body.email === "string" ? normalizeEmail(body.email) : ""
   const name = typeof body.name === "string" ? body.name.trim() : ""
   if (!email) return c.json({ error: "Email requerido" }, 400)
 
@@ -1809,7 +1810,8 @@ supervisor.get("/coaches", async (c) => {
 /** POST /supervisor/coaches/invite — create a pending coach + invite link. */
 supervisor.post("/coaches/invite", async (c) => {
   const supervisorUser = c.get("user")
-  const { email, name, cohortId } = await c.req.json()
+  const { email: rawEmail, name, cohortId } = await c.req.json()
+  const email = normalizeEmail(rawEmail)
   if (!email || !name) return c.json({ error: "Nombre y email requeridos" }, 400)
 
   const existing = await prisma.user.findUnique({ where: { email } })

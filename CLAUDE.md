@@ -84,7 +84,9 @@ npm test                             # vitest run (Anclas tier-logic tests)
      `ADMIN_EMAIL` and their passwords only seed a fresh database: with an
      account of that role already present, `make prod-supervisor` /
      `make prod-admin` do nothing unless `EMAIL=` is passed. Login ignores the
-     email's case (`findUserByEmail`, exact match first). To diagnose a failed
+     email's case (`findUserByEmail`, exact match first). Every address goes through
+     `normalizeEmail` (`lib/normalizeEmail.ts`), which also drops the invisible
+     characters `trim()` leaves, and `repairUserEmails` cleans old rows on boot. To diagnose a failed
      login, use "Probar login" in the admin panel (`POST /admin/login-check`):
      same lookup and comparison, no session. Supervisor notifications follow the DB address too, unless
      `SUPERVISOR_NOTIFY_EMAIL` is set — that override goes first (`lib/notify.ts`).

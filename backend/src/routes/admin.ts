@@ -3,6 +3,7 @@ import { setCookie, deleteCookie } from "hono/cookie"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "node:crypto"
 import { findUserByEmail } from "../lib/auth.js"
+import { normalizeEmail } from "../lib/normalizeEmail.js"
 import { prisma } from "../lib/prisma.js"
 import type { AppVariables } from "../lib/types.js"
 
@@ -146,12 +147,12 @@ admin.post("/login-check", async (c) => {
  * reference each other by id, so a linked account (User.linkedUserId) survives
  * this untouched. Links already mailed went to the old inbox, so a live
  * password link and a pending invite are voided: the invite has to be resent.
- * Stored lowercase because /auth/login and Google look the email up verbatim.
+ * Stored normalized because that is the spelling every login looks up.
  */
 admin.put("/users/:id/email", async (c) => {
   const id = c.req.param("id")
   const body = await c.req.json().catch(() => ({}))
-  const email = String(body.email ?? "").trim().toLowerCase()
+  const email = normalizeEmail(body.email)
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return c.json({ error: "Email inválido" }, 400)
   }

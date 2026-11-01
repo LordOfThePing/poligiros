@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs"
 import { prisma } from "../lib/prisma.js"
 import { sendSignupReceivedEmail } from "../lib/email.js"
 import { notifyTarget } from "../lib/notify.js"
+import { normalizeEmail } from "../lib/normalizeEmail.js"
 
 const publicRoutes = new Hono()
 
@@ -99,7 +100,7 @@ publicRoutes.post("/signup/:token", async (c) => {
     await c.req.json().catch(() => ({}) as Record<string, unknown>)
 
   const cleanName = String(name ?? "").trim()
-  const cleanEmail = String(email ?? "").trim().toLowerCase()
+  const cleanEmail = normalizeEmail(email)
   const cleanPassword = String(password ?? "")
 
   if (!cleanName) return c.json({ error: "Ingresá tu nombre" }, 400)

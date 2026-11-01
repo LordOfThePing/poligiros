@@ -3,6 +3,7 @@ import { setCookie, deleteCookie, getCookie } from "hono/cookie"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "node:crypto"
 import { authMiddleware, findUserByEmail, loginUser, signJWT, verifyJWT } from "../lib/auth.js"
+import { normalizeEmail } from "../lib/normalizeEmail.js"
 import { prisma } from "../lib/prisma.js"
 import { hashResetToken, issuePasswordLink } from "../lib/passwordReset.js"
 import type { AppVariables } from "../lib/types.js"
@@ -115,7 +116,7 @@ auth.get("/google/callback", async (c) => {
     name?: string
   }
 
-  const email = (info.email ?? "").trim().toLowerCase()
+  const email = normalizeEmail(info.email)
   if (!email || info.email_verified === false) return bail("email")
 
   const user = await findUserByEmail(email)

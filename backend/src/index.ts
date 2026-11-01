@@ -88,6 +88,11 @@ serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.log(`🚀 Poligiros API running on http://localhost:${info.port}`)
 })
 
+// Accounts stored before every entry point normalized the address.
+import("./lib/normalizeEmail.js")
+  .then(({ repairUserEmails }) => repairUserEmails())
+  .catch((err) => console.error("[email] No se pudieron reparar los emails:", err))
+
 // Rows uploaded under an older CLOUDFLARE_R2_PUBLIC_URL get their links rebuilt.
 import("./lib/r2.js")
   .then(({ repairR2Urls }) => repairR2Urls())
