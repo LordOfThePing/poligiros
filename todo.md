@@ -35,6 +35,11 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## En curso
 
+- [ ] **Objetivo de Carrera: dejar de pre-llenar desde Pirámide.** Sacar el
+      prefill de `rol`/`valores` desde `PIRAMIDE_PROPOSITO` en
+      `OBJETIVO_CARRERA` y `OBJETIVO_CARRERA_LARGO` — backend (`latestPiramideData`
+      + `prefillPiramide` en client/student) y frontend (TokenPage,
+      TakeTestPage, ObjetivoCarreraTest).
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
       footer (tareas, feedback, PDF) queda fijo al pie de la vista; los títulos
       de cada columna quedan fijos en su caja y sólo scrollea la caja de
