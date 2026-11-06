@@ -4,21 +4,14 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Info, Sparkles } from "lucide-react"
+import { ChevronDown, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { TestApi } from "@/lib/testApi"
 import { loadDraft, discardDraft, useAutosave } from "@/lib/draft"
 
-interface Prefill {
-  rol: string
-  valores: string
-  propositoFinal: string
-}
-
 interface ObjetivoCarreraTestProps {
   api: TestApi
   assignmentId: string
-  prefillPiramide?: Prefill
   /** "Objetivo 1. Corto plazo" o "Objetivo 2. Mediano/largo plazo" — mismo form. */
   title?: string
 }
@@ -123,7 +116,6 @@ const SECTIONS: {
 export default function ObjetivoCarreraTest({
   api,
   assignmentId,
-  prefillPiramide,
   title = "Objetivo de Carrera",
 }: ObjetivoCarreraTestProps) {
   const { toast } = useToast()
@@ -134,18 +126,9 @@ export default function ObjetivoCarreraTest({
 
   useEffect(() => {
     const d = loadDraft<Partial<Form>>(DRAFT_KEY(assignmentId))
-    if (d) {
-      setForm({ ...EMPTY, ...d })
-    } else if (prefillPiramide) {
-      // Si no hay borrador, pre-llenar rol + valores desde la Pirámide (editable).
-      setForm({
-        ...EMPTY,
-        puesto: prefillPiramide.rol,
-        valores: prefillPiramide.valores,
-      })
-    }
+    if (d) setForm({ ...EMPTY, ...d })
     setHydrated(true)
-  }, [assignmentId, prefillPiramide])
+  }, [assignmentId])
 
   useAutosave(DRAFT_KEY(assignmentId), form, hydrated && !submitted)
 
@@ -182,10 +165,6 @@ export default function ObjetivoCarreraTest({
     )
   }
 
-  const hasPiramidePrefill = Boolean(
-    prefillPiramide && (prefillPiramide.rol || prefillPiramide.valores),
-  )
-
   return (
     <div className="space-y-6 pb-24 max-w-2xl mx-auto">
       <div>
@@ -196,16 +175,6 @@ export default function ObjetivoCarreraTest({
           objetivo.
         </p>
       </div>
-
-      {hasPiramidePrefill && (
-        <div className="flex items-start gap-2 rounded-lg border border-brand-accent/20 bg-brand-accent/5 px-3 py-2.5 text-sm text-foreground">
-          <Sparkles className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
-          <p>
-            Pre-llenamos <strong>rol</strong> y <strong>valores</strong> con lo que elegiste en tu Pirámide del
-            Propósito. Son editables — ajustalos si querés para este objetivo específico.
-          </p>
-        </div>
-      )}
 
       <Collapsible>
         <CollapsibleTrigger asChild>

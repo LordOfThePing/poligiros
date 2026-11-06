@@ -39,27 +39,6 @@ export async function latestTableroIdea(clientId: string): Promise<string> {
   return selectedIdea
 }
 
-/**
- * Pirámide del Propósito data for the Objetivo de Carrera pre-fill: rol
- * (verbos que me representan) y valores (los tres centrales). Vacío si la
- * coachee aún no completó la Pirámide — el form lo deja editable igual.
- */
-export async function latestPiramideData(
-  clientId: string,
-): Promise<{ rol: string; valores: string; propositoFinal: string }> {
-  const piramide = await prisma.testAssignment.findFirst({
-    where: { clientId, test: { type: "PIRAMIDE_PROPOSITO" }, completedAt: { not: null } },
-    orderBy: { completedAt: "desc" },
-    include: { response: true },
-  })
-  const r = (piramide?.response?.responses ?? {}) as Record<string, unknown>
-  return {
-    rol: typeof r.rol === "string" ? r.rol : "",
-    valores: typeof r.valores === "string" ? r.valores : "",
-    propositoFinal: typeof r.propositoFinal === "string" ? r.propositoFinal : "",
-  }
-}
-
 /** Los dos tests de Objetivo (1. Corto plazo / 2. Mediano/largo plazo) — mismo form y mismo shape. */
 export const OBJETIVO_TYPES = ["OBJETIVO_CARRERA", "OBJETIVO_CARRERA_LARGO"] as const
 
@@ -145,10 +124,6 @@ client.get("/t/:token", async (c) => {
       // Modelo de Negocio pre-fills ideas from the client's latest Tablero brainstorm.
       ...(assignment.test.type === "MODELO_NEGOCIO"
         ? await latestTableroData(assignment.clientId)
-        : {}),
-      // Objetivo 1 y 2: rol + valores de la Pirámide (siempre editables).
-      ...(isObjetivoType(assignment.test.type)
-        ? { prefillPiramide: await latestPiramideData(assignment.clientId) }
         : {}),
       // Plan de Acción: objetivo general del último Objetivo (1 o 2).
       ...(assignment.test.type === "PLAN_ACCION"

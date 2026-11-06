@@ -128,8 +128,10 @@ other test, including as a module item (kind `TEST`, `DUPLA` or `REGISTRO`).
 **Prefills entre tests** — algunos tests leen el resultado más reciente de otro para
 pre-llenar campos (siempre editables, con un aviso de dónde salió):
 - `MODELO_NEGOCIO` ← `TABLERO_IDEAS` (idea elegida + brainstorm), vía `latestTableroData()`.
-- `OBJETIVO_CARRERA` / `OBJETIVO_CARRERA_LARGO` ← `PIRAMIDE_PROPOSITO` (`rol` + `valores`), vía `latestPiramideData()`.
 - `PLAN_ACCION` ← el Objetivo (1 o 2) completado más reciente (`sintesis` → objetivo general), vía `latestObjetivoData()`.
+
+**Objetivo de Carrera NO se pre-llena desde la Pirámide del Propósito** — es
+un form en blanco a propósito, incluso cuando la coachee ya terminó la Pirámide.
 
 **Objetivo 1 y 2:** `OBJETIVO_CARRERA` es "Objetivo 1. Corto plazo" y
 `OBJETIVO_CARRERA_LARGO` es "Objetivo 2. Mediano/largo plazo" — dos tests
@@ -137,9 +139,9 @@ distintos (cada uno con su fila de catálogo y su link) que comparten el mismo
 form (`ObjetivoCarreraTest`, recibe `title`), resultado y editor. Usá
 `isObjetivoType()` / `OBJETIVO_TYPES` (`backend/src/routes/client.ts`) en el backend.
 
-Los tres helpers viven en `backend/src/routes/client.ts` (exportados) y los consume
+Los helpers viven en `backend/src/routes/client.ts` (exportados) y los consume
 tanto `GET /client/t/:token` como `GET /student/my-tests/:id` para que el form-state
-los devuelva con un nombre predecible (`prefillPiramide`, `prefillObjetivo`, etc.).
+los devuelva con un nombre predecible (`prefillIdea`, `prefillObjetivo`).
 
 `MODELO_NEGOCIO` ("Modelo de Negocio") is a normal assignable test like the others
 (its own catalog row + magic link), not a post-test add-on. Its form

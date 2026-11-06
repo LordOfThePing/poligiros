@@ -28,7 +28,6 @@ type TokenState =
       title: string
       selectedIdea?: string
       prefillIdeas?: string[]
-      prefillPiramide?: { rol: string; valores: string; propositoFinal: string }
       prefillObjetivo?: { objetivoGeneral: string }
     }
   | {
@@ -246,7 +245,6 @@ export default function TokenPage() {
             <ObjetivoCarreraTest
               api={api}
               assignmentId={data.assignmentId}
-              prefillPiramide={data.prefillPiramide}
               title={testTitle(data.testType)}
             />
           )}

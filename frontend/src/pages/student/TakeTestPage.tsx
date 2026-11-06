@@ -29,7 +29,6 @@ type Assignment = {
   supervision?: { reviewedAt?: string | null } | null
   prefillIdea?: string
   prefillIdeas?: string[]
-  prefillPiramide?: { rol: string; valores: string; propositoFinal: string }
   prefillObjetivo?: { objetivoGeneral: string }
   feedback?: string | null
   canEdit?: boolean
@@ -187,7 +186,6 @@ export default function StudentTakeTestPage() {
         <ObjetivoCarreraTest
           api={api}
           assignmentId={assignment.id}
-          prefillPiramide={assignment.prefillPiramide}
           title={testTitle(t)}
         />
       )}

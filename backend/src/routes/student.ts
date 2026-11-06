@@ -8,7 +8,7 @@ import {
   sendTestAssignedToClient,
 } from "../lib/email.js"
 import { generateAnclasInsight, generateTableroIdeas } from "../lib/ai.js"
-import { latestTableroIdea, latestPiramideData, latestObjetivoData, isObjetivoType } from "./client.js"
+import { latestTableroIdea, latestObjetivoData } from "./client.js"
 import { getCoachAccess } from "../lib/cohort.js"
 import { latestCoachTestResult, duplaFeedback } from "../lib/duplaTest.js"
 import { getSettings, daysFromNow } from "../lib/settings.js"
@@ -1355,9 +1355,6 @@ student.get("/my-tests/:id", async (c) => {
   // Modelo de Negocio pre-fills the idea from the coach's latest Tablero.
   const prefillIdea =
     assignment.test.type === "MODELO_NEGOCIO" ? await latestTableroIdea(assignment.clientId) : undefined
-  // Objetivo de Carrera pre-fills rol + valores desde la Pirámide (editable).
-  const prefillPiramide =
-    isObjetivoType(assignment.test.type) ? await latestPiramideData(assignment.clientId) : undefined
   // Plan de Acción pre-fills el objetivo general desde Objetivo de Carrera.
   const prefillObjetivo =
     assignment.test.type === "PLAN_ACCION" ? await latestObjetivoData(assignment.clientId) : undefined
@@ -1365,7 +1362,6 @@ student.get("/my-tests/:id", async (c) => {
     ...assignment,
     revoked: assignment.completedAt === null && Boolean(assignment.accessRevokedAt),
     prefillIdea,
-    prefillPiramide,
     prefillObjetivo,
     // Gaby's return on the coach's own test, and their one post-review edit.
     feedback: assignment.supervision
