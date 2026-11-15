@@ -77,6 +77,7 @@ type Client = {
   email: string
   age: string | null
   sex: string | null
+  city: string | null
   works: boolean | null
   position: string | null
   assignments: Assignment[]
@@ -486,6 +487,7 @@ function CoacheeProfileCard({
   const [editing, setEditing] = useState(false)
   const [age, setAge] = useState(client.age ?? "")
   const [sex, setSex] = useState(client.sex ?? "")
+  const [city, setCity] = useState(client.city ?? "")
   const [works, setWorks] = useState<boolean>(client.works ?? false)
   const [position, setPosition] = useState(client.position ?? "")
   const [saving, setSaving] = useState(false)
@@ -493,9 +495,10 @@ function CoacheeProfileCard({
   useEffect(() => {
     setAge(client.age ?? "")
     setSex(client.sex ?? "")
+    setCity(client.city ?? "")
     setWorks(client.works ?? false)
     setPosition(client.position ?? "")
-  }, [client.id, client.age, client.sex, client.works, client.position])
+  }, [client.id, client.age, client.sex, client.city, client.works, client.position])
 
   async function save() {
     setSaving(true)
@@ -503,7 +506,7 @@ function CoacheeProfileCard({
       await apiJson<Client>(`/student/clients/${client.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ age, sex, works, position: works ? position : null }),
+        body: JSON.stringify({ age, sex, city: city.trim() || null, works, position: works ? position : null }),
       })
       toast({ title: "Datos del coachee guardados" })
       setEditing(false)
@@ -514,7 +517,7 @@ function CoacheeProfileCard({
   }
 
   const hasData =
-    client.age || client.sex || typeof client.works === "boolean" || client.position
+    client.age || client.sex || client.city || typeof client.works === "boolean" || client.position
 
   return (
     <Card className="bg-white">
@@ -537,6 +540,10 @@ function CoacheeProfileCard({
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">Sexo</p>
                 <p className="text-foreground">{client.sex || "—"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Ciudad</p>
+                <p className="text-foreground">{client.city || "—"}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-xs text-muted-foreground mb-0.5">¿Trabaja?</p>
@@ -570,6 +577,10 @@ function CoacheeProfileCard({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ciudad</Label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ej: Buenos Aires" />
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={works} onCheckedChange={setWorks} id="works-profile" />

@@ -54,7 +54,7 @@ student.get("/clients", async (c) => {
 /** POST /student/clients */
 student.post("/clients", async (c) => {
   const user = c.get("user")
-  const { name, email, age, sex, works, position } = await c.req.json()
+  const { name, email, age, sex, city, works, position } = await c.req.json()
 
   const access = await getCoachAccess(user.id)
   if (!access.canPractice) {
@@ -68,6 +68,7 @@ student.post("/clients", async (c) => {
       email,
       age: age ?? null,
       sex: sex ?? null,
+      city: city ?? null,
       works: typeof works === "boolean" ? works : null,
       position: position ?? null,
     },
@@ -96,6 +97,7 @@ student.put("/clients/:id", async (c) => {
       ...(typeof body.email === "string" ? { email: body.email } : {}),
       ...(body.age !== undefined ? { age: body.age ?? null } : {}),
       ...(body.sex !== undefined ? { sex: body.sex ?? null } : {}),
+      ...(body.city !== undefined ? { city: body.city ?? null } : {}),
       ...(body.works !== undefined
         ? { works: typeof body.works === "boolean" ? body.works : null }
         : {}),

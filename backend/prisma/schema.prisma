@@ -337,6 +337,7 @@ model Client {
   // coachee (Client) and sessions reuse them.
   age         String?
   sex         String?
+  city        String?
   works       Boolean?
   position    String?
   // For a coach-as-coachee, points at the coach's own User (they take tests

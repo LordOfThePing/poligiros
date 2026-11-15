@@ -70,6 +70,7 @@ export default function ClientesPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState("")
   const [newEmail, setNewEmail] = useState("")
+  const [newCity, setNewCity] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -81,10 +82,15 @@ export default function ClientesPage() {
 
   async function handleAddClient() {
     if (!newName || !newEmail) return
-    const client = await apiPost<Client>("/student/clients", { name: newName, email: newEmail })
+    const client = await apiPost<Client>("/student/clients", {
+      name: newName,
+      email: newEmail,
+      city: newCity.trim() || null,
+    })
     setClients((prev) => [...prev, client])
     setNewName("")
     setNewEmail("")
+    setNewCity("")
     setShowAdd(false)
     toast({ title: "Coachee agregado" })
   }
@@ -155,6 +161,10 @@ export default function ClientesPage() {
             <div className="space-y-2">
               <Label>Email</Label>
               <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="coachee@email.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Ciudad <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+              <Input value={newCity} onChange={(e) => setNewCity(e.target.value)} placeholder="Ej: Buenos Aires" />
             </div>
           </div>
           <DialogFooter>
