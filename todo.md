@@ -33,6 +33,49 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 - [x] Inscripción aprobada manda mail al coach (ya estaba hecho:
       `sendSignupApprovedEmail`).
 
+## De reunión con supervisora (2026-11-14)
+
+- [ ] **Ruta automatizada del coachee.** Coachee se inscribe por link, carga
+      sus datos, el coach aprueba y de ahí en adelante los tests se habilitan
+      uno detrás del otro automáticamente. El coach supervisa en paralelo sin
+      tener que asignar cada test a mano. Incluye el link de inscripción para
+      coachees que faltaba (equivalente al de coaches, pero para coachees).
+- [ ] **Usuarios para coachees: login propio + vista propia.** Hoy el coachee
+      entra por magic link sin cuenta. Pasar a `User` con rol coachee, login y
+      su propia pantalla donde ve su recorrido/tests habilitados. Toca modelo
+      de auth (ver `CLAUDE.md` → "Clients (coachees) do NOT [log in]"), hay que
+      rediseñar.
+- [ ] **Collage automatizado.** Generarlo automáticamente a partir de los
+      resultados de todos los tests anteriores de la coachee, en vez de pedirle
+      que suba un archivo. Pensar cómo (qué datos tomar de cada test, qué
+      formato de salida, si lo arma IA o un template).
+- [ ] **Revisión de Gaby asistida por IA.** En la pantalla de supervisión, que
+      la IA proponga una devolución basada en lo que Gaby viene escribiendo a
+      mano (aprende de sus correcciones). Gaby puede aceptarla, editarla o
+      rechazarla. Pensar prompt + cómo se persiste el aprendizaje.
+- [ ] **Separar en sidebar de supervisora: Alumnos vs. Coaches certificados.**
+      Hoy están juntos. Dos tabs/entradas distintas.
+- [ ] **Confirmación visible de mails enviados.** Cuando un coach crea un
+      coachee o le envía un test, mostrar un icono / badge / banner que
+      confirme que el mail salió (y cuándo). Toca tanto backend (persistir
+      timestamp de envío) como UI (coach y supervisora).
+- [ ] **Consigna dentro del mail al coachee.** El mail que recibe el coachee
+      cuando le asignan un test tiene que incluir la consigna del test, no
+      sólo el link. Sumar también el check de "mail enviado" (ver ítem
+      anterior).
+- [ ] **Ciudad en datos del coachee.** Agregar campo "ciudad" al alta/edición
+      del coachee.
+
+### Datos de negocio (anotar, no es código todavía)
+
+- [ ] **Precios actuales de Gaby (referencia, no en la app).**
+      - Coachee de Gaby: 800k ARS / 650 USD por única vez.
+      - Alumno de CIC: 700–1000 USD por única vez (más alto).
+- [ ] **Propuesta de cobro vía la app.**
+      - Coaches en pool: fee mensual (monto a definir).
+      - Coachees de coaches del pool: NO se cobra por la app; se arregla por
+        separado entre coach y coachee.
+
 ## En curso
 
 - [ ] **Resultado del Tablero de Ideas: layout de pantalla completa.** El
