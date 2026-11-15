@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,13 +42,45 @@ type Cohort = { id: string; name: string }
 export default function AlumnosPage() {
   const { toast } = useToast()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
 
   const [open, setOpen] = useState(false)
   const [cohorts, setCohorts] = useState<Cohort[]>([])
   const [cicFilter, setCicFilter] = useState<string>("all")
-  const [tipoFilter, setTipoFilter] = useState<"all" | "alumno" | "coach">("all")
+  const initialTipo = (() => {
+    const v = searchParams.get("tipo")
+    return v === "alumno" || v === "coach" ? v : "all"
+  })()
+  const [tipoFilter, setTipoFilter] = useState<"all" | "alumno" | "coach">(initialTipo)
+
+  // Mantener la query sincronizada con el filtro: así el link del sidebar y el
+  // selector de la pantalla no se desalinean.
+  useEffect(() => {
+    const current = searchParams.get("tipo")
+    if (tipoFilter === "all") {
+      if (current) {
+        const next = new URLSearchParams(searchParams)
+        next.delete("tipo")
+        setSearchParams(next, { replace: true })
+      }
+    } else if (current !== tipoFilter) {
+      const next = new URLSearchParams(searchParams)
+      next.set("tipo", tipoFilter)
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoFilter])
+
+  // Si el usuario navega desde el sidebar y cambia ?tipo=, reflejarlo en el
+  // selector sin perder el resto del estado.
+  useEffect(() => {
+    const v = searchParams.get("tipo")
+    const next: "all" | "alumno" | "coach" = v === "alumno" || v === "coach" ? v : "all"
+    if (next !== tipoFilter) setTipoFilter(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [cohortId, setCohortId] = useState("")
@@ -139,8 +171,16 @@ export default function AlumnosPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl text-foreground mb-1">Alumnos</h1>
-          <p className="text-muted-foreground text-sm">Todos los coaches de la plataforma</p>
+          <h1 className="font-serif text-3xl text-foreground mb-1">
+            {tipoFilter === "coach" ? "Coaches certificados" : tipoFilter === "alumno" ? "Alumnos (CIC)" : "Alumnos"}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {tipoFilter === "coach"
+              ? "Coaches ya graduados, enrolados en algún pool"
+              : tipoFilter === "alumno"
+              ? "Coaches cursando algún CIC"
+              : "Todos los coaches de la plataforma"}
+          </p>
         </div>
         <Button onClick={() => setOpen(true)} className="bg-brand-accent hover:bg-brand-accent-dark shrink-0">
           <UserPlus className="h-4 w-4 mr-2" /> Invitar coach

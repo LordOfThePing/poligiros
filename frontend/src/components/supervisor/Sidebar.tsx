@@ -30,7 +30,8 @@ const groups: NavGroup[] = [
   {
     title: "Alumnos",
     items: [
-      { href: "/supervisor/alumnos", label: "Alumnos", icon: Users },
+      { href: "/supervisor/alumnos?tipo=alumno", label: "Alumnos (CIC)", icon: Users },
+      { href: "/supervisor/alumnos?tipo=coach", label: "Coaches certificados", icon: Award },
       { href: "/supervisor/preview", label: "Vista de CIC", icon: Eye },
     ],
   },
@@ -49,7 +50,7 @@ const groups: NavGroup[] = [
     title: "Administración",
     items: [
       { href: "/supervisor/cohortes", label: "Camadas (CIC)", icon: GraduationCap },
-      { href: "/supervisor/pools", label: "Coaches certificados", icon: Award },
+      { href: "/supervisor/pools", label: "Pools de coaches", icon: Award },
       { href: "/supervisor/inscripciones", label: "Inscripciones", icon: UserPlus },
       { href: "/supervisor/configuracion", label: "Configuración", icon: Settings },
     ],
@@ -63,7 +64,10 @@ export function SupervisorSidebar() {
 
   const renderItem = ({ href, label, icon: Icon }: NavItem, expanded: boolean) => {
     const count = badgeForRole(user?.role, { href, label }, supervisor, null)
-    const active = location.pathname.startsWith(href)
+    const [hrefPath, hrefQuery] = href.split("?")
+    const active = hrefQuery
+      ? location.pathname === hrefPath && location.search.includes(hrefQuery)
+      : location.pathname.startsWith(hrefPath)
     return (
       <Link
         key={href}
