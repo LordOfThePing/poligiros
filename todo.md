@@ -59,10 +59,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
       coachee o le envía un test, mostrar un icono / badge / banner que
       confirme que el mail salió (y cuándo). Toca tanto backend (persistir
       timestamp de envío) como UI (coach y supervisora).
-- [ ] **Consigna dentro del mail al coachee.** El mail que recibe el coachee
-      cuando le asignan un test tiene que incluir la consigna del test, no
-      sólo el link. Sumar también el check de "mail enviado" (ver ítem
-      anterior).
 ### Datos de negocio (anotar, no es código todavía)
 
 - [ ] **Precios actuales de Gaby (referencia, no en la app).**
