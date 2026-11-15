@@ -63,9 +63,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
       cuando le asignan un test tiene que incluir la consigna del test, no
       sólo el link. Sumar también el check de "mail enviado" (ver ítem
       anterior).
-- [ ] **Ciudad en datos del coachee.** Agregar campo "ciudad" al alta/edición
-      del coachee.
-
 ### Datos de negocio (anotar, no es código todavía)
 
 - [ ] **Precios actuales de Gaby (referencia, no en la app).**
