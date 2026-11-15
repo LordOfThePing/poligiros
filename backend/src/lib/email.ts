@@ -10,6 +10,15 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.EMAIL_FROM || "Poligiros <notificaciones@mail.flynnpedroa.engineer>"
 const APP_URL = process.env.FRONTEND_URL || "http://localhost:5173"
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
 /**
  * Single exit point for every email.
  *
@@ -142,6 +151,7 @@ export async function sendTestAssignedToClient(
   clientName: string,
   coachName: string,
   testName: string,
+  testConsigna: string,
   magicLink: string,
   completeBy: Date
 ) {
@@ -150,9 +160,13 @@ export async function sendTestAssignedToClient(
     month: "long",
     year: "numeric",
   })
+  const consignaBlock = testConsigna?.trim()
+    ? `<p><strong>De qué se trata:</strong></p><p>${escapeHtml(testConsigna).replace(/\n+/g, "</p><p>")}</p>`
+    : ""
   await send(clientEmail, `${coachName} te compartió: ${testName}`, `
       <p>Hola ${clientName || ""},</p>
       <p><strong>${coachName}</strong> te compartió el ejercicio <strong>${testName}</strong> para que lo completes antes de su sesión.</p>
+      ${consignaBlock}
       <p>Entrá desde este enlace — es personal, no hace falta usuario ni contraseña:</p>
       <p><a href="${magicLink}">${magicLink}</a></p>
       <p>Tenés tiempo hasta el <strong>${deadline}</strong>.</p>

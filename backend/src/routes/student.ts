@@ -194,6 +194,7 @@ student.post("/clients/:id/assign", async (c) => {
     clientRecord.name,
     user.name,
     assignment.test.title,
+    assignment.test.description,
     link,
     completeBy
   ).catch(() => {})
@@ -241,6 +242,7 @@ student.post("/assignments/:id/resend", async (c) => {
     assignment.client.name,
     user.name,
     assignment.test.title,
+    assignment.test.description,
     link,
     completeBy
   ).catch(() => {})
