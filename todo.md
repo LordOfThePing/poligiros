@@ -65,7 +65,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
 
 ## Pendientes previos
 
-- [ ] Al terminar un CIC, los coaches pasan a un grupo "Coaches certificados" (no es un CIC, no tiene módulos — sirve para agregar coachees y hacerles tests)
 - [ ] Planes para coaches: gratis el primer mes, pago después
 - [ ] Clase 2: el texto "antes de la sesión, leer libro de Edgar Schein" tiene que ir antes que Bibliografía
 - [ ] Foro general
