@@ -1899,6 +1899,56 @@ supervisor.get("/cohorts/:id/emails", async (c) => {
   })
 })
 
+/**
+ * POST /supervisor/cohorts/:id/graduate — body: { poolId }
+ *
+ * Al cerrar un CIC, Gaby quiere pasar en bloque a todos sus alumnos al pool
+ * de coaches certificados que elija. Reusa la misma semántica de enroll:
+ * crea la membresía si falta y le avisa por mail al coach; a quienes ya
+ * estaban en el pool, los saltea.
+ */
+supervisor.post("/cohorts/:id/graduate", async (c) => {
+  const cohortId = c.req.param("id")
+  const body = await c.req.json().catch(() => ({}))
+  const poolId = typeof body.poolId === "string" ? body.poolId : ""
+  if (!poolId) return c.json({ error: "poolId requerido" }, 400)
+
+  const [cohort, pool] = await Promise.all([
+    prisma.cohort.findUnique({ where: { id: cohortId } }),
+    prisma.coachPool.findUnique({ where: { id: poolId } }),
+  ])
+  if (!cohort) return c.json({ error: "CIC no encontrado" }, 404)
+  if (!pool) return c.json({ error: "Pool no encontrado" }, 404)
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: { cohortId },
+    include: { user: { select: { id: true, email: true, name: true } } },
+  })
+
+  const existing = await prisma.poolMembership.findMany({
+    where: { poolId, userId: { in: enrollments.map((e) => e.user.id) } },
+    select: { userId: true },
+  })
+  const alreadyMembers = new Set(existing.map((m) => m.userId))
+
+  const toAdd = enrollments.filter((e) => !alreadyMembers.has(e.user.id))
+  if (toAdd.length > 0) {
+    await prisma.poolMembership.createMany({
+      data: toAdd.map((e) => ({ userId: e.user.id, poolId })),
+      skipDuplicates: true,
+    })
+    for (const e of toAdd) {
+      sendPoolAddedEmail(e.user.email, e.user.name, pool.name).catch(() => {})
+    }
+  }
+
+  return c.json({
+    total: enrollments.length,
+    added: toAdd.length,
+    alreadyIn: alreadyMembers.size,
+  })
+})
+
 /* ─────────────────────────────────────────
    Signup requests (public form -> supervisor approval)
 ───────────────────────────────────────── */

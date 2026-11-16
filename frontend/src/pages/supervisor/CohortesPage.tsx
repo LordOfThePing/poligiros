@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Plus, UserPlus, Pencil, Copy, Check, ChevronDown, ChevronRight, Video, Loader2,
+  Plus, UserPlus, Pencil, Copy, Check, ChevronDown, ChevronRight, Video, Loader2, Award,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatShortDate } from "@/lib/date"
@@ -177,6 +177,11 @@ export default function CohortesPage() {
   const [enrollEmail, setEnrollEmail] = useState("")
   const [enrollName, setEnrollName] = useState("")
   const [enrollingCohortId, setEnrollingCohortId] = useState<string | null>(null)
+  // Dialog "Graduar a un pool": qué CIC y qué pool
+  const [graduatingCohort, setGraduatingCohort] = useState<Cohort | null>(null)
+  const [pools, setPools] = useState<{ id: string; name: string; active: boolean }[]>([])
+  const [selectedPoolId, setSelectedPoolId] = useState("")
+  const [graduating, setGraduating] = useState(false)
   // The CIC being edited, held as a draft so Cancelar discards cleanly.
   const [editing, setEditing] = useState<
     { id: string; name: string; startDate: string; zoomUrl: string } | null
@@ -328,6 +333,40 @@ export default function CohortesPage() {
     }
   }
 
+  /** Load pools cuando se abre el diálogo de graduar. */
+  useEffect(() => {
+    if (!graduatingCohort) return
+    apiJson<{ id: string; name: string; active: boolean }[]>("/supervisor/pools")
+      .then((data) => setPools(data.filter((p) => p.active)))
+      .catch(() => {})
+  }, [graduatingCohort])
+
+  async function handleGraduate() {
+    if (!graduatingCohort || !selectedPoolId) return
+    setGraduating(true)
+    const res = await apiTry(`/supervisor/cohorts/${graduatingCohort.id}/graduate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ poolId: selectedPoolId }),
+    })
+    setGraduating(false)
+    if (res.ok) {
+      const data = await res.json().catch(() => ({ added: 0, alreadyIn: 0, total: 0 }))
+      toast({
+        title: `${data.added} coach${data.added === 1 ? "" : "es"} graduado${data.added === 1 ? "" : "s"}`,
+        description:
+          data.alreadyIn > 0
+            ? `${data.alreadyIn} ya estaban en el pool.`
+            : "Les llegó el mail de bienvenida al pool.",
+      })
+      setGraduatingCohort(null)
+      setSelectedPoolId("")
+    } else {
+      const json = await res.json().catch(() => ({ error: "Error" }))
+      toast({ title: json.error || "Error al graduar", variant: "destructive" })
+    }
+  }
+
   /** Copy every enrolled email, ready to paste into a Zoom invite. */
   async function handleCopyEmails(cohort: Cohort) {
     const data = await apiJson<{ emails: string; count: number }>(
@@ -406,6 +445,16 @@ export default function CohortesPage() {
                   <Button size="sm" variant="outline" onClick={() => setEnrollingCohortId(cohort.id)}>
                     <UserPlus className="h-3 w-3 mr-1" /> Inscribir
                   </Button>
+                  {cohort._count.enrollments > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setGraduatingCohort(cohort)}
+                      title="Pasar a todos los alumnos del CIC a un pool de coaches certificados"
+                    >
+                      <Award className="h-3 w-3 mr-1" /> Graduar a pool
+                    </Button>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -599,6 +648,50 @@ export default function CohortesPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEnrollingCohortId(null)}>Cancelar</Button>
             <Button className="bg-brand-accent hover:bg-brand-accent-dark" onClick={handleEnroll}>Inscribir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!graduatingCohort} onOpenChange={(o) => { if (!o) { setGraduatingCohort(null); setSelectedPoolId("") } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif">Graduar a un pool</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Vamos a sumar a los <strong>{graduatingCohort?._count.enrollments ?? 0}</strong>{" "}
+              alumno{graduatingCohort && graduatingCohort._count.enrollments === 1 ? "" : "s"}{" "}
+              de <strong>{graduatingCohort?.name}</strong> al pool que elijas. A los que ya estén
+              en ese pool los salteamos; al resto les llega mail de bienvenida.
+            </p>
+            <div className="space-y-2">
+              <Label>Pool de destino</Label>
+              <Select value={selectedPoolId} onValueChange={setSelectedPoolId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={pools.length ? "Elegí un pool" : "No hay pools activos"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {pools.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {pools.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Creá primero un pool desde Administración → Pools de coaches.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setGraduatingCohort(null); setSelectedPoolId("") }}>Cancelar</Button>
+            <Button
+              className="bg-brand-accent hover:bg-brand-accent-dark"
+              onClick={handleGraduate}
+              disabled={!selectedPoolId || graduating}
+            >
+              {graduating ? "Graduando..." : "Graduar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
