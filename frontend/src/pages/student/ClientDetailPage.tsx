@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2, MoreHorizontal, Send, RefreshCw, Download } from "lucide-react"
+import { ArrowLeft, Plus, Copy, Eye, Pencil, Trash2, MoreHorizontal, Send, RefreshCw, Download, MailCheck } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -52,6 +52,7 @@ type Assignment = {
   test: { id: string; type: string; title: string }
   completedAt: string | null
   accessToken: string | null
+  mailSentAt: string | null
   response: { responses: Record<string, unknown>; editedAt: string | null } | null
   supervision: { id: string; status: string; reviewedAt: string | null } | null
   resetRequests?: { id: string; status: "PENDING" | "APPROVED" | "REJECTED" }[]
@@ -230,6 +231,14 @@ export default function ClientDetailPage() {
                   )}
                   {assignment?.response?.editedAt && (
                     <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">Editado</Badge>
+                  )}
+                  {assignment?.mailSentAt && !assignment.completedAt && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[0.7rem] text-emerald-700"
+                      title={`Mail enviado al coachee el ${formatShortDate(assignment.mailSentAt)}`}
+                    >
+                      <MailCheck className="h-3 w-3" /> Mail enviado
+                    </span>
                   )}
                   {resetPending && (
                     <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">Eliminación solicitada</Badge>

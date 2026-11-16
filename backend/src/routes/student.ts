@@ -188,7 +188,9 @@ student.post("/clients/:id/assign", async (c) => {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173"
   const link = `${frontendUrl}/t/${assignment.accessToken}`
 
-  // The coachee has no account: this mail is how the link reaches them.
+  // The coachee has no account: this mail is how the link reaches them. Si
+  // Resend lo acepta, dejamos un sello mailSentAt para que el coach vea en la
+  // UI que el mail salió (y cuándo).
   sendTestAssignedToClient(
     clientRecord.email,
     clientRecord.name,
@@ -197,7 +199,14 @@ student.post("/clients/:id/assign", async (c) => {
     assignment.test.description,
     link,
     completeBy
-  ).catch(() => {})
+  )
+    .then((ok) => {
+      if (!ok) return
+      prisma.testAssignment
+        .update({ where: { id: assignment.id }, data: { mailSentAt: new Date() } })
+        .catch(() => {})
+    })
+    .catch(() => {})
 
   return c.json({ assignment, link }, 201)
 })
@@ -245,7 +254,14 @@ student.post("/assignments/:id/resend", async (c) => {
     assignment.test.description,
     link,
     completeBy
-  ).catch(() => {})
+  )
+    .then((ok) => {
+      if (!ok) return
+      prisma.testAssignment
+        .update({ where: { id: assignment.id }, data: { mailSentAt: new Date() } })
+        .catch(() => {})
+    })
+    .catch(() => {})
 
   return c.json({ link })
 })

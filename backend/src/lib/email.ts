@@ -32,10 +32,10 @@ async function send(
   subject: string,
   html: string,
   bcc?: string | string[]
-): Promise<void> {
+): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY sin configurar — no se envió "${subject}" a ${to}`)
-    return
+    return false
   }
 
   const bccList = Array.isArray(bcc) ? bcc.filter(Boolean) : bcc ? [bcc] : []
@@ -50,9 +50,12 @@ async function send(
     })
     if (error) {
       console.error(`[email] Resend rechazó "${subject}" a ${to}:`, error.message)
+      return false
     }
+    return true
   } catch (e) {
     console.error(`[email] Falló el envío de "${subject}" a ${to}:`, e)
+    return false
   }
 }
 
@@ -154,7 +157,7 @@ export async function sendTestAssignedToClient(
   testConsigna: string,
   magicLink: string,
   completeBy: Date
-) {
+): Promise<boolean> {
   const deadline = completeBy.toLocaleDateString("es-AR", {
     day: "numeric",
     month: "long",
@@ -163,7 +166,7 @@ export async function sendTestAssignedToClient(
   const consignaBlock = testConsigna?.trim()
     ? `<p><strong>De qué se trata:</strong></p><p>${escapeHtml(testConsigna).replace(/\n+/g, "</p><p>")}</p>`
     : ""
-  await send(clientEmail, `${coachName} te compartió: ${testName}`, `
+  return send(clientEmail, `${coachName} te compartió: ${testName}`, `
       <p>Hola ${clientName || ""},</p>
       <p><strong>${coachName}</strong> te compartió el ejercicio <strong>${testName}</strong> para que lo completes antes de su sesión.</p>
       ${consignaBlock}

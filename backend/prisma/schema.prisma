@@ -379,6 +379,11 @@ model TestAssignment {
   /// re-assigned). Meaningless once completed.
   accessRevokedAt DateTime?
 
+  /// Timestamp del último envío exitoso del mail al coachee con el magic link
+  /// (asignación o reenvío). Permite mostrar en la UI del coach "✓ mail
+  /// enviado el ..." sin tener que adivinar si salió.
+  mailSentAt DateTime?
+
   response      TestResponse?
   supervision   SupervisionRequest?
   resetRequests TestResetRequest[]
