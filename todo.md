@@ -53,10 +53,6 @@ Checklist de pendientes para ir tackleando. Borrar este archivo cuando se vacíe
       la IA proponga una devolución basada en lo que Gaby viene escribiendo a
       mano (aprende de sus correcciones). Gaby puede aceptarla, editarla o
       rechazarla. Pensar prompt + cómo se persiste el aprendizaje.
-- [ ] **Confirmación visible de mails enviados.** Cuando un coach crea un
-      coachee o le envía un test, mostrar un icono / badge / banner que
-      confirme que el mail salió (y cuándo). Toca tanto backend (persistir
-      timestamp de envío) como UI (coach y supervisora).
 ### Datos de negocio (anotar, no es código todavía)
 
 - [ ] **Precios actuales de Gaby (referencia, no en la app).**
